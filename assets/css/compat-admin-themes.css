@@ -1,0 +1,75 @@
+/* wu-compat-admin-theme-{admin-theme} */
+.wu-compat-admin-theme-material-wp #wp-ultimo-header {
+  position: relative !important;
+  margin: 50px 25% !important;
+}
+
+.wu-compat-admin-theme-pro-theme button.btn.page-title-action {
+  color: #ffffff !important;
+}
+
+.wu-compat-admin-theme-pro-theme.folded #adminmenuwrap {
+  display: none;
+}
+
+.wu-compat-admin-theme-admin-2020 .wu-grid {
+  margin-top: 20px;
+}
+
+.wu-compat-admin-theme-admin-2020 #wp-ultimo-wrap .page-title-action {
+  top: 0 !important;
+}
+
+.wu-compat-admin-theme-admin-2020 .wu-list-table.wu-mode-grid #the-list {
+  display: inline-grid !important;
+}
+
+.wu-compat-admin-theme-admin-2020 .wu-list-table.wu-mode-grid .tablenav.top {
+  margin-top: 0 !important;
+}
+
+.wu-compat-admin-theme-admin-2020 .filter-links {
+  margin-left: 0 !important;
+}
+
+.wu-compat-admin-theme-admin-2020 #titlewrap span {
+  display: inline-block;
+}
+
+.wu-compat-admin-theme-admin-2020 #wp-ultimo-header {
+  border-radius: 6px !important;
+}
+
+.wu-compat-admin-theme-admin-2020.wu-styling .wu-list-table .row-actions {
+  display: block !important;
+  position: relative !important;
+  opacity: unset !important;
+  padding: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+.wu-compat-admin-theme-admin-2020.wu-styling .wu-list-table .row-actions span {
+  padding: 0 !important;
+}
+
+.wu-compat-admin-theme-clientside.wu-styling {
+  background-color: #f8f8fa !important;
+}
+
+.wu-compat-admin-theme-clientside #wp-ultimo-header {
+  display: none !important;
+}
+
+.wu-compat-admin-theme-wphave #wu-date-range {
+  margin: 0 -10px !important;
+}
+
+.wu-compat-admin-theme-waaspro .wu-list-table.wu-mode-grid {
+  margin-top: 30px;
+}
+
+.wu-compat-admin-theme-waaspro .tablenav.top {
+  height: auto;
+}

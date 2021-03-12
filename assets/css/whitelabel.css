@@ -1,0 +1,10 @@
+/* stylelint-disable font-family-no-missing-generic-family-keyword */
+/* stylelint-disable font-family-name-quotes */
+/** Whitelabel */
+body #wpadminbar .quicklinks li .blavatar {
+  content: " ";
+}
+body #wpadminbar .quicklinks li .blavatar::before {
+  font: normal 16px/1 "dashicons-wu" !important;
+  content: "\e975";
+}

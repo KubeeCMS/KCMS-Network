@@ -1,0 +1,23 @@
+{
+  "name": "kubeecms/kcms-network",
+  "type": "wordpress-plugin",
+  "license": "GNU",
+  "description":
+    "KCMS-Network ...",
+  "homepage": "https://github.com/KubeeCMS/KCMS-Network/",
+  "keywords": ["kubeecms", "kubee", "kcms-ksvgs", "ksvgs"],
+  "support": {
+    "issues": "https://github.com/kubeecms/kcms-network/issues/",
+    "forum": "https://discourse.kubee.com/"
+  },
+  "require": {
+    "php": ">=7.3"
+  },
+  "require-dev": {
+    "phpcompatibility/php-compatibility": "^9.0",
+    "squizlabs/php_codesniffer": "^3.5"
+  },
+  "scripts": {
+    "test": ["phpcs --ignore=vendor --extensions=php --standard=PSR2 ."]
+  }
+}

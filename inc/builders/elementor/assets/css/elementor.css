@@ -1,0 +1,15 @@
+.elementor-element [class*="wu-elementor-icon"]::after {
+  content: "WPU";
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  color: #a4afb7;
+  background: transparent;
+  font-size: 10px;
+  font-family: Roboto, Arial, Helvetica, Verdana, sans-serif;
+  padding: .2em .5em;
+  border-width: 0 0 1px 1px;
+  border-color: #e0e0e0;
+  border-style: solid;
+}

@@ -1,0 +1,23 @@
+<?php
+
+namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
+
+use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
+class AlphaSpaces extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+{
+    /** @var string */
+    protected $message = "The :attribute may only allows alphabet and spaces";
+    /**
+     * Check the $value is valid
+     *
+     * @param mixed $value
+     * @return bool
+     */
+    public function check($value) : bool
+    {
+        if (!\is_string($value)) {
+            return \false;
+        }
+        return \preg_match('/^[\\pL\\pM\\s]+$/u', $value) > 0;
+    }
+}
