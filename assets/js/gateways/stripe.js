@@ -1,31 +1,62 @@
 /* eslint-disable */
 /* global wu_stripe, Stripe */
-let stripe;
+let _stripe;
+let stripeElement;
+let card;
 
 const stripeElements = function(publicKey) {
 
-  stripe = Stripe(publicKey);
+  _stripe = Stripe(publicKey);
 
-  const elements = stripe.elements();
+  const elements = _stripe.elements();
 
-  const card = elements.create('card', {
+  card = elements.create('card', {
     hidePostalCode: true,
   });
 
-  jQuery('body').on('wu_on_form_success', function(e, checkout, results) {
+  wp.hooks.addFilter('wu_before_form_submitted', 'nextpress/wp-ultimo', function(promises, checkout, gateway) {
 
-    if (checkout.gateway === 'stripe') {
+    if (gateway === 'stripe' && checkout.order.totals.total > 0) {
 
-      // createPaymentMethod(stripe, card, checkout);
-      handlePayment(e, null, results, card);
+      promises.push(new Promise( async (resolve, reject) => {
 
-    }
+        try {
 
+          const paymentMethod = await _stripe.createPaymentMethod({type: 'card', card});
+
+          if (paymentMethod.error) {
+            
+            reject(paymentMethod.error);
+    
+          } // end if;
+
+        } catch(err) {
+
+        } // end try;
+
+        resolve();
+
+      }));
+
+    } // end if;
+
+    return promises;
+      
   });
 
-  jQuery('body').on('wu_on_form_updated', function(e, form) {
+  wp.hooks.addAction('wu_on_form_success', 'nextpress/wp-ultimo', function(checkout, results) {
 
-    if (form.gateway === 'stripe' && form.payment_method === 'add-new') {
+    if (checkout.gateway === 'stripe' && checkout.order.totals.total > 0) {
+      
+      handlePayment(null, results, card);
+
+    } // end if;
+
+  });
+  
+  wp.hooks.addAction('wu_on_form_updated', 'nextpress/wp-ultimo', function(form) {
+
+    if (form.gateway === 'stripe') {
 
       try {
 
@@ -33,13 +64,21 @@ const stripeElements = function(publicKey) {
 
         wu_stripe_update_styles(card, '#field-payment_template');
 
+        /*
+         * Prevents the from from submitting while Stripe is 
+         * creating a payment source.
+         */
+        form.set_prevent_submission(form.order && form.order.should_collect_payment && form.payment_method === 'add-new');
+
       } catch (error) {
 
         // Silence
 
-      }
+      } // end try;
 
     } else {
+
+      form.set_prevent_submission(false);
 
       try {
 
@@ -49,15 +88,11 @@ const stripeElements = function(publicKey) {
 
         // Silence is golden
 
-      }
+      } // end try;
 
-    }
+    } // end if;
 
   });
-
-  // var idealBank = elements.create("idealBank");
-
-  // idealBank.mount("#ideal-bank-element");
 
   // Element focus ring
   card.on('focus', function() {
@@ -78,17 +113,19 @@ const stripeElements = function(publicKey) {
 
 };
 
-jQuery('body').on('wu_before_form_init', function(e, data) {
+wp.hooks.addFilter('wu_before_form_init', 'nextpress/wp-ultimo', function(data) {
 
   data.add_new_card = wu_stripe.add_new_card;
 
   data.payment_method = wu_stripe.payment_method;
 
+  return data;
+
 });
 
-jQuery('body').on('wu_checkout_loaded', function(e) {
+wp.hooks.addAction('wu_checkout_loaded', 'nextpress/wp-ultimo', function() {
 
-  stripeElements(wu_stripe.pk_key);
+  stripeElement = stripeElements(wu_stripe.pk_key);
 
 });
 
@@ -162,56 +199,92 @@ function wu_stripe_update_styles(cardElement, selector) {
 
 function wu_stripe_handle_intent(handler, client_secret, args, card) {
 
-  if (! args.payment_method) {
+  const _handle_error = function (e) {
 
-    return stripe[handler](client_secret, card, args);
+    wu_checkout_form.unblock();
 
-  }
+    if (e.error) {
 
-  return stripe[handler](client_secret, args);
+      wu_checkout_form.errors.push(e.error);
+      
+    } // end if;
 
-}
+  } // end _handle_error;
+
+  try {
+
+    if (!args.payment_method) {
+
+      _stripe[handler](client_secret, card, args).then(function(results) {
+        
+        if (results.error) {
+
+          _handle_error(results);
+
+          return;
+
+        } // end if;
+
+        wu_checkout_form.resubmit();
+
+      }, _handle_error);
+
+    } // end if;
+
+    _stripe[handler](client_secret, args).then(function(results) {
+      
+      if (results.error) {
+
+        _handle_error(results);
+
+        return;
+
+      } // end if;
+      
+      wu_checkout_form.resubmit();
+
+    }, _handle_error);
+
+  } catch(e) {} // end if;
+
+} // end if;
 
 /**
  * After registration has been processed, handle card payments.
  *
- * @param event
  * @param form
  * @param response
  * @param card
  */
-function handlePayment(event, form, response, card) {
+function handlePayment(form, response, card) {
 
   // Trigger error if we don't have a client secret.
   if (! response.gateway.data.stripe_client_secret) {
 
     return;
 
-  }
-
-  const cardHolderName = 'Test Emerson'; //$('.card-name').val();
+  } // end if;
 
   const handler = 'payment_intent' === response.gateway.data.stripe_intent_type ? 'handleCardPayment' : 'handleCardSetup';
 
   const args = {
     payment_method_data: {
-      billing_details: { name: cardHolderName },
+      billing_details: { 
+        name: response.customer.display_name,
+        email: response.customer.user_email,
+        address: {
+          country: response.customer.billing_address_data.billing_country,
+          postal_code: response.customer.billing_address_data.billing_zip_code,
+        },
+      },
     },
   };
-
-  // if (RCP_Stripe_Registration.paymentMethodID) {
-  //   args = {
-  //     payment_method: RCP_Stripe_Registration.paymentMethodID
-  //   };
-  // }
 
   /**
    * Handle payment intent / setup intent.
    */
   wu_stripe_handle_intent(
     handler, response.gateway.data.stripe_client_secret, args, card
-  ).then(function(paymentResult) {
-
-  });
+  );
 
 }

@@ -63,7 +63,7 @@ class Customers_Schema extends Schema {
 		array(
 			'name'       => 'date_registered',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'created'    => true,
 			'date_query' => true,
 			'sortable'   => true,
@@ -81,7 +81,7 @@ class Customers_Schema extends Schema {
 		array(
 			'name'       => 'last_login',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'date_query' => true,
 			'sortable'   => true,
 		),
@@ -113,6 +113,15 @@ class Customers_Schema extends Schema {
 			'type'       => 'longtext',
 			'default'    => '',
 			'searchable' => true,
+		),
+
+		// Added on 2.0 beta 7
+		array(
+			'name'       => 'signup_form',
+			'type'       => 'varchar',
+			'default'    => 'by-admin',
+			'searchable' => true,
+			'sortable'   => true,
 		),
 
 	);

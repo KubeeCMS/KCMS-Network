@@ -33,9 +33,20 @@ window.wu_initialize_imagepicker = function() {
     const that = jQuery(this);
 
     that.find('img').css({
-      maxWidth: '246px',
-      maxHeight: '246px',
+      maxWidth: '100%',
     });
+
+    const value = that.find('img').attr('src');
+
+    if (value) {
+
+      that.find('.wu-wrapper-image-field-upload-actions').show();
+
+    } else {
+      
+      that.find('.wu-add-image-wrapper').show();
+      
+    } // end if;
 
     that.on('click', 'a.wu-add-image', function() {
 
@@ -59,11 +70,21 @@ window.wu_initialize_imagepicker = function() {
 
         const mediaObject = wu_media_frame.state().get('selection').first().toJSON();
 
+        const img_el = that.find('img');
+
         that.find('img').removeClass('wu-absolute').attr('src', mediaObject.url);
+
+        that.find('.wubox').attr('href', mediaObject.url);
 
         that.find('input').val(mediaObject.id);
 
-        that.find('.wu-remove-image').show();
+        that.find('.wu-add-image-wrapper').hide();
+
+        img_el.on('load', function() {
+
+          that.find('.wu-wrapper-image-field-upload-actions').show();
+
+        });
 
       });
 
@@ -79,7 +100,9 @@ window.wu_initialize_imagepicker = function() {
 
       that.find('input').val('');
 
-      that.find('.wu-remove-image').hide();
+      that.find('.wu-wrapper-image-field-upload-actions').hide();
+
+      that.find('.wu-add-image-wrapper').show();
 
     });
 
@@ -105,13 +128,88 @@ window.wu_initialize_iconfontpicker = function() {
 
   jQuery(document).ready(function() {
 
-    jQuery('.wu_select_icon').fontIconPicker({
-      theme: 'wu-theme',
-    });
+    if (jQuery('.wu_select_icon').length) {
+
+      jQuery('.wu_select_icon').fontIconPicker({
+        theme: 'wu-theme',
+      });
+
+    }
 
   });
 
 }; // end wu_initialize_iconfontpicker;
+
+window.wu_transition_text = function(el, has_icon = false) {
+
+  const $el = jQuery(el);
+
+  const handler = {
+    classes: [],
+    has_icon,
+    original_value: $el.html(),
+    get_icon() {
+
+      return this.has_icon ? '<span class="wu-spin wu-inline-block wu-mr-2"><span class="dashicons-wu-loader"></span></span>' : '';
+
+    },
+    clear_classes() {
+
+      $el.removeClass(this.classes);
+
+    },
+    add_classes(classes) {
+
+      this.classes = classes;
+
+    },
+    text(text, classes = '', toggle_icon = false) {
+
+      this.clear_classes();
+
+      this.add_classes(classes);
+
+      if (toggle_icon) {
+
+        this.has_icon = ! this.has_icon;
+
+      } // end if;
+
+      $el.animate({
+        opacity: 0.75,
+      }, 300, () => {
+
+        $el.addClass(classes).html(this.get_icon() + text);
+
+      });
+
+      return this;
+
+    },
+    done(timeout = 5000) {
+
+      setTimeout(() => {
+
+        $el.animate({
+          opacity: 1,
+        }, 300, () => {
+
+          this.clear_classes();
+
+          $el.html(handler.original_value);
+
+        });
+
+      }, timeout);
+
+      return this;
+
+    },
+  };
+
+  return handler;
+
+}; // end wu_transition_text;
 
 window.wu_initialize_clipboardjs = function() {
 
@@ -136,6 +234,7 @@ window.wu_initialize_datepickers = function() {
       enableTime: typeof allow_time === 'undefined' ? true : allow_time,
       dateFormat: format,
       allowInput: true,
+      defaultDate: $this.val(),
     });
 
   });
@@ -145,7 +244,7 @@ window.wu_initialize_datepickers = function() {
 window.wu_update_clock = function() {
 
   // eslint-disable-next-line no-undef
-  const yourTimeZoneFrom = wu_ticker.server_clock_offset; //time zone value where you are at
+  const yourTimeZoneFrom = wu_ticker.server_clock_offset; // time zone value where you are at
 
   const d = new Date();
   //get the timezone offset from local time in minutes
@@ -216,76 +315,6 @@ window.wu_update_clock = function() {
 
 };
 
-function wu_initialize_input_masks() {
-
-  /*
-   * First, money inputs
-   */
-
-  if (jQuery('[data-money]').length) {
-
-    let prefix_symbol = wu_settings.currency_symbol;
-
-    let tail = false;
-
-    if (wu_settings.currency_position === '%v%s') {
-
-      tail = true;
-
-    } else if (wu_settings.currency_position === '%s %v') {
-
-      prefix_symbol += ' ';
-
-    } else if (wu_settings.currency_position === '%v %s') {
-
-      prefix_symbol = ' ' + prefix_symbol;
-
-      tail = true;
-
-    } // end if;
-
-    jQuery('[data-money]').each(function() {
-
-      wu_money_input_masks = new Cleave(this, {
-        numeral: true,
-        numericOnly: true,
-        numeralThousandsGroupStyle: 'thousand',
-        numeralDecimalMark: wu_settings.decimal_separator,
-        delimiter: wu_settings.thousand_separator,
-        delimiterLazyShow: true,
-        prefix: prefix_symbol,
-        tailPrefix: tail,
-      });
-
-    });
-
-  } // end if;
-
-  /*
-  * First, money inputs
-  */
-
-  if (jQuery('[data-cleave]').length) {
-
-    jQuery('[data-cleave]').each(function() {
-
-      if (parseInt(jQuery(this).data('cleave'), 10) !== 1) {
-
-        return;
-
-      } // end if;
-
-      wu_input_masks = new Cleave(this, {
-        prefix: jQuery(this).data('prefix') || '',
-        tailPrefix: jQuery(this).data('prefix-tail') || false,
-      });
-
-    });
-
-  } // end if;
-
-} // end wu_initialize_input_masks;
-
 // eslint-disable-next-line no-unused-vars
 function wu_on_load(vue) {
 
@@ -301,13 +330,11 @@ function wu_on_load(vue) {
 
   wu_update_clock();
 
-  wu_initialize_input_masks();
-
   wu_initialize_clipboardjs();
 
   wu_initialize_imagepicker();
 
-  wu_image_preview('.wu-image-preview');
+  wu_image_preview();
 
 } // end wu_on_load;
 
@@ -316,7 +343,7 @@ window.wu_on_load = wu_on_load;
 // eslint-disable-next-line no-unused-vars
 window.wu_block_ui = function(el) {
 
-  jQuery(el).block({
+  jQuery(el).wu_block({
     message: '<div class="spinner is-active wu-float-none" style="float: none !important;"></div>',
     overlayCSS: {
       backgroundColor: '#FFF',
@@ -337,7 +364,11 @@ window.wu_block_ui = function(el) {
     },
   });
 
-  return jQuery(el);
+  const el_instance = jQuery(el);
+
+  el_instance.unblock = jQuery(el).wu_unblock;
+
+  return el_instance;
 
 };
 
@@ -345,7 +376,7 @@ function wu_format_money(value) {
 
   value = parseFloat(value.toString().replace(/[^0-9\.]/g, ''));
 
-  accounting.settings = {
+  const settings = wp.hooks.applyFilters('wu_format_money', {
     currency: {
       symbol: wu_settings.currency_symbol, // default currency symbol is '$'
       format: wu_settings.currency_position, // controls output: %s = symbol, %v = value/number (can be object: see below)
@@ -358,11 +389,32 @@ function wu_format_money(value) {
       thousand: ',',
       decimal: ',',
     },
-  };
+  });
+
+  accounting.settings = settings;
 
   return accounting.formatMoney(value);
 
 } // end wu_format_money;
+
+function wu_modal_set_width(width) {
+
+  jQuery(document).find('#WUB_ajaxContent').animate({
+    width,
+  }, 0, function() {
+
+    jQuery(document).find('#WUB_window').animate({
+      width,
+      marginLeft: '-' + parseInt((width / 2), 10) + 'px',
+    }, 120, function() {
+
+      wu_modal_refresh();
+
+    });
+
+  });
+
+} // end wu_modal_set_width;
 
 function wu_modal_refresh() {
 
@@ -387,13 +439,28 @@ function wu_modal_refresh() {
 
 } // end wu_modal_refresh;
 
-window.wu_image_preview = function(selector) {
+window.wu_image_preview = function() {
 
   const xOffset = 10;
 
   const yOffset = 30;
 
   const preview_el = '#wu-image-preview';
+
+  // eslint-disable-next-line eqeqeq
+  const selector = wu_settings.disable_image_zoom == true ? '.wu-image-preview:not(img)' : '.wu-image-preview';
+
+  const el_id = preview_el.replace('#', '');
+
+  if (jQuery(preview_el).length === 0) {
+
+    jQuery('body').append(
+      "<div id='" + el_id + "' class='wu-rounded wu-p-1 wp-ui-primary' style='max-width: 600px; display: none; z-index: 9999999;'>" +
+        "<img class='wu-rounded wu-block wu-m-0 wu-p-0 wu-bg-gray-100' style='max-width: 100%;' src='' alt=''>" +
+      '</div>'
+    );
+
+  } // end if;
 
   /* END CONFIG */
   jQuery(selector).hover(function(e) {
@@ -402,19 +469,13 @@ window.wu_image_preview = function(selector) {
 
     this.title = '';
 
-    jQuery(preview_el).remove();
-
     const img = jQuery(this).data('image');
 
-    const el_id = preview_el.replace('#', '');
-
-    jQuery('body').append(
-      "<div id='" + el_id + "' class='wu-rounded wu-p-1 wp-ui-primary' style='max-width: 600px;'>" +
-        "<img class='wu-rounded wu-block wu-m-0 wu-p-0 wu-bg-gray-100' style='max-width: 100%;' src='" + img + "' alt='" + this.t + "'>" +
-      '</div>'
-    );
-
     jQuery(preview_el)
+      .find('img')
+      .attr('src', img)
+      .attr('alt', this.t)
+      .end()
       .css({
         position: 'absolute',
         display: 'none',
@@ -428,11 +489,7 @@ window.wu_image_preview = function(selector) {
 
     this.title = this.t;
 
-    jQuery(preview_el).fadeOut('fast', function() {
-
-      jQuery(this).remove();
-
-    });
+    jQuery(preview_el).fadeOut('fast');
 
   });
 
@@ -502,3 +559,15 @@ window.wu_initialize_code_editors = function() {
   } // end if;
 
 }; // end wu_initialize_code_editors;
+
+/**
+ * Get a timezone-d moment instance.
+ *
+ * @param {*} a The date.
+ * @return moment instance
+ */
+window.wu_moment = function(a) {
+
+  return moment.tz(a, 'Etc/UTC');
+
+}; // end wu_moment;

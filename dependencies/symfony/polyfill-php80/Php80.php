@@ -55,12 +55,12 @@ final class Php80
         if (\false === \strpos($class, '@')) {
             return $class;
         }
-        return (\get_parent_class($class) ?: \key(\class_implements($class)) ?: 'class') . '@anonymous';
+        return ((\get_parent_class($class) ?: \key(\class_implements($class))) ?: 'class') . '@anonymous';
     }
     public static function get_resource_id($res) : int
     {
         if (!\is_resource($res) && null === @\get_resource_type($res)) {
-            throw new \TypeError(\sprintf('Argument 1 passed to get_resource_id() must be of the type resource, %s given', get_debug_type($res)));
+            throw new \TypeError(\sprintf('Argument 1 passed to get_resource_id() must be of the type resource, %s given', \get_debug_type($res)));
         }
         return (int) $res;
     }
@@ -95,6 +95,13 @@ final class Php80
     }
     public static function str_ends_with(string $haystack, string $needle) : bool
     {
-        return '' === $needle || '' !== $haystack && 0 === \substr_compare($haystack, $needle, -\strlen($needle));
+        if ('' === $needle || $needle === $haystack) {
+            return \true;
+        }
+        if ('' === $haystack) {
+            return \false;
+        }
+        $needleLength = \strlen($needle);
+        return $needleLength <= \strlen($haystack) && 0 === \substr_compare($haystack, $needle, -$needleLength);
     }
 }

@@ -5,7 +5,7 @@ namespace WP_Ultimo\Dependencies\DeepCopy\TypeFilter;
 /**
  * @final
  */
-class ReplaceFilter implements \WP_Ultimo\Dependencies\DeepCopy\TypeFilter\TypeFilter
+class ReplaceFilter implements TypeFilter
 {
     /**
      * @var callable

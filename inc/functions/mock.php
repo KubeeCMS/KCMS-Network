@@ -1,14 +1,13 @@
 <?php
 /**
- * Mock Functions
+ * Model Mocking Functions
  *
- * Create mock model objects for testing purposes.
- *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Mock
- * @version     2.0.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
+
+// Exit if accessed directly
+defined('ABSPATH') || exit;
 
 /**
  * Returns a mock site object.

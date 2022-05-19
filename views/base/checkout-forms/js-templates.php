@@ -31,14 +31,14 @@
 
 	<draggable
 		:list="list"
-		:element="'tbody'"
+		:tag="'tbody'"
 		group="field"
 		handle=".wu-placeholder-sortable"
-		ghost-class="wu-bg-white"
+		ghost-class="wu-draggable-field-ghost"
 		drag-class="wu-bg-white"
 	>
 
-		<tr v-for="(field, idx) in list" :key="field.id">
+		<tr v-for="(field, idx) in list" :key="field.id" :id="'wp-ultimo-field-' + field.id">
 
 			<td class="order column-order has-row-actions column-primary" data-colname="<?php _e('Order', 'wp-ultimo'); ?>">
 
@@ -57,7 +57,7 @@
 
 				<span class="wu-inline-block wu-font-medium">
 
-					{{ field.name }}
+					{{ field.name ? field.name : "<?php echo __('(no label)', 'wp-ultimo'); ?>" }}
 
 					<!-- Visibility -->
           <span 
@@ -127,7 +127,7 @@
 				<span class="wu-bg-gray-200 wu-text-gray-700 wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono">{{ field.id }}</span>
 			</td>
 
-			<td class="move column-move" data-colname="<?php _e('Move', 'wp-ultimo'); ?>">
+			<td class="move column-move wu-text-right" data-colname="<?php _e('Move', 'wp-ultimo'); ?>">
 
 				<span class="wu-placeholder-sortable dashicons-wu-menu"></span>
 
@@ -140,9 +140,3 @@
 </table>
 
 </script>
-
-<style>
-.wu-hide-inside .inside {
-  display: none;
-}
-</style>

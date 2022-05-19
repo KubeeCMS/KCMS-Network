@@ -71,8 +71,6 @@ class Webhook_Manager extends Base_Manager {
 
 		$this->enable_wp_cli();
 
-		add_action('init', array($this, 'register_webhook_events'));
-
 		add_action('init', array($this, 'register_webhook_listeners'));
 
 		add_action('wp_ajax_wu_send_test_event', array($this, 'send_test_event'));
@@ -94,44 +92,6 @@ class Webhook_Manager extends Base_Manager {
 		} // end foreach;
 
 	} // end register_webhook_listeners;
-
-	/**
-	 * Register webhook events to be executed when a webhook is send.
-	 *
-	 * @return void
-	 */
-	public function register_webhook_events() {
-
-		$webhooks = Webhook::get_all();
-
-		if (!is_array($webhooks)) {
-
-			return;
-
-		} // end if;
-
-		foreach ($webhooks as $webhook) {
-
-			$webhook_name = str_replace(' ', '_', $webhook->get_name());
-
-			wu_register_event_type('send_webhook_' . $webhook_name, array(
-				'name'    => $webhook->get_name(),
-				'desc'    => __('This event is fired when this webhook is sended', 'wp-ultimo'),
-				'payload' => array(
-					'object_id'   => 1,
-					'object_type' => 'webhook',
-					'type'        => 'INFO',
-					'body'        => array(),
-				),
-				'save'    => array(
-					'db'  => true,
-					'log' => false
-				)
-			));
-
-		} // end foreach;
-
-	} // end register_webhook_events;
 
 	/**
 	 * Sends all the webhooks that are triggered by a specific event.
@@ -179,7 +139,9 @@ class Webhook_Manager extends Base_Manager {
 			'method'      => 'POST',
 			'timeout'     => 45,
 			'redirection' => 5,
-			'headers'     => array(),
+			'headers'     => array(
+				'Content-Type' => 'application/json',
+			),
 			'cookies'     => array(),
 			'body'        => $data['body'],
 			'blocking'    => $blocking,
@@ -255,9 +217,11 @@ class Webhook_Manager extends Base_Manager {
 			'method'      => 'POST',
 			'timeout'     => 45,
 			'redirection' => 5,
-			'headers'     => array(),
+			'headers'     => array(
+				'Content-Type' => 'application/json',
+			),
 			'cookies'     => array(),
-			'body'        => wp_json_encode($event['payload']),
+			'body'        => wp_json_encode(wu_maybe_lazy_load_payload($event['payload'])),
 			'blocking'    => true,
 		));
 
@@ -298,13 +262,13 @@ class Webhook_Manager extends Base_Manager {
 
 		if (!current_user_can('manage_network')) {
 
-			echo __('You do not have enough permissions to read the logs of this webhooks.', 'wp-ultimo');
+			echo __('You do not have enough permissions to read the logs of this webhook.', 'wp-ultimo');
 
 			exit;
 
 		} // end if;
 
-		$id = abs($_REQUEST['id']);
+		$id = absint($_REQUEST['id']);
 
 		$logs = array_map(function($line) {
 

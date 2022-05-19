@@ -14,7 +14,7 @@ class OrderService extends \WP_Ultimo\Dependencies\Stripe\Service\AbstractServic
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\Order>
      */
     public function all($params = null, $opts = null)
     {

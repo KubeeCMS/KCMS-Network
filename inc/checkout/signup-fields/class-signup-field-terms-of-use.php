@@ -86,9 +86,23 @@ class Signup_Field_Terms_Of_Use extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('ToU Description', 'wp-ultimo');
+		return __('Adds a terms and conditions checkbox that must be marked before the account/site can be created.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Adds a terms and conditions checkbox that must be marked before the account/site can be created.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -100,7 +114,7 @@ class Signup_Field_Terms_Of_Use extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-wu-text-document';
+		return 'dashicons-wu-file-text';
 
 	} // end get_icon;
 
@@ -116,7 +130,7 @@ class Signup_Field_Terms_Of_Use extends Base_Signup_Field {
 	public function defaults() {
 
 		return array(
-			''
+			'tou_name' => __('I agree with the terms of use.', 'wp-ultimo'),
 		);
 
 	} // end defaults;
@@ -129,10 +143,7 @@ class Signup_Field_Terms_Of_Use extends Base_Signup_Field {
 	 */
 	public function default_fields() {
 
-		return array(
-			'name',
-			'tooltip',
-		);
+		return array();
 
 	} // end default_fields;
 
@@ -145,7 +156,8 @@ class Signup_Field_Terms_Of_Use extends Base_Signup_Field {
 	public function force_attributes() {
 
 		return array(
-			'id' => 'terms_of_use',
+			'id'   => 'terms_of_use',
+			'name' => __('Terms of Use', 'wp-ultimo'),
 		);
 
 	}  // end force_attributes;
@@ -159,7 +171,14 @@ class Signup_Field_Terms_Of_Use extends Base_Signup_Field {
 	public function get_fields() {
 
 		return array(
-			'tou_url' => array(
+			'tou_name' => array(
+				'order'       => 10,
+				'type'        => 'text',
+				'title'       => __('Terms Checkbox Label', 'wp-ultimo'),
+				'placeholder' => __('e.g. I agree with the terms of use.', 'wp-ultimo'),
+			),
+			'tou_url'  => array(
+				'order'       => 20,
 				'type'        => 'url',
 				'title'       => __('Link to the Terms Page', 'wp-ultimo'),
 				'desc'        => __('Enter the link to the terms of use content.', 'wp-ultimo'),
@@ -181,14 +200,15 @@ class Signup_Field_Terms_Of_Use extends Base_Signup_Field {
 
 		$checkout_fields = array();
 
-		$tou_link = sprintf('<a href="%s" target="_blank">%s</a>', $attributes['tou_url'], __('Read the terms of use here.', 'wp-ultimo'));
+		$tou_link = sprintf('<a href="%s" target="_blank">%s</a>', $attributes['tou_url'], __('Read here', 'wp-ultimo'));
 
 		$checkout_fields['terms_of_use'] = array(
-			'type'     => 'checkbox',
-			'id'       => 'terms_of_use',
-			'name'     => $attributes['name'] . ' - ' . $tou_link,
-			'tooltip'  => $attributes['tooltip'],
-			'required' => true,
+			'type'            => 'checkbox',
+			'id'              => 'terms_of_use',
+			'name'            => $attributes['tou_name'] . ' - ',
+			'desc'            => $tou_link,
+			'wrapper_classes' => $attributes['element_classes'],
+			'required'        => true,
 		);
 
 		return $checkout_fields;

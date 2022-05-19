@@ -13,7 +13,7 @@ class TopupService extends \WP_Ultimo\Dependencies\Stripe\Service\AbstractServic
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\Topup>
      */
     public function all($params = null, $opts = null)
     {

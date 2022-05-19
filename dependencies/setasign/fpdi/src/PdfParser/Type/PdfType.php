@@ -7,11 +7,13 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\PdfParser\Type;
 
 use setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException;
 use setasign\Fpdi\PdfParser\PdfParser;
 use setasign\Fpdi\PdfParser\PdfParserException;
+
 /**
  * A class defining a PDF data type
  */
@@ -29,19 +31,23 @@ class PdfType
      * @throws CrossReferenceException
      * @throws PdfParserException
      */
-    public static function resolve(\setasign\Fpdi\PdfParser\Type\PdfType $value, \setasign\Fpdi\PdfParser\PdfParser $parser, $stopAtIndirectObject = \false)
+    public static function resolve(PdfType $value, PdfParser $parser, $stopAtIndirectObject = false)
     {
-        if ($value instanceof \setasign\Fpdi\PdfParser\Type\PdfIndirectObject) {
-            if ($stopAtIndirectObject === \true) {
+        if ($value instanceof PdfIndirectObject) {
+            if ($stopAtIndirectObject === true) {
                 return $value;
             }
+
             return self::resolve($value->value, $parser, $stopAtIndirectObject);
         }
-        if ($value instanceof \setasign\Fpdi\PdfParser\Type\PdfIndirectObjectReference) {
+
+        if ($value instanceof PdfIndirectObjectReference) {
             return self::resolve($parser->getIndirectObject($value->value), $parser, $stopAtIndirectObject);
         }
+
         return $value;
     }
+
     /**
      * Ensure that a value is an instance of a specific PDF type.
      *
@@ -53,11 +59,16 @@ class PdfType
      */
     protected static function ensureType($type, $value, $errorMessage)
     {
-        if (!$value instanceof $type) {
-            throw new \setasign\Fpdi\PdfParser\Type\PdfTypeException($errorMessage, \setasign\Fpdi\PdfParser\Type\PdfTypeException::INVALID_DATA_TYPE);
+        if (!($value instanceof $type)) {
+            throw new PdfTypeException(
+                $errorMessage,
+                PdfTypeException::INVALID_DATA_TYPE
+            );
         }
+
         return $value;
     }
+
     /**
      * The value of the PDF type.
      *

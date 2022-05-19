@@ -15,13 +15,13 @@ class SslCertificate
     private $fingerprintSha256 = '';
     /** @var string */
     private $remoteAddress = '';
-    public static function download() : \WP_Ultimo\Dependencies\Spatie\SslCertificate\Downloader
+    public static function download() : Downloader
     {
-        return new \WP_Ultimo\Dependencies\Spatie\SslCertificate\Downloader();
+        return new Downloader();
     }
     public static function createForHostName(string $url, int $timeout = 30, bool $verifyCertificate = \true) : self
     {
-        return \WP_Ultimo\Dependencies\Spatie\SslCertificate\Downloader::downloadCertificateFromUrl($url, $timeout, $verifyCertificate);
+        return Downloader::downloadCertificateFromUrl($url, $timeout, $verifyCertificate);
     }
     public static function createFromFile(string $pathToCertificate) : self
     {
@@ -68,7 +68,7 @@ class SslCertificate
     }
     public function getOrganization() : string
     {
-        return $this->rawCertificateFields['subject']['O'] ?? '';
+        return $this->rawCertificateFields['issuer']['O'] ?? '';
     }
     public function getFingerprint() : string
     {
@@ -88,13 +88,13 @@ class SslCertificate
             return \str_replace('DNS:', '', $domain);
         }, $additionalDomains);
     }
-    public function validFromDate() : \WP_Ultimo\Dependencies\Carbon\Carbon
+    public function validFromDate() : Carbon
     {
-        return \WP_Ultimo\Dependencies\Carbon\Carbon::createFromTimestampUTC($this->rawCertificateFields['validFrom_time_t']);
+        return Carbon::createFromTimestampUTC($this->rawCertificateFields['validFrom_time_t']);
     }
-    public function expirationDate() : \WP_Ultimo\Dependencies\Carbon\Carbon
+    public function expirationDate() : Carbon
     {
-        return \WP_Ultimo\Dependencies\Carbon\Carbon::createFromTimestampUTC($this->rawCertificateFields['validTo_time_t']);
+        return Carbon::createFromTimestampUTC($this->rawCertificateFields['validTo_time_t']);
     }
     public function lifespanInDays() : int
     {
@@ -106,7 +106,7 @@ class SslCertificate
     }
     public function isValid(string $url = null)
     {
-        if (!\WP_Ultimo\Dependencies\Carbon\Carbon::now()->between($this->validFromDate(), $this->expirationDate())) {
+        if (!Carbon::now()->between($this->validFromDate(), $this->expirationDate())) {
             return \false;
         }
         if (!empty($url)) {
@@ -129,7 +129,7 @@ class SslCertificate
         }
         return \false;
     }
-    public function isValidUntil(\WP_Ultimo\Dependencies\Carbon\Carbon $carbon, string $url = null) : bool
+    public function isValidUntil(Carbon $carbon, string $url = null) : bool
     {
         if ($this->expirationDate()->lte($carbon)) {
             return \false;
@@ -139,7 +139,7 @@ class SslCertificate
     public function daysUntilExpirationDate() : int
     {
         $endDate = $this->expirationDate();
-        $interval = \WP_Ultimo\Dependencies\Carbon\Carbon::now()->diff($endDate);
+        $interval = Carbon::now()->diff($endDate);
         return (int) $interval->format('%r%a');
     }
     public function getDomains() : array
@@ -154,7 +154,7 @@ class SslCertificate
         if (\filter_var($url, \FILTER_VALIDATE_IP)) {
             $host = $url;
         } else {
-            $host = (new \WP_Ultimo\Dependencies\Spatie\SslCertificate\Url($url))->getHostName();
+            $host = (new Url($url))->getHostName();
         }
         $certificateHosts = $this->getDomains();
         foreach ($certificateHosts as $certificateHost) {

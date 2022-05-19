@@ -5,8 +5,6 @@
  *
  * PHP version 5 and 7
  *
- * @category  Math
- * @package   BigInteger
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -18,24 +16,20 @@ use phpseclib3\Math\BigInteger\Engines\BCMath;
 /**
  * Sliding Window Exponentiation Engine
  *
- * @package PHP
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-abstract class Base extends \phpseclib3\Math\BigInteger\Engines\BCMath
+abstract class Base extends BCMath
 {
     /**
      * Cache constants
      *
      * $cache[self::VARIABLE] tells us whether or not the cached data is still valid.
      *
-     * @access private
      */
     const VARIABLE = 0;
     /**
      * $cache[self::DATA] contains the cached data.
      *
-     * @access private
      */
     const DATA = 1;
     /**
@@ -50,13 +44,13 @@ abstract class Base extends \phpseclib3\Math\BigInteger\Engines\BCMath
     /**
      * Performs modular exponentiation.
      *
-     * @param \phpseclib3\Math\BigInteger\Engines\BCMath $x
-     * @param \phpseclib3\Math\BigInteger\Engines\BCMath $e
-     * @param \phpseclib3\Math\BigInteger\Engines\BCMath $n
+     * @param BCMath $x
+     * @param BCMath $e
+     * @param BCMath $n
      * @param string $class
-     * @return \phpseclib3\Math\BigInteger\Engines\BCMath
+     * @return BCMath
      */
-    protected static function powModHelper(\phpseclib3\Math\BigInteger\Engines\BCMath $x, \phpseclib3\Math\BigInteger\Engines\BCMath $e, \phpseclib3\Math\BigInteger\Engines\BCMath $n, $class)
+    protected static function powModHelper(BCMath $x, BCMath $e, BCMath $n, $class)
     {
         if (empty($e->value)) {
             $temp = new $class();

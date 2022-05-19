@@ -26,7 +26,7 @@ namespace WP_Ultimo\Dependencies\BerlinDB\Database;
  *
  * @since 1.0.0
  */
-class Row extends \WP_Ultimo\Dependencies\BerlinDB\Database\Base
+class Row extends Base
 {
     /**
      * Construct a database object.

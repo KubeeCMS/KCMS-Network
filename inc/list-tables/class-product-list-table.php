@@ -44,11 +44,6 @@ class Product_List_Table extends Base_List_Table {
 			),
 		));
 
-		/*
-		 * Set default search type to plan
-		 */
-		$_REQUEST['type'] = wu_request('type', 'plan');
-
 	} // end __construct;
 
 	/**
@@ -95,7 +90,7 @@ class Product_List_Table extends Base_List_Table {
 
 		$class = $item->get_type_class();
 
-		return "<span class='wu-bg-gray-200 wu-text-gray-700 wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono $class'>{$label}</span>";
+		return "<span class='wu-bg-gray-200 wu-text-gray-700 wu-leading-none wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono $class'>{$label}</span>";
 
 	} // end column_type;
 
@@ -111,7 +106,7 @@ class Product_List_Table extends Base_List_Table {
 
 		$slug = $item->get_slug();
 
-		return "<span class='wu-bg-gray-200 wu-text-gray-700 wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono'>{$slug}</span>";
+		return "<span class='wu-bg-gray-200 wu-text-gray-700 wu-leading-none wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono'>{$slug}</span>";
 
 	} // end column_slug;
 
@@ -124,6 +119,12 @@ class Product_List_Table extends Base_List_Table {
 	 * @return string
 	 */
 	public function column_amount($item) {
+
+		if ($item->get_pricing_type() === 'contact_us') {
+
+			return __('None', 'wp-ultimo') . sprintf('<br><small>%s</small>', __('Requires contact', 'wp-ultimo'));
+
+		} // end if;
 
 		if (empty($item->get_amount())) {
 
@@ -139,7 +140,7 @@ class Product_List_Table extends Base_List_Table {
 
 			$message = sprintf(
 				// translators: %1$s is the formatted price, %2$s the duration, and %3$s the duration unit (day, week, month, etc)
-				_n('every %2$s', 'every %1$s %2$ss', $duration, 'wp-ultimo'), // phpcs:ignore
+				_n('every %2$s', 'every %1$s %2$s', $duration, 'wp-ultimo'), // phpcs:ignore
 				$duration,
 				$item->get_duration_unit()
 			);
@@ -176,6 +177,12 @@ class Product_List_Table extends Base_List_Table {
 	 */
 	public function column_setup_fee($item) {
 
+		if ($item->get_pricing_type() === 'contact_us') {
+
+			return __('None', 'wp-ultimo') . sprintf('<br><small>%s</small>', __('Requires contact', 'wp-ultimo'));
+
+		} // end if;
+
 		if (!$item->has_setup_fee()) {
 
 			return __('No Setup Fee', 'wp-ultimo');
@@ -192,9 +199,7 @@ class Product_List_Table extends Base_List_Table {
 	 * @since 2.0.0
 	 * @return void
 	 */
-	public function process_bulk_action() {
-
-		parent::process_bulk_action();
+	public function process_single_action() {
 
 		$bulk_action = $this->current_action();
 
@@ -218,9 +223,9 @@ class Product_List_Table extends Base_List_Table {
 
 			$new_product->set_name($new_name);
 
-			$new_product->set_slug(sanitize_title($new_name));
+			$new_product->set_slug(sanitize_title($new_name . '-' . time()));
 
-			$new_product->get_date_created(current_time('mysql'));
+			$new_product->set_date_created(wu_get_current_time('mysql', true));
 
 			$result = $new_product->save();
 
@@ -243,7 +248,7 @@ class Product_List_Table extends Base_List_Table {
 
 		} // end if;
 
-	} // end process_bulk_action;
+	} // end process_single_action;
 
 	/**
 	 * Returns the list of columns for this particular List Table.
@@ -308,6 +313,12 @@ class Product_List_Table extends Base_List_Table {
 	public function get_views() {
 
 		return array(
+			'all'     => array(
+				'field' => 'type',
+				'url'   => add_query_arg('type', 'all'),
+				'label' => __('All Products', 'wp-ultimo'),
+				'count' => 0,
+			),
 			'plan'    => array(
 				'field' => 'type',
 				'url'   => add_query_arg('type', 'plan'),

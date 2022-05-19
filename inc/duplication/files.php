@@ -14,13 +14,13 @@ if( !class_exists( 'MUCD_Files' ) ) {
             // Switch to Source site and get uploads info
             switch_to_blog($from_site_id);
             $wp_upload_info = wp_upload_dir();
-            $from_dir['path'] = str_replace(' ', "\\ ", trailingslashit($wp_upload_info['basedir']));
-            $from_site_id==MUCD_PRIMARY_SITE_ID ? $from_dir['exclude'] = MUCD_Option::get_primary_dir_exclude() :  $from_dir['exclude'] = array();
+            $from_dir['path'] = $wp_upload_info['basedir'];
+            $from_site_id == MUCD_PRIMARY_SITE_ID ? $from_dir['exclude'] = MUCD_Option::get_primary_dir_exclude() :  $from_dir['exclude'] = array();
 
             // Switch to Destination site and get uploads info
             switch_to_blog($to_site_id);
             $wp_upload_info = wp_upload_dir();
-            $to_dir = str_replace(' ', "\\ ", trailingslashit($wp_upload_info['basedir']));
+            $to_dir = $wp_upload_info['basedir'];
 
             restore_current_blog();
 
@@ -81,7 +81,7 @@ if( !class_exists( 'MUCD_Files' ) ) {
             $e = error_reporting(0);
 
             if(!file_exists($path)) {
-                return mkdir($path, 0777);
+                return @mkdir($path, 0777);
             }
             else if(is_dir($path)) {
                 if(!is_writable($path)) {
@@ -91,7 +91,9 @@ if( !class_exists( 'MUCD_Files' ) ) {
             }
 
             error_reporting($e);
+
             return false;
+
         }
 
         /**

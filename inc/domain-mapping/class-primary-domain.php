@@ -9,9 +9,7 @@
 
 namespace WP_Ultimo\Domain_Mapping;
 
-use WP_Ultimo\Models\Domain;
 use WP_Ultimo\Domain_Mapping;
-use WP_Ultimo\Domain_Mapping\SSO;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -32,12 +30,26 @@ class Primary_Domain {
 	 * @return void
 	 */
 	public function init() {
-		/*
-		 * Checks for a primary mapping and redirects
-		 */
-		add_action('plugins_loaded', array($this, 'redirect_to_primary_domain'), -20);
+
+		add_action('wu_domain_mapping_load', array($this, 'add_hooks'), -20);
 
 	} // end init;
+
+	/**
+	 * Adds the necessary hooks.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function add_hooks() {
+
+		add_action('template_redirect', array($this, 'redirect_to_primary_domain'));
+
+		add_action('admin_init', array($this, 'maybe_redirect_to_mapped_or_network_domain'));
+
+		add_action('login_init', array($this, 'maybe_redirect_to_mapped_or_network_domain'));
+
+	} // end add_hooks;
 
 	/**
 	 * Redirects the site to its primary mapped domain, if any.
@@ -47,95 +59,159 @@ class Primary_Domain {
 	 */
 	public function redirect_to_primary_domain() {
 
-		if (headers_sent()) {
+		$should_redirect = true;
+
+		if (is_preview()) {
+
+			$should_redirect = false;
+
+		} // end if;
+
+		if (is_customize_preview()) {
+
+			$should_redirect = false;
+
+ 		} // end if;
+
+		/**
+		 * Allow developers to short-circuit the redirection, preventing it
+		 * from happening.
+		 *
+		 * @since 2.0.0
+		 * @param $should_redirect If we should redirect or not.
+		 *
+		 * @return bool
+		 */
+		if (apply_filters('wu_should_redirect_to_primary_domain', $should_redirect) === false) {
 
 			return;
 
 		} // end if;
 
-		global $wu_original_url;
-
-		$mappings = Domain::get_by_site(get_current_blog_id());
-
-		if (!$mappings) {
+		if (!function_exists('wu_get_domains')) {
 
 			return;
 
 		} // end if;
 
-		$force_setting_admin = wu_get_setting('force_admin_redirect', 'both');
+		$domains = wu_get_domains(array(
+			'blog_id'        => get_current_blog_id(),
+			'primary_domain' => 1,
+			'active'         => 1,
+			'domain__not_in' => array($_SERVER['HTTP_HOST']),
+		));
 
-		foreach ($mappings as $mapping) {
+		if (empty($domains)) {
 
-			if ($mapping->is_primary_domain() && $mapping->is_active()) {
+			return;
 
-				$url = (is_ssl() ? 'https' : 'http') . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+		} // end if;
 
-				// Replace the domain
-				$domain = parse_url($url, PHP_URL_HOST);
+		$primary_domain = $domains[0];
 
-				$regex = '#^(\w+://)' . preg_quote($domain, '#') . '#i';
+		if ($_SERVER['HTTP_HOST'] !== $primary_domain->get_domain() && $primary_domain->is_active()) {
 
-				$mangled = preg_replace($regex, '${1}' . $mapping->get_domain(), $url);
+			$url = wu_get_current_url();
 
-				$mangled = Domain_Mapping::get_instance()->remove_subdirectory($mangled);
+			$new_url = Domain_Mapping::get_instance()->replace_url($url, $primary_domain);
 
-				/*
-				 * Fix the schema
-				 */
-				$mangled = preg_replace('(^https?://)', '', $mangled);
+			wp_redirect(set_url_scheme($new_url));
 
-				$mangled = ($mapping->is_secure() ? 'https' : 'http') . '://' . $mangled;
+			exit;
 
-				/*
-				 * On the original domain.
-				 * Here we need to decide if we keep it on the original domain or redirect it.
-				 * 1. Keep if:
-				 * - Is Admin
-				 * - Force Redirect set to both or force_network
-				 */
-				if ($mangled !== $url) {
-
-					if (is_admin() && in_array($force_setting_admin, array('both', 'force_network'), true)) {
-
-						return;
-
-					} // end if;
-
-					$redirect_url = apply_filters('wu_redirect_to_primary_domain', $mangled, $mapping);
-
-					wp_redirect($redirect_url, 302);
-
-					exit;
-
-				/*
-				 * Here the user is on the mapped domain.
-				 * Need to redirect to the original domain if:
-				 * - Is Admin
-				 * - Force Redirect set to both or force_network
-				 */
-				} else {
-
-					if (is_admin() && in_array($force_setting_admin, array('force_network'), true)) {
-
-						$domain = parse_url($mangled, PHP_URL_HOST);
-
-						$regex = '#^(\w+://)' . preg_quote($domain, '#') . '#i';
-
-						$original_url = preg_replace($regex, '${1}' . trim($wu_original_url, '/'), $url);
-
-						wp_redirect($original_url, 302);
-
-						exit;
-
-					} // end if;
-
-				} // end if;
-
-			} // end if;
-
-		} // end foreach;
+		} // end if;
 
 	} // end redirect_to_primary_domain;
+
+	/**
+	 * Handles redirects to mapped ot network domain for the admin panel.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function maybe_redirect_to_mapped_or_network_domain() {
+
+		if ($_SERVER['REQUEST_METHOD'] !== 'GET' || wp_doing_ajax()) {
+
+			return;
+
+		} // end if;
+
+		/*
+		 * The visitor is actively trying to logout. Let them do it!
+		 */
+		if (wu_request('action', 'nothing') === 'logout' || wu_request('loggedout')) {
+
+			return;
+
+		} // end if;
+
+		$site = wu_get_current_site();
+
+		$mapped_domain = $site->get_primary_mapped_domain();
+
+		if (!$mapped_domain) {
+
+			return;
+
+		} // end if;
+
+		$redirect_settings = wu_get_setting('force_admin_redirect', 'both');
+
+		if ($redirect_settings === 'both') {
+
+			return;
+
+		} // end if;
+
+		$current_url = wp_parse_url(wu_get_current_url());
+
+		$mapped_url = wp_parse_url($mapped_domain->get_url());
+
+		$current_url_to_compare = $current_url['host'];
+
+		$mapped_url_to_compare = $mapped_url['host'];
+
+		$query_args = array();
+
+		if (wu_get_isset($current_url, 'query')) {
+
+			wp_parse_str($current_url['query'], $query_args);
+
+		} // end if;
+
+		$redirect_url = false;
+
+		if ($redirect_settings === 'force_map' && $current_url_to_compare !== $mapped_url_to_compare) {
+
+			$redirect_url = Domain_Mapping::get_instance()->replace_url(wu_get_current_url(), $mapped_domain);
+
+			$query_args = array_map(function($value) use ($mapped_domain) {
+
+				return Domain_Mapping::get_instance()->replace_url($value, $mapped_domain);
+
+			}, $query_args);
+
+		} elseif ($redirect_settings === 'force_network' && $current_url_to_compare === $mapped_url_to_compare) {
+
+			$redirect_url = wu_restore_original_url(wu_get_current_url(), $site->get_id());
+
+			$query_args = array_map(function($value) use ($site) {
+
+				return wu_restore_original_url($value, $site->get_id());
+
+			}, $query_args);
+
+		} // end if;
+
+		if ($redirect_url) {
+
+			wp_redirect(add_query_arg($query_args, $redirect_url));
+
+			exit;
+
+		} // end if;
+
+	} // end maybe_redirect_to_mapped_or_network_domain;
 
 } // end class Primary_Domain;

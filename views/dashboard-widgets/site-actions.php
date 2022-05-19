@@ -31,12 +31,12 @@
 
         <li class="wu-border-0 wu-border-solid wu-border-t wu-border-gray-200 wu-m-0">
 
-          <a 
-            title="<?php echo esc_attr($action['label']); ?>" 
-            href="<?php echo esc_attr($action['href']); ?>" 
-            class="<?php echo esc_attr($action['classes']); ?> wu-px-4 wu-py-3 wu-inline-block wu-no-underline"
+          <a
+            title="<?php echo esc_attr($action['label']); ?>"
+            href="<?php echo esc_attr($action['href']); ?>"
+            class="<?php if (isset($action['classes']) && $action['classes']) { echo esc_attr($action['classes']); } // end if; ?> wu-px-4 wu-py-3 wu-inline-block wu-no-underline"
           >
-          
+
             <?php echo $action['label']; ?>
 
           </a>
@@ -69,12 +69,12 @@
 
         <li class="wu-border-0 wu-border-solid wu-border-t wu-border-gray-200 wu-m-0">
 
-          <a 
-            title="<?php echo esc_attr($action['label']); ?>" 
-            href="<?php echo esc_attr($action['href']); ?>" 
+          <a
+            title="<?php echo esc_attr($action['label']); ?>"
+            href="<?php echo esc_attr($action['href']); ?>"
             class="<?php echo esc_attr($action['classes']); ?> wu-px-4 wu-py-3 wu-inline-block wu-no-underline"
           >
-          
+
             <?php echo $action['label']; ?>
 
           </a>

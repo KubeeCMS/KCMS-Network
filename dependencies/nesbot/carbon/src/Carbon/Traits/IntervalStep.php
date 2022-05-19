@@ -29,7 +29,7 @@ trait IntervalStep
      *
      * @return Closure
      */
-    public function getStep() : ?\Closure
+    public function getStep() : ?Closure
     {
         return $this->step;
     }
@@ -40,7 +40,7 @@ trait IntervalStep
      *
      * @param Closure|null $step
      */
-    public function setStep(?\Closure $step) : void
+    public function setStep(?Closure $step) : void
     {
         $this->step = $step;
     }
@@ -54,12 +54,12 @@ trait IntervalStep
      *
      * @return CarbonInterface
      */
-    public function convertDate(\DateTimeInterface $dateTime, bool $negated = \false) : \WP_Ultimo\Dependencies\Carbon\CarbonInterface
+    public function convertDate(DateTimeInterface $dateTime, bool $negated = \false) : CarbonInterface
     {
         /** @var CarbonInterface $carbonDate */
-        $carbonDate = $dateTime instanceof \WP_Ultimo\Dependencies\Carbon\CarbonInterface ? $dateTime : $this->resolveCarbon($dateTime);
+        $carbonDate = $dateTime instanceof CarbonInterface ? $dateTime : $this->resolveCarbon($dateTime);
         if ($this->step) {
-            return $carbonDate->setDateTimeFrom(($this->step)($carbonDate->copy(), $negated));
+            return $carbonDate->setDateTimeFrom(($this->step)($carbonDate->avoidMutation(), $negated));
         }
         if ($negated) {
             return $carbonDate->rawSub($this);
@@ -73,11 +73,11 @@ trait IntervalStep
      *
      * @return Carbon|CarbonImmutable
      */
-    private function resolveCarbon(\DateTimeInterface $dateTime)
+    private function resolveCarbon(DateTimeInterface $dateTime)
     {
-        if ($dateTime instanceof \DateTimeImmutable) {
-            return \WP_Ultimo\Dependencies\Carbon\CarbonImmutable::instance($dateTime);
+        if ($dateTime instanceof DateTimeImmutable) {
+            return CarbonImmutable::instance($dateTime);
         }
-        return \WP_Ultimo\Dependencies\Carbon\Carbon::instance($dateTime);
+        return Carbon::instance($dateTime);
     }
 }

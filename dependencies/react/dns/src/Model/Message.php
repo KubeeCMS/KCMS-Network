@@ -1,8 +1,8 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Dns\Model;
+namespace React\Dns\Model;
 
-use WP_Ultimo\Dependencies\React\Dns\Query\Query;
+use React\Dns\Query\Query;
 /**
  * This class represents an outgoing query message or an incoming response message
  *
@@ -32,6 +32,14 @@ final class Message
      * The OPT record uses the "ttl" field to store additional flags.
      */
     const TYPE_OPT = 41;
+    /**
+     * Sender Policy Framework (SPF) had a dedicated SPF type which has been
+     * deprecated in favor of reusing the existing TXT type.
+     *
+     * @deprecated https://datatracker.ietf.org/doc/html/rfc7208#section-3.1
+     * @see self::TYPE_TXT
+     */
+    const TYPE_SPF = 99;
     const TYPE_ANY = 255;
     const TYPE_CAA = 257;
     const CLASS_IN = 1;
@@ -69,9 +77,9 @@ final class Message
      * @param Query $query
      * @return self
      */
-    public static function createRequestForQuery(\WP_Ultimo\Dependencies\React\Dns\Query\Query $query)
+    public static function createRequestForQuery(Query $query)
     {
-        $request = new \WP_Ultimo\Dependencies\React\Dns\Model\Message();
+        $request = new \React\Dns\Model\Message();
         $request->id = self::generateId();
         $request->rd = \true;
         $request->questions[] = $query;
@@ -84,9 +92,9 @@ final class Message
      * @param Record[] $answers
      * @return self
      */
-    public static function createResponseWithAnswersForQuery(\WP_Ultimo\Dependencies\React\Dns\Query\Query $query, array $answers)
+    public static function createResponseWithAnswersForQuery(Query $query, array $answers)
     {
-        $response = new \WP_Ultimo\Dependencies\React\Dns\Model\Message();
+        $response = new \React\Dns\Model\Message();
         $response->id = self::generateId();
         $response->qr = \true;
         $response->rd = \true;
@@ -163,7 +171,7 @@ final class Message
      * @var int response code (4 bit), see self::RCODE_* constants
      * @see self::RCODE_OK
      */
-    public $rcode = \WP_Ultimo\Dependencies\React\Dns\Model\Message::RCODE_OK;
+    public $rcode = \React\Dns\Model\Message::RCODE_OK;
     /**
      * An array of Query objects
      *

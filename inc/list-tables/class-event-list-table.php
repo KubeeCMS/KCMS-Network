@@ -56,7 +56,7 @@ class Event_List_Table extends Base_List_Table {
 
 		$object_type = $item->get_object_type();
 
-		return "<span class='wu-py-1 wu-px-2 wu-bg-gray-200 wu-rounded-sm wu-text-gray-700 wu-text-xs wu-font-mono'>{$object_type}</span>";
+		return "<span class='wu-py-1 wu-px-2 wu-bg-gray-200 wu-rounded-sm wu-leading-none wu-text-gray-700 wu-text-xs wu-font-mono'>{$object_type}</span>";
 
 	} // end column_object_type;
 

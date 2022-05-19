@@ -13,7 +13,7 @@ class SetupAttemptService extends \WP_Ultimo\Dependencies\Stripe\Service\Abstrac
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\SetupAttempt>
      */
     public function all($params = null, $opts = null)
     {

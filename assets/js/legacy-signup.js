@@ -1,15 +1,21 @@
-(function($) {
+(function($, hooks) {
 
   $(document).ready(function() {
 
-    jQuery('body').on('wu_before_form_init', function(e, data) {
+    hooks.addFilter('wu_before_form_init', 'nextpress/wp-ultimo', function(data) {
 
-      data.billing_option = 1;
+      if (typeof data !== 'undefined') {
 
-      data.default_billing_option = 12;
+        data.billing_option = 1;
+
+        data.default_billing_option = 12;
+
+      } // end if;
+
+      return data;
 
     });
 
   });
 
-}(jQuery));
+}(jQuery, wp.hooks));

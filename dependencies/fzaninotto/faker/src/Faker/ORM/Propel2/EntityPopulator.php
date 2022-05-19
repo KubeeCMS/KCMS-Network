@@ -86,10 +86,10 @@ class EntityPopulator
      * @param ColumnMap $columnMap
      * @return bool
      */
-    protected function isColumnBehavior(\WP_Ultimo\Dependencies\Propel\Runtime\Map\ColumnMap $columnMap)
+    protected function isColumnBehavior(ColumnMap $columnMap)
     {
         foreach ($columnMap->getTable()->getBehaviors() as $name => $params) {
-            $columnName = \Faker\Provider\Base::toLower($columnMap->getName());
+            $columnName = Base::toLower($columnMap->getName());
             switch ($name) {
                 case 'nested_set':
                     $columnNames = array($params['left_column'], $params['right_column'], $params['level_column']);

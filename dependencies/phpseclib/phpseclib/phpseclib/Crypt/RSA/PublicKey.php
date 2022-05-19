@@ -3,8 +3,6 @@
 /**
  * RSA Public Key
  *
- * @category  Crypt
- * @package   RSA
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2015 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -12,25 +10,23 @@
  */
 namespace phpseclib3\Crypt\RSA;
 
-use phpseclib3\Crypt\RSA;
-use phpseclib3\Math\BigInteger;
-use phpseclib3\File\ASN1;
 use phpseclib3\Common\Functions\Strings;
-use phpseclib3\Crypt\Hash;
-use phpseclib3\Exception\NoKeyLoadedException;
-use phpseclib3\Exception\UnsupportedFormatException;
-use phpseclib3\Crypt\Random;
 use phpseclib3\Crypt\Common;
-use phpseclib3\File\ASN1\Maps\DigestInfo;
+use phpseclib3\Crypt\Hash;
+use phpseclib3\Crypt\Random;
+use phpseclib3\Crypt\RSA;
 use phpseclib3\Crypt\RSA\Formats\Keys\PSS;
+use phpseclib3\Exception\UnsupportedAlgorithmException;
+use phpseclib3\Exception\UnsupportedFormatException;
+use phpseclib3\File\ASN1;
+use phpseclib3\File\ASN1\Maps\DigestInfo;
+use phpseclib3\Math\BigInteger;
 /**
  * Raw RSA Key Handler
  *
- * @package RSA
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Common\PublicKey
+class PublicKey extends RSA implements Common\PublicKey
 {
     use Common\Traits\Fingerprint;
     /**
@@ -39,7 +35,7 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
      * @param \phpseclib3\Math\BigInteger $x
      * @return \phpseclib3\Math\BigInteger
      */
-    private function exponentiate(\phpseclib3\Math\BigInteger $x)
+    private function exponentiate(BigInteger $x)
     {
         return $x->modPow($this->exponent, $this->modulus);
     }
@@ -48,7 +44,6 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
      *
      * See {@link http://tools.ietf.org/html/rfc3447#section-5.2.2 RFC3447#section-5.2.2}.
      *
-     * @access private
      * @param \phpseclib3\Math\BigInteger $s
      * @return bool|\phpseclib3\Math\BigInteger
      */
@@ -64,7 +59,6 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
      *
      * See {@link http://tools.ietf.org/html/rfc3447#section-8.2.2 RFC3447#section-8.2.2}.
      *
-     * @access private
      * @param string $m
      * @param string $s
      * @throws \LengthException if the RSA modulus is too short
@@ -87,15 +81,28 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
             return \false;
         }
         // EMSA-PKCS1-v1_5 encoding
+        $exception = \false;
         // If the encoding operation outputs "intended encoded message length too short," output "RSA modulus
         // too short" and stop.
         try {
             $em2 = $this->emsa_pkcs1_v1_5_encode($m, $this->k);
+            $r1 = \hash_equals($em, $em2);
         } catch (\LengthException $e) {
+            $exception = \true;
+        }
+        try {
+            $em3 = $this->emsa_pkcs1_v1_5_encode_without_null($m, $this->k);
+            $r2 = \hash_equals($em, $em3);
+        } catch (\LengthException $e) {
+            $exception = \true;
+        } catch (UnsupportedAlgorithmException $e) {
+            $r2 = \false;
+        }
+        if ($exception) {
             throw new \LengthException('RSA modulus too short');
         }
         // Compare
-        return \hash_equals($em, $em2);
+        return $r1 || $r2;
     }
     /**
      * RSASSA-PKCS1-V1_5-VERIFY (relaxed matching)
@@ -110,7 +117,6 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
      * $rsa->getLastPadding() and get RSA::PADDING_RELAXED_PKCS1 back instead of
      * RSA::PADDING_PKCS1... that means BER encoding was used.
      *
-     * @access private
      * @param string $m
      * @param string $s
      * @return bool
@@ -131,14 +137,14 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
         if ($em === \false) {
             return \false;
         }
-        if (\phpseclib3\Common\Functions\Strings::shift($em, 2) != "\0\1") {
+        if (Strings::shift($em, 2) != "\0\1") {
             return \false;
         }
         $em = \ltrim($em, "ÿ");
-        if (\phpseclib3\Common\Functions\Strings::shift($em) != "\0") {
+        if (Strings::shift($em) != "\0") {
             return \false;
         }
-        $decoded = \phpseclib3\File\ASN1::decodeBER($em);
+        $decoded = ASN1::decodeBER($em);
         if (!\is_array($decoded) || empty($decoded[0]) || \strlen($em) > $decoded[0]['length']) {
             return \false;
         }
@@ -158,18 +164,21 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
                 'id-sha512/224' => '2.16.840.1.101.3.4.2.5',
                 'id-sha512/256' => '2.16.840.1.101.3.4.2.6',
             ];
-            \phpseclib3\File\ASN1::loadOIDs($oids);
+            ASN1::loadOIDs($oids);
         }
-        $decoded = \phpseclib3\File\ASN1::asn1map($decoded[0], \phpseclib3\File\ASN1\Maps\DigestInfo::MAP);
+        $decoded = ASN1::asn1map($decoded[0], DigestInfo::MAP);
         if (!isset($decoded) || $decoded === \false) {
             return \false;
         }
         if (!isset($oids[$decoded['digestAlgorithm']['algorithm']])) {
             return \false;
         }
+        if (isset($decoded['digestAlgorithm']['parameters']) && $decoded['digestAlgorithm']['parameters'] !== ['null' => '']) {
+            return \false;
+        }
         $hash = $decoded['digestAlgorithm']['algorithm'];
         $hash = \substr($hash, 0, 3) == 'id-' ? \substr($hash, 3) : $hash;
-        $hash = new \phpseclib3\Crypt\Hash($hash);
+        $hash = new Hash($hash);
         $em = $hash->hash($m);
         $em2 = $decoded['digest'];
         return \hash_equals($em, $em2);
@@ -179,7 +188,6 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
      *
      * See {@link http://tools.ietf.org/html/rfc3447#section-9.1.2 RFC3447#section-9.1.2}.
      *
-     * @access private
      * @param string $m
      * @param string $em
      * @param int $emBits
@@ -223,7 +231,6 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
      *
      * See {@link http://tools.ietf.org/html/rfc3447#section-8.1.2 RFC3447#section-8.1.2}.
      *
-     * @access private
      * @param string $m
      * @param string $s
      * @return bool|string
@@ -270,7 +277,6 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
      *
      * See {@link http://tools.ietf.org/html/rfc3447#section-7.2.1 RFC3447#section-7.2.1}.
      *
-     * @access private
      * @param string $m
      * @param bool $pkcs15_compat optional
      * @throws \LengthException if strlen($m) > $this->k - 11
@@ -287,7 +293,7 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
         $psLen = $this->k - $mLen - 3;
         $ps = '';
         while (\strlen($ps) != $psLen) {
-            $temp = \phpseclib3\Crypt\Random::string($psLen - \strlen($ps));
+            $temp = Random::string($psLen - \strlen($ps));
             $temp = \str_replace("\0", '', $temp);
             $ps .= $temp;
         }
@@ -306,7 +312,6 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
      * See {@link http://tools.ietf.org/html/rfc3447#section-7.1.1 RFC3447#section-7.1.1} and
      * {http://en.wikipedia.org/wiki/Optimal_Asymmetric_Encryption_Padding OAES}.
      *
-     * @access private
      * @param string $m
      * @throws \LengthException if strlen($m) > $this->k - 2 * $this->hLen - 2
      * @return string
@@ -324,7 +329,7 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
         $lHash = $this->hash->hash($this->label);
         $ps = \str_repeat(\chr(0), $this->k - $mLen - 2 * $this->hLen - 2);
         $db = $lHash . $ps . \chr(1) . $m;
-        $seed = \phpseclib3\Crypt\Random::string($this->hLen);
+        $seed = Random::string($this->hLen);
         $dbMask = $this->mgf1($seed, $this->k - $this->hLen - 1);
         $maskedDB = $db ^ $dbMask;
         $seedMask = $this->mgf1($maskedDB, $this->hLen);
@@ -342,7 +347,6 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
      *
      * See {@link http://tools.ietf.org/html/rfc3447#section-5.1.1 RFC3447#section-5.1.1}.
      *
-     * @access private
      * @param \phpseclib3\Math\BigInteger $m
      * @return bool|\phpseclib3\Math\BigInteger
      */
@@ -358,7 +362,6 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
      *
      * Doesn't use padding and is not recommended.
      *
-     * @access private
      * @param string $m
      * @return bool|string
      * @throws \LengthException if strlen($m) > $this->k
@@ -380,7 +383,6 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
      * be concatenated together.
      *
      * @see self::decrypt()
-     * @access public
      * @param string $plaintext
      * @return bool|string
      * @throws \LengthException if the RSA modulus is too short
@@ -411,11 +413,11 @@ class PublicKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Commo
     public function toString($type, array $options = [])
     {
         $type = self::validatePlugin('Keys', $type, 'savePublicKey');
-        if ($type == \phpseclib3\Crypt\RSA\Formats\Keys\PSS::class) {
+        if ($type == PSS::class) {
             if ($this->signaturePadding == self::SIGNATURE_PSS) {
                 $options += ['hash' => $this->hash->getHash(), 'MGFHash' => $this->mgfHash->getHash(), 'saltLength' => $this->getSaltLength()];
             } else {
-                throw new \phpseclib3\Exception\UnsupportedFormatException('The PSS format can only be used when the signature method has been explicitly set to PSS');
+                throw new UnsupportedFormatException('The PSS format can only be used when the signature method has been explicitly set to PSS');
             }
         }
         return $type::savePublicKey($this->modulus, $this->publicExponent, $options);

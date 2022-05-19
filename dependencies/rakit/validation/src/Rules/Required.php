@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class Required extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class Required extends Rule
 {
     use Traits\FileTrait;
     /** @var bool */

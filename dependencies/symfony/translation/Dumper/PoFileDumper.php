@@ -21,7 +21,7 @@ class PoFileDumper extends \Symfony\Component\Translation\Dumper\FileDumper
     /**
      * {@inheritdoc}
      */
-    public function formatCatalogue(\Symfony\Component\Translation\MessageCatalogue $messages, string $domain, array $options = [])
+    public function formatCatalogue(MessageCatalogue $messages, string $domain, array $options = [])
     {
         $output = 'msgid ""' . "\n";
         $output .= 'msgstr ""' . "\n";

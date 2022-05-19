@@ -30,7 +30,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property string $status
  * @property string $type
  */
-class RecipientTransfer extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class RecipientTransfer extends ApiResource
 {
     const OBJECT_NAME = 'recipient_transfer';
 }

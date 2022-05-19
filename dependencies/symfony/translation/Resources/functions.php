@@ -10,10 +10,12 @@
  */
 namespace Symfony\Component\Translation;
 
-/**
- * @author Nate Wiebe <nate@northern.co>
- */
-function t(string $message, array $parameters = [], string $domain = null) : \Symfony\Component\Translation\TranslatableMessage
-{
-    return new \Symfony\Component\Translation\TranslatableMessage($message, $parameters, $domain);
+if (!\function_exists(\Symfony\Component\Translation\t::class)) {
+    /**
+     * @author Nate Wiebe <nate@northern.co>
+     */
+    function t(string $message, array $parameters = [], string $domain = null) : \Symfony\Component\Translation\TranslatableMessage
+    {
+        return new \Symfony\Component\Translation\TranslatableMessage($message, $parameters, $domain);
+    }
 }

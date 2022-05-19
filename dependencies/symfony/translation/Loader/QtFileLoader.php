@@ -28,25 +28,25 @@ class QtFileLoader implements \Symfony\Component\Translation\Loader\LoaderInterf
      */
     public function load($resource, string $locale, string $domain = 'messages')
     {
-        if (!\class_exists(\WP_Ultimo\Dependencies\Symfony\Component\Config\Util\XmlUtils::class)) {
-            throw new \Symfony\Component\Translation\Exception\RuntimeException('Loading translations from the QT format requires the Symfony Config component.');
+        if (!\class_exists(XmlUtils::class)) {
+            throw new RuntimeException('Loading translations from the QT format requires the Symfony Config component.');
         }
         if (!\stream_is_local($resource)) {
-            throw new \Symfony\Component\Translation\Exception\InvalidResourceException(\sprintf('This is not a local file "%s".', $resource));
+            throw new InvalidResourceException(\sprintf('This is not a local file "%s".', $resource));
         }
         if (!\file_exists($resource)) {
-            throw new \Symfony\Component\Translation\Exception\NotFoundResourceException(\sprintf('File "%s" not found.', $resource));
+            throw new NotFoundResourceException(\sprintf('File "%s" not found.', $resource));
         }
         try {
-            $dom = \WP_Ultimo\Dependencies\Symfony\Component\Config\Util\XmlUtils::loadFile($resource);
+            $dom = XmlUtils::loadFile($resource);
         } catch (\InvalidArgumentException $e) {
-            throw new \Symfony\Component\Translation\Exception\InvalidResourceException(\sprintf('Unable to load "%s".', $resource), $e->getCode(), $e);
+            throw new InvalidResourceException(\sprintf('Unable to load "%s".', $resource), $e->getCode(), $e);
         }
         $internalErrors = \libxml_use_internal_errors(\true);
         \libxml_clear_errors();
         $xpath = new \DOMXPath($dom);
         $nodes = $xpath->evaluate('//TS/context/name[text()="' . $domain . '"]');
-        $catalogue = new \Symfony\Component\Translation\MessageCatalogue($locale);
+        $catalogue = new MessageCatalogue($locale);
         if (1 == $nodes->length) {
             $translations = $nodes->item(0)->nextSibling->parentNode->parentNode->getElementsByTagName('message');
             foreach ($translations as $translation) {
@@ -56,8 +56,8 @@ class QtFileLoader implements \Symfony\Component\Translation\Loader\LoaderInterf
                 }
                 $translation = $translation->nextSibling;
             }
-            if (\class_exists('WP_Ultimo\\Dependencies\\Symfony\\Component\\Config\\Resource\\FileResource')) {
-                $catalogue->addResource(new \WP_Ultimo\Dependencies\Symfony\Component\Config\Resource\FileResource($resource));
+            if (\class_exists(FileResource::class)) {
+                $catalogue->addResource(new FileResource($resource));
             }
         }
         \libxml_use_internal_errors($internalErrors);

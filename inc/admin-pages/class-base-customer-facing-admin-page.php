@@ -44,6 +44,14 @@ abstract class Base_Customer_Facing_Admin_Page extends Base_Admin_Page {
 	protected $original_parameters = array();
 
 	/**
+	 * If this customer facing page has menu settings.
+	 *
+	 * @since 2.0.9
+	 * @var boolean
+	 */
+	protected $menu_settings = true;
+
+	/**
 	 * Allow child classes to add further initializations.
 	 *
 	 * @since 1.8.2
@@ -66,6 +74,8 @@ abstract class Base_Customer_Facing_Admin_Page extends Base_Admin_Page {
 			'handler'    => array($this, 'handle_edit_page'),
 			'capability' => 'exist',
 		));
+
+		$this->register_page_settings();
 
 	} // end init;
 
@@ -111,35 +121,47 @@ abstract class Base_Customer_Facing_Admin_Page extends Base_Admin_Page {
 			'tooltip' => '',
 		);
 
-		$fields['position'] = array(
-			'type'    => 'number',
-			'title'   => __('Menu', 'wp-ultimo'),
-			'value'   => wu_get_isset($settings, 'position', ''),
-			'tooltip' => '',
+		if ($this->menu_settings) {
+
+			$fields['position'] = array(
+				'type'    => 'number',
+				'title'   => __('Menu', 'wp-ultimo'),
+				'value'   => wu_get_isset($settings, 'position', ''),
+				'tooltip' => '',
+			);
+
+			$fields['menu_icon'] = array(
+				'type'    => 'dashicon',
+				'title'   => __('Menu Icon', 'wp-ultimo'),
+				'value'   => wu_get_isset($settings, 'menu_icon', ''),
+				'tooltip' => '',
+			);
+
+		} // end if;
+
+		$fields['save_line'] = array(
+			'type'            => 'group',
+			'classes'         => 'wu-justify-between',
+			'wrapper_classes' => 'wu-bg-gray-100',
+			'fields'          => array(
+				'reset'  => array(
+					'type'            => 'submit',
+					'title'           => __('Reset Settings', 'wp-ultimo'),
+					'value'           => 'edit',
+					'classes'         => 'button',
+					'wrapper_classes' => 'wu-mb-0',
+				),
+				'submit' => array(
+					'type'            => 'submit',
+					'title'           => __('Save Changes', 'wp-ultimo'),
+					'value'           => 'edit',
+					'classes'         => 'button button-primary',
+					'wrapper_classes' => 'wu-mb-0',
+				),
+			),
 		);
 
-		$fields['menu_icon'] = array(
-			'type'    => 'dashicon',
-			'title'   => __('Menu Icon', 'wp-ultimo'),
-			'value'   => wu_get_isset($settings, 'menu_icon', ''),
-			'tooltip' => '',
-		);
-
-		$fields['submit'] = array(
-			'type'            => 'submit',
-			'title'           => __('Save Changes', 'wp-ultimo'),
-			'value'           => 'edit',
-			'classes'         => 'button button-primary wu-w-full',
-			'wrapper_classes' => 'wu-items-end wu-pb-1',
-		);
-
-		$fields['restore'] = array(
-			'type'            => 'submit',
-			'title'           => __('Restore Settings', 'wp-ultimo'),
-			'value'           => 'edit',
-			'classes'         => 'button wu-w-full',
-			'wrapper_classes' => 'wu-items-end wu-border-t-0 wu-border-transparent wu-border-0 wu-pt-1',
-		);
+		$fields = apply_filters("wu_customer_facing_page_{$this->id}_fields", $fields);
 
 		$form = new \WP_Ultimo\UI\Form('edit_page', $fields, array(
 			'views'                 => 'admin-pages/fields',
@@ -206,6 +228,20 @@ abstract class Base_Customer_Facing_Admin_Page extends Base_Admin_Page {
 	} // end get_defaults;
 
 	/**
+	 * Register the default setting on the core section.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function register_page_settings() {
+
+		wu_register_settings_field('core', $this->get_page_unique_id() . '_settings', array(
+			'raw' => true,
+		));
+
+	} // end register_page_settings;
+
+	/**
 	 * Get the page settings saved.
 	 *
 	 * @since 2.0.0
@@ -266,7 +302,7 @@ abstract class Base_Customer_Facing_Admin_Page extends Base_Admin_Page {
 		add_action("get_user_option_screen_layout_{$this->page_hook}", array($this, 'get_settings'), 10, 3);
 
 		/**
-		 * 'Hacky' solution for the customer facing title problem... but good enough for now.
+		 * 'Hack-y' solution for the customer facing title problem... but good enough for now.
 		 *
 		 * @todo review when possible.
 		 */

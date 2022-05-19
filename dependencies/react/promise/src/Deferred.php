@@ -1,55 +1,29 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Promise;
+namespace React\Promise;
 
-class Deferred implements \WP_Ultimo\Dependencies\React\Promise\PromisorInterface
+final class Deferred implements \React\Promise\PromisorInterface
 {
     private $promise;
     private $resolveCallback;
     private $rejectCallback;
-    private $notifyCallback;
-    private $canceller;
     public function __construct(callable $canceller = null)
     {
-        $this->canceller = $canceller;
+        $this->promise = new \React\Promise\Promise(function ($resolve, $reject) : void {
+            $this->resolveCallback = $resolve;
+            $this->rejectCallback = $reject;
+        }, $canceller);
     }
-    public function promise()
+    public function promise() : \React\Promise\PromiseInterface
     {
-        if (null === $this->promise) {
-            $this->promise = new \WP_Ultimo\Dependencies\React\Promise\Promise(function ($resolve, $reject, $notify) {
-                $this->resolveCallback = $resolve;
-                $this->rejectCallback = $reject;
-                $this->notifyCallback = $notify;
-            }, $this->canceller);
-            $this->canceller = null;
-        }
         return $this->promise;
     }
-    public function resolve($value = null)
+    public function resolve($value) : void
     {
-        $this->promise();
-        \call_user_func($this->resolveCallback, $value);
+        ($this->resolveCallback)($value);
     }
-    public function reject($reason = null)
+    public function reject(\Throwable $reason) : void
     {
-        $this->promise();
-        \call_user_func($this->rejectCallback, $reason);
-    }
-    /**
-     * @deprecated 2.6.0 Progress support is deprecated and should not be used anymore.
-     * @param mixed $update
-     */
-    public function notify($update = null)
-    {
-        $this->promise();
-        \call_user_func($this->notifyCallback, $update);
-    }
-    /**
-     * @deprecated 2.2.0
-     * @see Deferred::notify()
-     */
-    public function progress($update = null)
-    {
-        $this->notify($update);
+        ($this->rejectCallback)($reason);
     }
 }

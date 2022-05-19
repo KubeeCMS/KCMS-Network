@@ -79,6 +79,13 @@ class Products_Schema extends Schema {
 		),
 
 		array(
+			'name'       => 'product_group',
+			'type'       => 'varchar',
+			'searchable' => true,
+			'sortable'   => true,
+		),
+
+		array(
 			'name'     => 'currency',
 			'type'     => 'varchar',
 			'length'   => '10',
@@ -182,7 +189,7 @@ class Products_Schema extends Schema {
 		array(
 			'name'       => 'date_created',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'created'    => true,
 			'date_query' => true,
 			'sortable'   => true,
@@ -191,7 +198,7 @@ class Products_Schema extends Schema {
 		array(
 			'name'       => 'date_modified',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'modified'   => true,
 			'date_query' => true,
 			'sortable'   => true,

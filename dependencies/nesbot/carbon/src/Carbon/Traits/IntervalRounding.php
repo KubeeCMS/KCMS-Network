@@ -32,12 +32,12 @@ trait IntervalRounding
     protected function roundWith($precision, $function)
     {
         $unit = 'second';
-        if ($precision instanceof \DateInterval) {
-            $precision = (string) \WP_Ultimo\Dependencies\Carbon\CarbonInterval::instance($precision);
+        if ($precision instanceof DateInterval) {
+            $precision = (string) CarbonInterval::instance($precision);
         }
         if (\is_string($precision) && \preg_match('/^\\s*(?<precision>\\d+)?\\s*(?<unit>\\w+)(?<other>\\W.*)?$/', $precision, $match)) {
             if (\trim($match['other'] ?? '') !== '') {
-                throw new \WP_Ultimo\Dependencies\Carbon\Exceptions\InvalidIntervalException('Rounding is only possible with single unit intervals.');
+                throw new InvalidIntervalException('Rounding is only possible with single unit intervals.');
             }
             $precision = (int) ($match['precision'] ?: 1);
             $unit = $match['unit'];

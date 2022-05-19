@@ -34,7 +34,7 @@ class CsrfTokenFactory
      * value generator.
      *
      */
-    public function __construct(\WP_Ultimo\Dependencies\Aura\Session\RandvalInterface $randval)
+    public function __construct(RandvalInterface $randval)
     {
         $this->randval = $randval;
     }
@@ -47,9 +47,9 @@ class CsrfTokenFactory
      * @return CsrfToken
      *
      */
-    public function newInstance(\WP_Ultimo\Dependencies\Aura\Session\Session $session)
+    public function newInstance(Session $session)
     {
         $segment = $session->getSegment('WP_Ultimo\\Dependencies\\Aura\\Session\\CsrfToken');
-        return new \WP_Ultimo\Dependencies\Aura\Session\CsrfToken($segment, $this->randval);
+        return new CsrfToken($segment, $this->randval);
     }
 }

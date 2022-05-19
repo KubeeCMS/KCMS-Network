@@ -17,209 +17,501 @@ defined('ABSPATH') || exit;
 /**
  * Base Gateway class. Should be extended to add new payment gateways.
  *
+ * For more info on actual implementations,
+ * check the Gateway_Manual class and the Gateway_Stripe class.
+ *
  * @since 2.0.0
  */
-class Base_Gateway {
+abstract class Base_Gateway {
 
 	/**
-	 * Holds the ID of a given gateway.
+	 * The gateway ID.
+	 *
+	 * A simple string that the class should set.
+	 * e.g. stripe, manual, paypal, etc.
 	 *
 	 * @since 2.0.0
 	 * @var string
 	 */
-	protected $id = '';
+	protected $id;
 
 	/**
-	 * Holds the environment we are running. True when in sandbox mode.
+	 * Allow gateways to declare multiple additional ids.
 	 *
-	 * @since 2.0.0
-	 * @var boolean
-	 */
-	public $test_mode = true;
-
-	/**
-	 * Flag to determine if we should display the billing address fields or not.
+	 * These ids can be retrieved alongside the main id,
+	 * via the method get_all_ids().
 	 *
-	 * @since 2.0.0
-	 * @var boolean
+	 * This is useful when dealing with different gateway implementations
+	 * that share the same base code, or that have code that is applicable
+	 * to other gateways.
+	 *
+	 * A classical example is the way Stripe is setup on WP Ultimo now:
+	 * - We have two stripe gateways - stripe and stripe-checkout;
+	 * - Both of those gateways inherit from class-base-stripe-gateway.php,
+	 *   which deals with appending the remote gateway links to the admin panel,
+	 *   for example.
+	 * - The problem arises when the hooks are id-bound. If you have customer
+	 *   that signup via stripe and later on you deactivate stripe in favor of
+	 *   stripe-checkout, the admin panel links will stop working, as the hooks
+	 *   are only triggered for stripe-checkout integrations, and old memberships
+	 *   have stripe as the gateway.
+	 * - If you declare the other ids here, the hooks will be loaded for the
+	 *   other gateways, and that will no longer be a problem.
+	 *
+	 * @since 2.0.7
+	 * @var array
 	 */
-	public $request_billing_address = false;
+	protected $other_ids = array();
 
 	/**
-	 * Public variable to hold the current order's cart.
+	 * The order cart object.
 	 *
 	 * @since 2.0.0
 	 * @var \WP_Ultimo\Checkout\Cart
 	 */
-	public $cart;
+	protected $order;
 
 	/**
-	 * Array of features the gateway supports, including:
-	 * - one-time (one time payments)
-	 * - recurring (recurring payments)
-	 * - fees (setup fees)
-	 * - trial (free trials)
-	 * - ajax-payment (payment processing via ajax)
-	 * - card-updates (update billing card for subscriptions)
-	 * - sync (sync subscription with gateway info)
-	 *
-	 * @var array
-	 */
-	protected $supports = array();
-
-	/**
-	 * Gateway constructor.
+	 * The customer.
 	 *
 	 * @since 2.0.0
-	 *
-	 * @param array $subscription_data Subscription data passed.
+	 * @var \WP_Ultimo\Models\Customer
 	 */
-	public function __construct($subscription_data = array()) {
+	protected $customer;
 
-		$this->test_mode = true;
+	/**
+	 * The membership.
+	 *
+	 * @since 2.0.0
+	 * @var \WP_Ultimo\Models\Membership
+	 */
+	protected $membership;
 
+	/**
+	 * The payment.
+	 *
+	 * @since 2.0.0
+	 * @var \WP_Ultimo\Models\Payment
+	 */
+	protected $payment;
+
+	/**
+	 * The discount code, if any.
+	 *
+	 * @since 2.0.0
+	 * @var null|\WP_Ultimo\Models\Discount_Code
+	 */
+	protected $discount_code;
+
+	/**
+	 * Backwards compatibility for the old notify ajax url.
+	 *
+	 * @since 2.0.4
+	 * @var bool|string
+	 */
+	protected $backwards_compatibility_v1_id = false;
+
+	/**
+	 * Initialized the gateway.
+	 *
+	 * @since 2.0.0
+	 * @param null|\WP_Ultimo\Checkout\Cart $order A order cart object.
+	 */
+	public function __construct($order = null) {
+		/*
+		 * Loads the order, if any
+		 */
+		$this->set_order($order);
+
+		/*
+		 * Calls the init code.
+		 */
 		$this->init();
-
-		$this->set_payment_data($subscription_data);
 
 	} // end __construct;
 
 	/**
-	 * Allow gateway developers to add additional settings to the setting screen.
+	 * Sets an order.
 	 *
-	 * @since 2.0.0
-	 * @return void
-	 */
-	public function settings() { } // end settings;
-
-	/**
-	 * Loads the gateway class with useful data to process payments.
+	 * Useful for loading the order on a later
+	 * stage, where the gateway object might
+	 * have been already instantiated.
 	 *
 	 * @since 2.0.0
 	 *
-	 * @todo add log call to remember this.
-	 * @param array $subscription_data List of parameters.
+	 * @param \WP_Ultimo\Checkout\Cart $order The order.
 	 * @return void
 	 */
-	public function set_payment_data($subscription_data = array()) {
+	public function set_order($order) {
 
-		if (!empty($subscription_data)) {
+		if ($order === null) {
 
-			$this->customer = $subscription_data['customer'];
+			return;
 
-			$this->user_id   = $this->customer->get_user_id();
-			$this->email     = $this->customer->get_email_address();
-			$this->user_name = $this->customer->get_username();
-
-			$this->cart = $subscription_data['cart'];
-
-			if ($this->cart->get_discount_code()) {
-
-				$this->discount_codes = array($this->cart->get_discount_code());
-
-			} // end if;
-
-			$this->memberships = $subscription_data['memberships'];
-
-			$this->payment = $subscription_data['payment'];
-
-			$totals = $this->cart->calculate_totals();
-
-			$this->initial_amount = $totals->total;
-			$this->amount         = $totals->recurring->total;
-
-			$this->auto_renew = $this->cart->has_recurring();
-
-			$this->length      = $this->cart->get_duration();
-			$this->length_unit = $this->cart->get_duration_unit();
-
-			// wu_log( sprintf( 'Registration for user #%d sent to gateway. Level ID: %d; Initial Amount: %.2f; Recurring Amount: %.2f; Auto Renew: %s; Trial: %s; Subscription Start: %s; Membership ID: %d', $this->user_id, $this->subscription_id, $this->initial_amount, $this->amount, var_export( $this->auto_renew, true ), var_export( $this->is_trial(), true ), $this->subscription_start_date, $this->membership->get_id() ) );
 		} // end if;
 
-	} // end set_payment_data;
+		/*
+		 * The only thing we do is to set the order.
+		 * It contains everything we need.
+		 */
+		$this->order = $order;
+
+		/*
+		 * Based on the order, we set the other
+		 * useful parameters.
+		 */
+		$this->customer      = $this->order->get_customer();
+		$this->membership    = $this->order->get_membership();
+		$this->payment       = $this->order->get_payment();
+		$this->discount_code = $this->order->get_discount_code();
+
+	} // end set_order;
 
 	/**
-	 * Initialize the gateway configuration.
-	 *
-	 * This is used to populate the $supports property, setup any API keys, and set the API endpoint.
-	 *
-	 * @access public
-	 * @return void
-	 */
-	public function init() {} // end init;
-
-	/**
-	 * Initialize the necessary hooks that need to be registered.
-	 *
-	 * @access public
-	 * @return void
-	 */
-	public function hooks() {} // end hooks;
-
-	/**
-	 * Returns the ID of the gateway being used.
+	 * Returns the id of the gateway.
 	 *
 	 * @since 2.0.0
 	 * @return string
 	 */
-	public function get_id() {
+	public final function get_id() {
 
 		return $this->id;
 
 	} // end get_id;
 
+	/*
+	 * Required Methods.
+	 *
+	 * The methods below are mandatory.
+	 * You need to have them on your Gateway implementation
+	 * even if they do nothing.
+	 */
+
 	/**
-	 * Checks if this gateway supports a given feature.
+	 * Process a checkout.
+	 *
+	 * It takes the data concerning
+	 * a new checkout and process it.
+	 *
+	 * Here's where you will want to send
+	 * API calls to the gateway server,
+	 * set up recurring payment profiles, etc.
+	 *
+	 * This method is required and MUST
+	 * be implemented by gateways extending the
+	 * Base_Gateway class.
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $item Feature to check. e.g. recurring.
+	 * @param \WP_Ultimo\Models\Payment    $payment The payment associated with the checkout.
+	 * @param \WP_Ultimo\Models\Membership $membership The membership.
+	 * @param \WP_Ultimo\Models\Customer   $customer The customer checking out.
+	 * @param \WP_Ultimo\Checkout\Cart     $cart The cart object.
+	 * @param string                       $type The checkout type. Can be 'new', 'retry', 'upgrade', 'downgrade', 'addon'.
 	 * @return bool
 	 */
-	public function supports($item = '') {
-
-		return in_array($item, $this->supports, true);
-
-	} // end supports;
+	abstract public function process_checkout($payment, $membership, $customer, $cart, $type);
 
 	/**
-	 * Returns an array containing all the supported features of the gateway.
+	 * Process a cancellation.
 	 *
-	 * @since 2.0.0
-	 * @return array
-	 */
-	public function get_support() {
-
-		return $this->supports;
-
-	} // end get_support;
-
-	/**
-	 * Allows Gateways to override the gateway title.
+	 * It takes the data concerning
+	 * a membership cancellation and process it.
+	 *
+	 * Here's where you will want to send
+	 * API calls to the gateway server,
+	 * to cancel a recurring profile, etc.
+	 *
+	 * This method is required and MUST
+	 * be implemented by gateways extending the
+	 * Base_Gateway class.
 	 *
 	 * @since 2.0.0
 	 *
-	 * @return string
+	 * @param \WP_Ultimo\Models\Membership $membership The membership.
+	 * @param \WP_Ultimo\Models\Customer   $customer The customer checking out.
+	 * @return bool
 	 */
-	public function get_public_title() {
-
-		return '';
-
-	} // end get_public_title;
+	abstract public function process_cancellation($membership, $customer);
 
 	/**
-	 * Returns the webhook url for the listener of this gateway events.
+	 * Process a refund.
+	 *
+	 * It takes the data concerning
+	 * a refund and process it.
+	 *
+	 * Here's where you will want to send
+	 * API calls to the gateway server,
+	 * to issue a refund.
+	 *
+	 * This method is required and MUST
+	 * be implemented by gateways extending the
+	 * Base_Gateway class.
 	 *
 	 * @since 2.0.0
-	 * @return string
+	 *
+	 * @param float                        $amount The amount to refund.
+	 * @param \WP_Ultimo\Models\Payment    $payment The payment associated with the checkout.
+	 * @param \WP_Ultimo\Models\Membership $membership The membership.
+	 * @param \WP_Ultimo\Models\Customer   $customer The customer checking out.
+	 * @return bool
 	 */
-	public function get_webhook_listener_url() {
+	abstract public function process_refund($amount, $payment, $membership, $customer);
 
-		$site_url = get_site_url(wu_get_main_site_id(), '/');
+	/*
+	 * Optional Methods.
+	 *
+	 * The methods below are good to have,
+	 * but are not mandatory.
+	 *
+	 * You can implement the ones you need only.
+	 * The base class provides defaults so you
+	 * don't have to worry about the ones you
+	 * don't need.
+	 */
 
-		return add_query_arg('wu-gateway', $this->get_id(), $site_url);
+	/**
+	 * Initialization code.
+	 *
+	 * This method gets called by the constructor.
+	 * It is a good chance to set public properties to the
+	 * gateway object and run preparations.
+	 *
+	 * For example, it's here that the Stripe Gateway
+	 * sets its sandbox mode and API keys
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function init() {} // end init;
 
-	} // end get_webhook_listener_url;
+	/**
+	 * Adds Settings.
+	 *
+	 * This method allows developers to use
+	 * WP Ultimo apis to add settings to the settings
+	 * page.
+	 *
+	 * Gateways can use wu_register_settings_field
+	 * to register API key fields and other options.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function settings() {} // end settings;
+
+	/**
+	 * Checkout fields.
+	 *
+	 * This method gets called during the printing
+	 * of the gateways section of the payment page.
+	 *
+	 * Use this to add the pertinent fields to your gateway
+	 * like credit card number fields, for example.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function fields() {} // end fields;
+
+	/**
+	 * Declares support for recurring payments.
+	 *
+	 * Not all gateways support the creation of
+	 * automatically recurring payments.
+	 *
+	 * For those that don't, we need to manually
+	 * create pending payments when the time comes
+	 * and we use this declaration to decide that.
+	 *
+	 * If your gateway supports recurring payments
+	 * (like Stripe or PayPal, for example)
+	 * override this method to return true instead.
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	public function supports_recurring() {
+
+		return false;
+
+	} // end supports_recurring;
+
+	/**
+	 * Declares support for free trials.
+	 *
+	 * WP Ultimo offers to ways of dealing with free trials:
+	 * (1) By asking for a payment method upfront; or
+	 * (2) By not asking for a payment method until the trial is over.
+	 *
+	 * If you go the second route, WP Ultimo uses
+	 * the free gateway to deal with the first payment (which will be 0)
+	 *
+	 * If you go the first route, though, the payment gateway
+	 * must be able to handle delayed first payments.
+	 *
+	 * If that's the case for your payment gateway,
+	 * override this method to return true.
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	public function supports_free_trials() {
+
+		return false;
+
+	} // end supports_free_trials;
+
+	/**
+	 * Handles payment method updates.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function update_payment_method() {} // end update_payment_method;
+
+	/**
+	 * Defines a public title.
+	 *
+	 * This is useful to be able to define a nice-name
+	 * for a gateway that will make more sense for customers.
+	 *
+	 * Stripe, for example, sets this value to 'Credit Card'
+	 * as showing up simply as Stripe would confuse customers.
+	 *
+	 * By default, we use the title passed when calling
+	 * wu_register_gateway().
+	 *
+	 * @since 2.0.0
+	 * @return void|string
+	 */
+	public function get_public_title() {} // end get_public_title;
+
+	/**
+	 * Adds additional hooks.
+	 *
+	 * Useful to add additional hooks and filters
+	 * that do not need to be set during initialization.
+	 *
+	 * As this runs later on the wp lifecycle, user apis
+	 * and other goodies are available.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function hooks() {} // end hooks;
+
+	/**
+	 * Run preparations before checkout processing.
+	 *
+	 * This runs during the checkout form validation
+	 * and it is a great chance to do preflight stuff
+	 * if the gateway requires it.
+	 *
+	 * If you return an array here, Ultimo
+	 * will append the key => value of that array
+	 * as hidden fields to the checkout field,
+	 * and those get submitted with the rest of the form.
+	 *
+	 * As an example, this is how we create payment
+	 * intents for Stripe to make the experience more
+	 * streamlined.
+	 *
+	 * @since 2.0.0
+	 * @return void|array
+	 */
+	public function run_preflight() {} // end run_preflight;
+
+	/**
+	 * Registers and Enqueue scripts.
+	 *
+	 * This method gets called during the rendering
+	 * of the checkout page, so you can use it
+	 * to register and enqueue custom scripts
+	 * and styles.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function register_scripts() {} // end register_scripts;
+
+	/**
+	 * Gives gateways a chance to run things before backwards compatible webhooks are run.
+	 *
+	 * @since 2.0.7
+	 * @return void
+	 */
+	public function before_backwards_compatible_webhook() {} // end before_backwards_compatible_webhook;
+
+	/**
+	 * Handles webhook calls.
+	 *
+	 * This is the endpoint that gets called
+	 * when a webhook message is posted to the gateway
+	 * endpoint.
+	 *
+	 * You should process the message, if necessary,
+	 * and take the appropriate actions, such as
+	 * renewing memberships, marking payments as complete, etc.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function process_webhooks() {} // end process_webhooks;
+
+	/**
+	 * Handles confirmation windows and extra processing.
+	 *
+	 * This endpoint gets called when we get to the
+	 * /confirm/ URL on the registration page.
+	 *
+	 * For example, PayPal needs a confirmation screen.
+	 * And it uses this method to handle that.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function process_confirmation() {} // end process_confirmation;
+
+	/**
+	 * Returns the external link to view the payment on the payment gateway.
+	 *
+	 * Return an empty string to hide the link element.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $gateway_payment_id The gateway payment id.
+	 * @return void|string
+	 */
+	public function get_payment_url_on_gateway($gateway_payment_id) {} // end get_payment_url_on_gateway;
+
+	/**
+	 * Returns the external link to view the membership on the membership gateway.
+	 *
+	 * Return an empty string to hide the link element.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $gateway_subscription_id The gateway subscription id.
+	 * @return void|string.
+	 */
+	public function get_subscription_url_on_gateway($gateway_subscription_id) {} // end get_subscription_url_on_gateway;
+
+	/**
+	 * Returns the external link to view the membership on the membership gateway.
+	 *
+	 * Return an empty string to hide the link element.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $gateway_customer_id The gateway customer id.
+	 * @return void|string.
+	 */
+	public function get_customer_url_on_gateway($gateway_customer_id) {} // end get_customer_url_on_gateway;
+
+	/*
+	 * Helper methods
+	 */
 
 	/**
 	 * Get the return URL.
@@ -243,213 +535,177 @@ class Base_Gateway {
 	} // end get_return_url;
 
 	/**
-	 * Redirects the customer to the redirect URL.
+	 * Get the cancel URL.
 	 *
 	 * @since 2.0.0
-	 * @return void
+	 * @return string
 	 */
-	public function redirect() {
+	public function get_cancel_url() {
 
-		$redirect_url = $this->get_return_url();
+		if (empty($this->cancel_url)) {
 
-		wp_redirect($redirect_url);
-
-		exit;
-
-	} // end redirect;
-
-	/**
-	 * Installs webhook urls on the remote payment processor (optional).
-	 *
-	 * WP Ultimo will call this whenever settings change.
-	 *
-	 * Here you have access to the settings being saved, so you can check if you really
-	 * need to try to install the webhooks. Calling an API every time the settings get saved
-	 * is BAD!
-	 *
-	 * That being said, it might also be a good idea to check if the webhook already exists
-	 * before trying to re-create it.
-	 *
-	 * To get the webhook listener url, call $this->get_webhook_listener_url();
-	 *
-	 * Return true for success, or a \WP_Error instance in case of failure.
-	 *
-	 * @since 2.0.0
-	 * @param array $settings The final settings array being saved, containing ALL options.
-	 * @param array $settings_to_save Array containing just the options being updated.
-	 * @param array $saved_settings Array containing the original settings.
-	 * @return true|\WP_Error
-	 */
-	public function install_webhook($settings, $settings_to_save, $saved_settings) {
-
-		return true;
-
-	} // end install_webhook;
-
-	/**
-	 * Process signup via ajax
-	 *
-	 * Optionally, payment can be processed (in whole or in part) via ajax.
-	 *
-	 * If successful, return `true` or an array of field keys/values to add to the registration form as hidden fields.
-	 *
-	 * If failure, return `WP_Error`.
-	 *
-	 * @since 2.0.0
-	 * @return true|array|WP_Error
-	 */
-	public function process_ajax_signup() {
-
-		return true;
-
-	} // end process_ajax_signup;
-
-	/**
-	 * Process registration.
-	 *
-	 * This is where you process the actual payment. If non-recurring, you'll want to use
-	 * the $this->initial_amount value. If recurring, you'll want to use $this->initial_amount
-	 * for the first payment and $this->amount for the recurring amount.
-	 *
-	 * After a successful payment, redirect to $this->return_url.
-	 *
-	 * @access public
-	 * @return void
-	 */
-	public function process_signup() {} // end process_signup;
-
-	/**
-	 * Process confirmation.
-	 *
-	 * Some gateways require user confirmation at some point.
-	 * It's the case for PayPal Express, for example.
-	 * This method implements the necessary things.
-	 *
-	 * After a successful payment, redirect to $this->return_url.
-	 *
-	 * @access public
-	 * @return void
-	 */
-	public function process_confirmation() {} // end process_confirmation;
-
-	/**
-	 * Process webhooks
-	 *
-	 * Listen for webhooks and take appropriate action to insert payments, renew the member's
-	 * account, or cancel the membership.
-	 *
-	 * @access public
-	 * @return void
-	 */
-	public function process_webhooks() {} // end process_webhooks;
-
-	/**
-	 * Adds additional fields to the checkout form for a particular gateway.
-	 *
-	 * In this method, you can either return an array of fields (that we will display
-	 * using our form display methods) or you can return plain HTML in a string,
-	 * which will get outputted to the gateway section of the checkout.
-	 *
-	 * @since 2.0.0
-	 * @return array|string
-	 */
-	public function fields() {
-
-		return '';
-
-	} // end fields;
-
-	/**
-	 * Returns the list of payment methods integrated.
-	 *
-	 * @since 2.0.0
-	 * @return array
-	 */
-	public function payment_methods() {
-
-		return array();
-
-	} // end payment_methods;
-
-	/**
-	 * Allows gateways to add new scripts and styles to the checkout page.
-	 *
-	 * You can use is_admin() to check if this checkout page is being displayed inside the admin
-	 * panel or if it is a front-end checkout.
-	 *
-	 * @since 2.0.0
-	 * @return void
-	 */
-	public function register_scripts() {} // end register_scripts;
-
-	/**
-	 * Activate or renew the membership. If the membership has been billed `0` times then it is activated for the
-	 * first time. Otherwise it is renewed.
-	 *
-	 * @todo This doesn't work and don't support multiple memberships.
-	 *
-	 * @param bool   $recurring Whether or not it's a recurring subscription.
-	 * @param string $status    Status to set the member to, usually 'active'.
-	 * @return void
-	 */
-	public function renew_member($recurring = false, $status = 'active') {
-
-		if (0 === $this->membership->get_times_billed()) {
-
-			$this->membership->activate();
-
-		} else {
-
-			$this->membership->renew($recurring, $status);
+			$this->cancel_url = wu_get_current_url();
 
 		} // end if;
 
-	} // end renew_member;
+		return add_query_arg(array(
+			'payment' => $this->payment->get_hash(),
+			'status'  => 'cancel',
+		), $this->cancel_url);
+
+	} // end get_cancel_url;
 
 	/**
-	 * Determines if the subscription is eligible for a trial.
+	 * Get the confirm URL.
 	 *
 	 * @since 2.0.0
-	 * @return bool True if the subscription is eligible for a trial, false if not.
+	 * @return string
 	 */
-	public function is_trial() {
+	public function get_confirm_url() {
 
-		return !empty($this->subscription_data['trial_eligible'])
-		&& !empty($this->subscription_data['trial_duration'])
-		&& !empty($this->subscription_data['trial_duration_unit']);
+		if (empty($this->confirm_url)) {
 
-	} // end is_trial;
+			$this->confirm_url = wu_get_current_url();
+
+		} // end if;
+
+		return add_query_arg(array(
+			'payment'    => $this->payment->get_hash(),
+			'wu-confirm' => $this->get_id(),
+		), $this->confirm_url);
+
+	} // end get_confirm_url;
 
 	/**
-	 * Returns the external link to view the payment on the payment gateway.
-	 *
-	 * Return an empty string to hide the link element.
+	 * Returns the webhook url for the listener of this gateway events.
 	 *
 	 * @since 2.0.0
-	 *
-	 * @param string $gateway_payment_id The gateway payment id.
-	 * @return string.
+	 * @return string
 	 */
-	public function get_payment_url_on_gateway($gateway_payment_id) {
+	public function get_webhook_listener_url() {
 
-		return '';
+		$site_url = get_site_url(wu_get_main_site_id(), '/');
 
-	} // end get_payment_url_on_gateway;
+		return add_query_arg('wu-gateway', $this->get_id(), $site_url);
+
+	} // end get_webhook_listener_url;
 
 	/**
-	 * Returns the external link to view the membership on the membership gateway.
+	 * Set the payment.
 	 *
-	 * Return an empty string to hide the link element.
+	 * @since 2.0.0
+	 * @param \WP_Ultimo\Models\Payment $payment The payment.
+	 * @return void
+	 */
+	public function set_payment($payment) {
+
+		$this->payment = $payment;
+
+	} // end set_payment;
+
+	/**
+	 * Set the membership.
+	 *
+	 * @since 2.0.0
+	 * @param \WP_Ultimo\Models\Membership $membership The membership.
+	 * @return void
+	 */
+	public function set_membership($membership) {
+
+		$this->membership = $membership;
+
+	} // end set_membership;
+
+	/**
+	 * Set the customer.
+	 *
+	 * @since 2.0.0
+	 * @param \WP_Ultimo\Models\Payment $customer The customer.
+	 * @return void
+	 */
+	public function set_customer($customer) {
+
+		$this->customer = $customer;
+
+	} // end set_customer;
+
+	/**
+	 * Triggers the events related to processing a payment.
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $gateway_subscription_id The gateway subscription id.
-	 * @return string.
+	 * @param \WP_Ultimo\Models\Payment    $payment The payment model.
+	 * @param \WP_Ultimo\Models\Membership $membership The membership object.
+	 * @return void
 	 */
-	public function get_subscription_url_on_gateway($gateway_subscription_id) {
+	public function trigger_payment_processed($payment, $membership = null) {
 
-		return '';
+		if ($membership === null) {
 
-	} // end get_subscription_url_on_gateway;
+			$membership = $payment->get_membership();
+
+		} // end if;
+
+		do_action('wu_gateway_payment_processed', $payment, $membership, $this);
+
+	} // end trigger_payment_processed;
+
+	/**
+	 * Save a cart for a future swap.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param \WP_Ultimo\Checkout\Cart $cart The cart to swap to.
+	 * @return string
+	 */
+	public function save_swap($cart) {
+
+		$swap_id = uniqid('wu_swap_');
+
+		set_site_transient($swap_id, $cart, DAY_IN_SECONDS);
+
+		return $swap_id;
+
+	} // end save_swap;
+
+	/**
+	 * Gets a saved swap based on the id.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $swap_id The saved swap id.
+	 * @return \WP_Ultimo\Checkout\Cart|false
+	 */
+	public function get_saved_swap($swap_id) {
+
+		return get_site_transient($swap_id);
+
+	} // end get_saved_swap;
+
+	/**
+	 * Get the compatibility ids for this gateway.
+	 *
+	 * @since 2.0.7
+	 * @return array
+	 */
+	public function get_all_ids() {
+
+		$all_ids = array_merge(array($this->get_id()), (array) $this->other_ids);
+
+		return array_unique($all_ids);
+
+	} // end get_all_ids;
+
+	/**
+	 * Returns the backwards compatibility id of the gateway from v1.
+	 *
+	 * @since 2.0.4
+	 * @return string
+	 */
+	public function get_backwards_compatibility_v1_id() {
+
+		return $this->backwards_compatibility_v1_id;
+
+	} // end get_backwards_compatibility_v1_id;
 
 } // end class Base_Gateway;

@@ -13,7 +13,7 @@ class CreditNoteService extends \WP_Ultimo\Dependencies\Stripe\Service\AbstractS
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\CreditNote>
      */
     public function all($params = null, $opts = null)
     {
@@ -30,7 +30,7 @@ class CreditNoteService extends \WP_Ultimo\Dependencies\Stripe\Service\AbstractS
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\CreditNoteLineItem>
      */
     public function allLines($parentId, $params = null, $opts = null)
     {
@@ -93,11 +93,11 @@ class CreditNoteService extends \WP_Ultimo\Dependencies\Stripe\Service\AbstractS
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\CreditNote
+     * @return \Stripe\Collection<\Stripe\CreditNote>
      */
     public function previewLines($params = null, $opts = null)
     {
-        return $this->request('get', '/v1/credit_notes/preview/lines', $params, $opts);
+        return $this->requestCollection('get', '/v1/credit_notes/preview/lines', $params, $opts);
     }
     /**
      * Retrieves the credit note object with the given identifier.

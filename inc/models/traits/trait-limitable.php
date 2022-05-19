@@ -9,6 +9,7 @@
 
 namespace WP_Ultimo\Models\Traits;
 
+use \WP_Ultimo\Database\Sites\Site_Type;
 use \WP_Ultimo\Objects\Limitations;
 
 /**
@@ -17,80 +18,44 @@ use \WP_Ultimo\Objects\Limitations;
 trait Limitable {
 
 	/**
-	 * Merges limitations from site, membership, and product.
-	 *
-	 * Ok, brace yourself cus this one is kinda of hard to grasp:
-	 *
-	 * This method allows us to create a cascading waterfall of permissions and limitations.
-	 * 1. First, we look on the product to see what are the limitations there.
-	 *    This is where we'll find the plugins, themes, and post types allowed most of the time.
-	 * 2. Then, we search for a membership and see if the limitations where overridden there.
-	 * 3. Lastly, we check the site itself to see if we are overridden the permissions there.
-	 *
-	 * The result is a new Limitations object that handles these overrides gracefully.
+	 * Internal limitations cache.
 	 *
 	 * @since 2.0.0
-	 *
-	 * @param \WP_Ultimo\Objects\Limitations $default_limitations The site limitations.
-	 * @return \WP_Ultimo\Objects\Limitations
+	 * @var array
 	 */
-	private function waterfall_limitations($default_limitations) {
+	protected $_limitations = array();
 
-		$model = $this->model;
-
-		if ($model === 'product') {
-
-			return $default_limitations;
-
-		} // end if;
-
-		// Set base
-		$membership_limitations = new Limitations;
-		$product_limitations    = new Limitations;
-
-		if ($model === 'site') {
-
-			$membership_limitations = Limitations::early_get_limitations('membership', $this->get_membership_id());
-
-			/**
-			 * Now we need to get the product limitations.
-			 */
-			$membership = $this->get_membership();
-
-			if ($membership) {
-
-				$product_limitations = Limitations::early_get_limitations('product', $membership->get_plan_id());
-
-			} // end if;
-
-		} elseif ($model === 'membership') {
-
-			$product_limitations = Limitations::early_get_limitations('product', $this->get_plan_id());
-
-		} // end if;
-
-		return new Limitations(array_replace_recursive(
-			array_filter($product_limitations->to_array()),
-			array_filter($membership_limitations->to_array()),
-			array_filter($default_limitations->to_array())
-		));
-
-	} // end waterfall_limitations;
+	/**
+	 * List of limitations that need to be merged.
+	 *
+	 * Every model that is limitable (imports this trait)
+	 * needs to declare explicitly the limitations that need to be
+	 * merged. This allows us to chain the merges, and gives us
+	 * a final list of limitations at the end of the process.
+	 *
+	 * @since 2.0.0
+	 * @return array
+	 */
+	abstract public function limitations_to_merge();
 
 	/**
 	 * Returns the limitations of this particular blog.
 	 *
 	 * @since 2.0.0
+	 *
 	 * @param bool $waterfall If we should construct the limitations object recursively.
+	 * @param bool $skip_self If we should skip the current limitations.
 	 * @return \WP_Ultimo\Objects\Limitations
 	 */
-	public function get_limitations($waterfall = true) {
+	public function get_limitations($waterfall = true, $skip_self = false) {
 
-		$cache_key = $waterfall ? '_composite_limitations' : '_limitations';
+		$cache_key = $waterfall ? '_composite_limitations_' : '_limitations_';
 
-		$cache_key = $this->get_id() . $cache_key;
+		$cache_key = $skip_self ? $cache_key . '_no_self_' : $cache_key;
 
-		$cached_version = wp_cache_get($cache_key, $this->model . 's');
+		$cache_key = $this->get_id() . $cache_key . $this->model;
+
+		$cached_version = wu_get_isset($this->_limitations, $cache_key);
 
 		if (!empty($cached_version)) {
 
@@ -104,23 +69,42 @@ trait Limitable {
 
 		} // end if;
 
-		$this->meta['wu_limitations'] = $this->get_meta('wu_limitations');
+		if (did_action('muplugins_loaded') === false) {
 
-		if (!is_a($this->meta['wu_limitations'], 'WP_Ultimo\Objects\Limitations')) {
+			$modules_data = $this->get_meta('wu_limitations', array());
 
-			$this->meta['wu_limitations'] = new Limitations();
+		} else {
+
+			$modules_data = Limitations::early_get_limitations($this->model, $this->get_id());
 
 		} // end if;
 
-		$limitations = $this->meta['wu_limitations'];
+		$limitations = new Limitations(array());
 
 		if ($waterfall) {
 
-			$limitations = $this->waterfall_limitations($this->meta['wu_limitations']);
+			/**
+			 * If we don't want to take into consideration our own permissions
+			 * we set this flag to true.
+			 *
+			 * This will return only the parents permissions and is super useful for
+			 * comparisons.
+			 */
+			if ($skip_self) {
+
+				$modules_data = array();
+
+			} // end if;
+
+			$limitations = $limitations->merge($modules_data, ...$this->limitations_to_merge());
+
+		} else {
+
+			$limitations = $limitations->merge($modules_data);
 
 		} // end if;
 
-		wp_cache_set($cache_key, $limitations, $this->model . 's');
+		$this->_limitations[$cache_key] = $limitations;
 
 		return $limitations;
 
@@ -153,134 +137,6 @@ trait Limitable {
 	} // end has_module_limitation;
 
 	/**
-	 * Checks if a given plugin is allowed on this site.
-	 *
-	 * @since 2.0.0
-	 *
-	 * @param string $plugin_path Plugin slug.
-	 * @return boolean
-	 */
-	public function is_plugin_allowed($plugin_path) {
-
-		return $this->get_limitations()->plugin_has_behavior($plugin_path, array(
-			'default',
-			'activate',
-			'force_activation',
-			'make_available',
-		));
-
-	} // end is_plugin_allowed;
-
-	/**
-	 * Checks if a given theme is allowed on this site.
-	 *
-	 * @since 2.0.0
-	 *
-	 * @param string $theme_path Theme theme slug.
-	 * @return boolean
-	 */
-	public function is_theme_allowed($theme_path) {
-
-		return $this->get_limitations()->theme_has_behavior($theme_path, array(
-			'default',
-			'activate',
-			'available',
-		));
-
-	} // end is_theme_allowed;
-
-	/**
-	 * Checks if we need to display a particular quota or not.
-	 *
-	 * @since 2.0.0
-	 *
-	 * @param string $quota The quota to check.
-	 * @return boolean
-	 */
-	public function should_display_quota($quota) {
-
-		return true;
-
-	} // end should_display_quota;
-
-	/**
-	 * Returns the site limits for a specific entity.
-	 *
-	 * @since 2.0.0
-	 *
-	 * @param string $type The quota to return.
-	 * @return mixed
-	 */
-	public function get_quota($type = 'post') {
-
-		if ($type === 'visits') {
-
-			$quota = $this->get_limitations()->get_allowed_visits();
-
-		} elseif ($type === 'disk_space') {
-
-			$quota = $this->get_limitations()->get_disk_space();
-
-		} else {
-
-			$quota = $this->get_limitations()->get_post_type_quota($type);
-
-		} // end if;
-
-		/**
-		 * Allow plugins developers to filter the quota values.
-		 *
-		 * @since 1.X
-		 * @param int $quota Existing quota.
-		 * @param string $type The quota type.
-		 * @param array $deprecated Deprecated value.
-		 * @param WP_Ultimo\Models\Base_Model $this The current model.
-		 */
-		return apply_filters('wu_plan_get_quota', $quota, $type, array(), $this);
-
-	} // end get_quota;
-
-	/**
-	 * Checks if a given post type is supported on this site.
-	 *
-	 * @since 2.0.0
-	 *
-	 * @param string $post_type The post type to check against.
-	 * @return boolean
-	 */
-	public function is_post_type_supported($post_type) {
-
-		$allowed_post_types = $this->get_limitations()->get_allowed_post_types();
-
-		return in_array($post_type, $allowed_post_types, true);
-
-	} // end is_post_type_supported;
-
-	/**
-	 * Proxy method to retrieve the allowed post types.
-	 *
-	 * @since 2.0.0
-	 * @return array
-	 */
-	public function get_allowed_post_types() {
-
-		return $this->get_limitations()->get_allowed_post_types();
-
-	} // end get_allowed_post_types;
-
-	/**
-	 * Returns all post type quotas.
-	 *
-	 * @since 2.0.0
-	 * @return array
-	 */
-	public function get_quotas() {
-
-		return $this->get_limitations()->get_post_type_quotas();
-
-	} // end get_quotas;
-
-	/**
 	 * Returns all user role quotas.
 	 *
 	 * @since 2.0.0
@@ -305,6 +161,56 @@ trait Limitable {
 	} // end get_allowed_user_roles;
 
 	/**
+	 * Schedules plugins to be activated or deactivated based on the current limitations;
+	 *
+	 * @since 2.0.5
+	 * @return void
+	 */
+	public function sync_plugins() {
+
+		$sites = array();
+
+		if ($this->model === 'site') {
+
+			$sites[] = $this;
+
+		} elseif ($this->model === 'membership') {
+
+			$sites = $this->get_sites();
+
+		} // end if;
+
+		foreach ($sites as $site_object) {
+
+			if (!$site_object->get_id()) {
+
+				continue;
+
+			} // end if;
+
+			$site_id     = $site_object->get_id();
+			$limitations = $site_object->get_limitations();
+
+			$plugins_to_deactivate = $limitations->plugins->get_by_type('force_inactive');
+			$plugins_to_activate   = $limitations->plugins->get_by_type('force_active');
+
+			if ($plugins_to_deactivate) {
+
+				wu_async_deactivate_plugins($site_id, array_keys($plugins_to_deactivate));
+
+			} // end if;
+
+			if ($plugins_to_activate) {
+
+				wu_async_activate_plugins($site_id, array_keys($plugins_to_activate));
+
+			} // end if;
+
+		} // end foreach;
+
+	} // end sync_plugins;
+
+	/**
 	 * Makes sure we save limitations when we are supposed to.
 	 *
 	 * This is called on the handle_save method of the inc/admin-pages/class-edit-admin-page.php
@@ -316,37 +222,97 @@ trait Limitable {
 	 * @return void
 	 */
 	public function handle_limitations() {
+		/*
+		 * Only handle limitations if there are to handle in the first place.
+		 */
+		if (!wu_request('modules')) {
 
-		$new_limitations = $this->get_limitations(false)->attributes(array(
-			'allowed_plugins'    => wu_request('allowed_plugins', array()),
-			'allowed_themes'     => wu_request('allowed_themes', array()),
-			'allowed_visits'     => wu_request('allowed_visits', array()),
-			'allowed_post_types' => wu_request('allowed_post_types', array()),
-			'post_type_quotas'   => wu_request('post_type_quotas', array()),
-			'allowed_user_roles' => wu_request('allowed_user_roles', array()),
-			'user_role_quotas'   => wu_request('user_role_quotas', array()),
-			'modules'            => wu_request('modules', array()),
-			'disk_space'         => wu_request('disk_space', ''),
-		));
-
-		if ($this->model === 'product') {
-
-			return; // Products do not need recursiveness checking.
+			return;
 
 		} // end if;
 
-		$current_limitations = $this->get_limitations();
+		$object_limitations = $this->get_limitations(false);
 
-		/*
-		 * Compare arrays to only save what's different.
-		 */
-		$diff = Limitations::array_recursive_diff($new_limitations->to_array(), $current_limitations->to_array());
+		$saved_limitations = $object_limitations->to_array();
 
-		/*
-		 * Set the new permissions, based on the diff.
-		 */
-		$this->get_limitations(false)->attributes($diff);
+		$modules_to_save = array();
+
+		$limitations = Limitations::repository();
+
+		$current_limitations = $this->get_limitations(true, true);
+
+		foreach ($limitations as $limitation_id => $class_name) {
+
+			$module = wu_get_isset($saved_limitations, $limitation_id, array());
+
+			$module['enabled'] = $object_limitations->{$limitation_id}->handle_enabled();
+
+			$module['limit'] = $object_limitations->{$limitation_id}->handle_limit();
+
+			$module = $object_limitations->{$limitation_id}->handle_others($module);
+
+			if ($module) {
+
+				$modules_to_save[$limitation_id] = $module;
+
+			} // end if;
+
+		} // end foreach;
+
+		if ($this->model !== 'product') {
+			/*
+			 * Set the new permissions, based on the diff.
+			 */
+			$limitations = wu_array_recursive_diff($modules_to_save, $current_limitations->to_array());
+
+		} elseif ($this->model === 'product' && $this->get_type() !== 'plan') {
+
+			$limitations = wu_array_recursive_diff($modules_to_save, Limitations::get_empty()->to_array());
+
+		} else {
+
+			$limitations = $modules_to_save;
+
+		} // end if;
+
+		$this->meta['wu_limitations'] = $limitations;
 
 	} // end handle_limitations;
+
+	/**
+	 * Returns the list of product slugs associated with this model.
+	 *
+	 * @since 2.0.0
+	 * @return array
+	 */
+	public function get_applicable_product_slugs() {
+
+		if ($this->model === 'product') {
+
+			return array($this->get_slug());
+
+		} // end if;
+
+		$slugs = array();
+
+		if ($this->model === 'membership') {
+
+			$membership = $this;
+
+		} elseif ($this->model === 'site') {
+
+			$membership = $this->get_membership();
+
+		} // end if;
+
+		if (!empty($membership)) {
+
+			$slugs = array_column(array_map('wu_cast_model_to_array', array_column($membership->get_all_products(), 'product')), 'slug'); // WOW
+
+		} // end if;
+
+		return $slugs;
+
+	} // end get_applicable_product_slugs;
 
 } // end trait Limitable;

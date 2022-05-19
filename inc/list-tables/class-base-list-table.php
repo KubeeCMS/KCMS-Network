@@ -136,23 +136,31 @@ class Base_List_Table extends \WP_List_Table {
 
 		add_action('admin_enqueue_scripts', array($this, 'register_scripts'));
 
-		add_action('in_admin_header', function() {
-
-			$args = array(
-				'default' => 20,
-				'label'   => $this->get_per_page_option_label(),
-				'option'  => $this->get_per_page_option_name(),
-			);
-
-			add_screen_option('per_page', $args);
-
-		}, 10);
+		add_action('in_admin_header', array($this, 'add_default_screen_options'));
 
 		$this->set_list_mode();
 
 		$this->_args['add_new'] = wu_get_isset($args, 'add_new', array());
 
 	} // end __construct;
+
+	/**
+	 * Adds the screen option fields.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function add_default_screen_options() {
+
+		$args = array(
+			'default' => 20,
+			'label'   => $this->get_per_page_option_label(),
+			'option'  => $this->get_per_page_option_name(),
+		);
+
+		add_screen_option('per_page', $args);
+
+	} // end add_default_screen_options;
 
 	/**
 	 * Adds the select all button for the Grid Mode.
@@ -321,7 +329,7 @@ class Base_List_Table extends \WP_List_Table {
 	} // end _get_items;
 
 	/**
-	 * Checks if we have any items at all..
+	 * Checks if we have any items at all.
 	 *
 	 * @since 2.0.0
 	 * @return boolean
@@ -432,6 +440,14 @@ class Base_List_Table extends \WP_List_Table {
 	 */
 	public function register_scripts() {
 
+		wp_localize_script('wu-ajax-list-table', 'wu_list_table', array(
+			'base_url' => wu_get_form_url('bulk_actions'),
+			'model'    => strchr($this->get_table_id(), '_', true),
+			'i18n'     => array(
+				'confirm' => __('Confirm Action', 'wp-ultimo'),
+			),
+		));
+
 		wp_enqueue_script('wu-ajax-list-table');
 
 	} // end register_scripts;
@@ -532,9 +548,10 @@ class Base_List_Table extends \WP_List_Table {
 			echo wu_render_empty_state(array(
 				'message'      => sprintf(__("You don't have any %s yet.", 'wp-ultimo'), $this->labels['plural']),
 				'sub_message'  => $this->_args['add_new'] ? __('How about we create a new one?', 'wp-ultimo') : __('...but you will see them here once they get created.', 'wp-ultimo'),
+				// translators: %s is the singular value of the model, such as Product, or Payment.
 				'link_label'   => sprintf(__('Create a new %s', 'wp-ultimo'), $this->labels['singular']),
-				'link_url'     => $this->_args['add_new']['url'],
-				'link_classes' => $this->_args['add_new']['classes'],
+				'link_url'     => wu_get_isset($this->_args['add_new'], 'url', ''),
+				'link_classes' => wu_get_isset($this->_args['add_new'], 'classes', ''),
 				'link_icon'    => 'dashicons-wu-circle-with-plus',
 			));
 
@@ -622,7 +639,7 @@ class Base_List_Table extends \WP_List_Table {
 	 */
 	public function no_items() {
 
-		echo sprintf('<div class="wu-py-6 wu-text-gray-600 wu-text-base wu-text-center">
+		echo sprintf('<div class="wu-py-6 wu-text-gray-600 wu-text-sm wu-text-center">
 			<span class="">%s</span>
 		</div>', __('No items found', 'wp-ultimo'));
 
@@ -655,93 +672,83 @@ class Base_List_Table extends \WP_List_Table {
 	} // end get_bulk_actions;
 
 	/**
-	 * Handles the bulk processing.
+	 * Process single action.
 	 *
 	 * @since 2.0.0
 	 * @return void
 	 */
-	public function process_bulk_action() {
+	public function process_single_action() {} // end process_single_action;
+
+	/**
+	 * Handles the bulk processing.
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	static public function process_bulk_action() {
 
 		global $wpdb;
 
-		$bulk_action = $this->current_action();
+		$bulk_action = wu_request('bulk_action');
 
-		$query_class = new $this->query_class();
+		$model = wu_request('model');
 
-		$reflector = new \ReflectionObject($query_class);
+		if ($model === 'checkout') {
 
-		$method = $reflector->getMethod('get_table_name');
+			$model = 'checkout_form';
 
-		$method->setAccessible(true);
+		} elseif ($model === 'discount') {
 
-		$table_name = $method->invoke($query_class);
+			$model = 'discount_code';
+
+		} // end if;
+
+		$item_ids = explode(',', wu_request('ids', ''));
+
+		$func_name = "wu_get_$model";
+
+		if (!function_exists($func_name)) {
+
+			return new \WP_Error('func-not-exists', __('Something went wrong.', 'wp-ultimo'));
+
+		} // end if;
 
 		switch ($bulk_action) {
+
 			case 'activate':
-				$item_ids = wu_request('bulk-delete', array());
+				foreach ($item_ids as $item_id) {
 
-				if ($item_ids) {
-					$item_ids              = array_filter($item_ids);
-					$item_ids_placeholders = implode(', ', array_fill(0, count($item_ids), '%d'));
+					$item = $func_name($item_id);
 
-					$wpdb->query(
-						// phpcs:disable
-						$wpdb->prepare(
-							"
-								UPDATE $table_name
-								SET active = 1
-								WHERE ID IN ( $item_ids_placeholders )
-							",
-							 $item_ids
-						)
-						// phpcs:enable
-					);
-				} // end if;
+					$item->set_active(true);
+
+					$item->save();
+
+				} // end foreach;
 
 				break;
 
 			case 'deactivate':
-				$item_ids = wu_request('bulk-delete', array());
+				foreach ($item_ids as $item_id) {
 
-				if ($item_ids) {
-					$item_ids              = array_filter($item_ids);
-					$item_ids_placeholders = implode(', ', array_fill(0, count($item_ids), '%d'));
+					$item = $func_name($item_id);
 
-					$wpdb->query(
-						// phpcs:disable
-						$wpdb->prepare(
-							"
-								UPDATE $table_name
-								SET active = 0
-								WHERE ID IN ( $item_ids_placeholders )
-							",
-							 $item_ids
-						)
-						// phpcs:enable
-					);
-				} // end if;
+					$item->set_active(false);
+
+					$item->save();
+
+				} // end foreach;
 
 				break;
 
 			case 'delete':
-				$item_ids = wu_request('bulk-delete', array());
+				foreach ($item_ids as $item_id) {
 
-				if ($item_ids) {
-					$item_ids              = array_filter($item_ids);
-					$item_ids_placeholders = implode(', ', array_fill(0, count($item_ids), '%d'));
+					$item = $func_name($item_id);
 
-					$wpdb->query(
-						// phpcs:disable
-						$wpdb->prepare(
-							"
-								DELETE FROM $table_name
-								WHERE ID IN ( $item_ids_placeholders )
-							",
-							$item_ids
-						)
-						// phpcs:enable
-					);
-				} // end if;
+					$item->delete();
+
+				} // end foreach;
 
 				break;
 
@@ -750,6 +757,8 @@ class Base_List_Table extends \WP_List_Table {
 				break;
 
 		} // end switch;
+
+		return true;
 
 	} // end process_bulk_action;
 
@@ -823,6 +832,7 @@ class Base_List_Table extends \WP_List_Table {
 		$response['pagination']['bottom'] = $pagination_bottom;
 		$response['column_headers']       = $headers;
 		$response['count']                = $this->record_count();
+		$response['type']                 = wu_request('type', 'all');
 
 		if (isset($total_items)) {
 
@@ -888,11 +898,11 @@ class Base_List_Table extends \WP_List_Table {
 
 		} // end if;
 
-		$time = strtotime($date, current_time('timestamp')); // phpcs:ignore
+		$time = strtotime(get_date_from_gmt($date));
 
 		$formatted_value = date_i18n(get_option('date_format'), $time);
 
-		$placeholder = current_time('timestamp') > $time ? __('%s ago', 'wp-ultimo') : __('In %s', 'wp-ultimo'); // phpcs:ignore
+		$placeholder = wu_get_current_time('timestamp') > $time ? __('%s ago', 'wp-ultimo') : __('In %s', 'wp-ultimo'); // phpcs:ignore
 
 		$text = $formatted_value . sprintf('<br><small>%s</small>', sprintf($placeholder, human_time_diff($time)));
 
@@ -1046,9 +1056,9 @@ class Base_List_Table extends \WP_List_Table {
 
 		$html = "<a href='{$customer_link}' class='wu-no-underline wu-table-card wu-text-gray-700 wu-p-1 wu-flex wu-flex-grow wu-rounded wu-items-center wu-border wu-border-solid wu-border-gray-300'>
 			{$avatar}
-			<div class='wu-flex wu-flex-wrap wu-overflow-hidden'>
-				<strong class='wu-block wu-truncate'>{$display_name} <small class='wu-font-normal'>(#{$id})</small></strong>
-				<small class='wu-truncate'>{$email}</small>
+			<div class='wu-flex-wrap wu-overflow-hidden'>
+				<strong class='wu-block wu-flex-grow wu-truncate'>{$display_name} <small class='wu-font-normal'>(#{$id})</small></strong>
+				<small class='wu-truncate wu-block'>{$email}</small>
 			</div>
 		</a>";
 
@@ -1085,7 +1095,7 @@ class Base_List_Table extends \WP_List_Table {
 			'id' => $product->get_id(),
 		);
 
-		$image = $this->get_featured_image('thumbnail');
+		$image = $product->get_featured_image('thumbnail');
 
 		$image = $image ? sprintf('<img class="wu-w-7 wu-h-7 wu-rounded wu-mr-3" src="%s">', esc_attr($image)) : '
 			<div class="wu-w-7 wu-h-7 wu-bg-gray-200 wu-rounded wu-text-gray-600 wu-flex wu-items-center wu-justify-center wu-mr-2 wu-ml-1">
@@ -1191,7 +1201,7 @@ class Base_List_Table extends \WP_List_Table {
 	/**
 	 * Render the bulk edit checkbox.
 	 *
-	 * @param array $item Item object/array.
+	 * @param WP_Ultimo\Models\Product $item Product object.
 	 *
 	 * @return string
 	 */

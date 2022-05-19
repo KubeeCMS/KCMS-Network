@@ -8,7 +8,7 @@ use WP_Ultimo\Dependencies\Doctrine\Common\Collections\ArrayCollection;
 /**
  * @final
  */
-class DoctrineEmptyCollectionFilter implements \WP_Ultimo\Dependencies\DeepCopy\Filter\Filter
+class DoctrineEmptyCollectionFilter implements Filter
 {
     /**
      * Sets the object property to an empty doctrine collection.
@@ -19,8 +19,8 @@ class DoctrineEmptyCollectionFilter implements \WP_Ultimo\Dependencies\DeepCopy\
      */
     public function apply($object, $property, $objectCopier)
     {
-        $reflectionProperty = \WP_Ultimo\Dependencies\DeepCopy\Reflection\ReflectionHelper::getProperty($object, $property);
+        $reflectionProperty = ReflectionHelper::getProperty($object, $property);
         $reflectionProperty->setAccessible(\true);
-        $reflectionProperty->setValue($object, new \WP_Ultimo\Dependencies\Doctrine\Common\Collections\ArrayCollection());
+        $reflectionProperty->setValue($object, new ArrayCollection());
     }
 }

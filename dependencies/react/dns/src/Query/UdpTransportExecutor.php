@@ -1,12 +1,13 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Dns\Query;
+namespace React\Dns\Query;
 
-use WP_Ultimo\Dependencies\React\Dns\Model\Message;
-use WP_Ultimo\Dependencies\React\Dns\Protocol\BinaryDumper;
-use WP_Ultimo\Dependencies\React\Dns\Protocol\Parser;
-use WP_Ultimo\Dependencies\React\EventLoop\LoopInterface;
-use WP_Ultimo\Dependencies\React\Promise\Deferred;
+use React\Dns\Model\Message;
+use React\Dns\Protocol\BinaryDumper;
+use React\Dns\Protocol\Parser;
+use React\EventLoop\Loop;
+use React\EventLoop\LoopInterface;
+use React\Promise\Deferred;
 /**
  * Send DNS queries over a UDP transport.
  *
@@ -17,8 +18,7 @@ use WP_Ultimo\Dependencies\React\Promise\Deferred;
  * The following example looks up the `IPv6` address for `igor.io`.
  *
  * ```php
- * $loop = Factory::create();
- * $executor = new UdpTransportExecutor('8.8.8.8:53', $loop);
+ * $executor = new UdpTransportExecutor('8.8.8.8:53');
  *
  * $executor->query(
  *     new Query($name, Message::TYPE_AAAA, Message::CLASS_IN)
@@ -27,8 +27,6 @@ use WP_Ultimo\Dependencies\React\Promise\Deferred;
  *         echo 'IPv6: ' . $answer->data . PHP_EOL;
  *     }
  * }, 'printf');
- *
- * $loop->run();
  * ```
  *
  * See also the [fourth example](examples).
@@ -38,9 +36,8 @@ use WP_Ultimo\Dependencies\React\Promise\Deferred;
  *
  * ```php
  * $executor = new TimeoutExecutor(
- *     new UdpTransportExecutor($nameserver, $loop),
- *     3.0,
- *     $loop
+ *     new UdpTransportExecutor($nameserver),
+ *     3.0
  * );
  * ```
  *
@@ -51,9 +48,8 @@ use WP_Ultimo\Dependencies\React\Promise\Deferred;
  * ```php
  * $executor = new RetryExecutor(
  *     new TimeoutExecutor(
- *         new UdpTransportExecutor($nameserver, $loop),
- *         3.0,
- *         $loop
+ *         new UdpTransportExecutor($nameserver),
+ *         3.0
  *     )
  * );
  * ```
@@ -70,9 +66,8 @@ use WP_Ultimo\Dependencies\React\Promise\Deferred;
  * $executor = new CoopExecutor(
  *     new RetryExecutor(
  *         new TimeoutExecutor(
- *             new UdpTransportExecutor($nameserver, $loop),
- *             3.0,
- *             $loop
+ *             new UdpTransportExecutor($nameserver),
+ *             3.0
  *         )
  *     )
  * );
@@ -84,58 +79,78 @@ use WP_Ultimo\Dependencies\React\Promise\Deferred;
  *   packages. Higher-level components should take advantage of the Datagram
  *   component instead of reimplementing this socket logic from scratch.
  */
-final class UdpTransportExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\ExecutorInterface
+final class UdpTransportExecutor implements \React\Dns\Query\ExecutorInterface
 {
     private $nameserver;
     private $loop;
     private $parser;
     private $dumper;
     /**
-     * @param string        $nameserver
-     * @param LoopInterface $loop
+     * maximum UDP packet size to send and receive
+     *
+     * @var int
      */
-    public function __construct($nameserver, \WP_Ultimo\Dependencies\React\EventLoop\LoopInterface $loop)
+    private $maxPacketSize = 512;
+    /**
+     * @param string         $nameserver
+     * @param ?LoopInterface $loop
+     */
+    public function __construct($nameserver, LoopInterface $loop = null)
     {
         if (\strpos($nameserver, '[') === \false && \substr_count($nameserver, ':') >= 2 && \strpos($nameserver, '://') === \false) {
             // several colons, but not enclosed in square brackets => enclose IPv6 address in square brackets
             $nameserver = '[' . $nameserver . ']';
         }
         $parts = \parse_url((\strpos($nameserver, '://') === \false ? 'udp://' : '') . $nameserver);
-        if (!isset($parts['scheme'], $parts['host']) || $parts['scheme'] !== 'udp' || !\filter_var(\trim($parts['host'], '[]'), \FILTER_VALIDATE_IP)) {
+        if (!isset($parts['scheme'], $parts['host']) || $parts['scheme'] !== 'udp' || @\inet_pton(\trim($parts['host'], '[]')) === \false) {
             throw new \InvalidArgumentException('Invalid nameserver address given');
         }
         $this->nameserver = 'udp://' . $parts['host'] . ':' . (isset($parts['port']) ? $parts['port'] : 53);
-        $this->loop = $loop;
-        $this->parser = new \WP_Ultimo\Dependencies\React\Dns\Protocol\Parser();
-        $this->dumper = new \WP_Ultimo\Dependencies\React\Dns\Protocol\BinaryDumper();
+        $this->loop = $loop ?: Loop::get();
+        $this->parser = new Parser();
+        $this->dumper = new BinaryDumper();
     }
-    public function query(\WP_Ultimo\Dependencies\React\Dns\Query\Query $query)
+    public function query(\React\Dns\Query\Query $query)
     {
-        $request = \WP_Ultimo\Dependencies\React\Dns\Model\Message::createRequestForQuery($query);
+        $request = Message::createRequestForQuery($query);
         $queryData = $this->dumper->toBinary($request);
-        if (isset($queryData[512])) {
-            return \WP_Ultimo\Dependencies\React\Promise\reject(new \RuntimeException('DNS query for ' . $query->name . ' failed: Query too large for UDP transport', \defined('SOCKET_EMSGSIZE') ? \SOCKET_EMSGSIZE : 90));
+        if (isset($queryData[$this->maxPacketSize])) {
+            return \React\Promise\reject(new \RuntimeException('DNS query for ' . $query->describe() . ' failed: Query too large for UDP transport', \defined('SOCKET_EMSGSIZE') ? \SOCKET_EMSGSIZE : 90));
         }
         // UDP connections are instant, so try connection without a loop or timeout
         $socket = @\stream_socket_client($this->nameserver, $errno, $errstr, 0);
         if ($socket === \false) {
-            return \WP_Ultimo\Dependencies\React\Promise\reject(new \RuntimeException('DNS query for ' . $query->name . ' failed: Unable to connect to DNS server (' . $errstr . ')', $errno));
+            return \React\Promise\reject(new \RuntimeException('DNS query for ' . $query->describe() . ' failed: Unable to connect to DNS server ' . $this->nameserver . ' (' . $errstr . ')', $errno));
         }
         // set socket to non-blocking and immediately try to send (fill write buffer)
         \stream_set_blocking($socket, \false);
-        \fwrite($socket, $queryData);
+        $written = @\fwrite($socket, $queryData);
+        if ($written !== \strlen($queryData)) {
+            // Write may potentially fail, but most common errors are already caught by connection check above.
+            // Among others, macOS is known to report here when trying to send to broadcast address.
+            // This can also be reproduced by writing data exceeding `stream_set_chunk_size()` to a server refusing UDP data.
+            // fwrite(): send of 8192 bytes failed with errno=111 Connection refused
+            $error = \error_get_last();
+            \preg_match('/errno=(\\d+) (.+)/', $error['message'], $m);
+            return \React\Promise\reject(new \RuntimeException('DNS query for ' . $query->describe() . ' failed: Unable to send query to DNS server ' . $this->nameserver . ' (' . (isset($m[2]) ? $m[2] : $error['message']) . ')', isset($m[1]) ? (int) $m[1] : 0));
+        }
         $loop = $this->loop;
-        $deferred = new \WP_Ultimo\Dependencies\React\Promise\Deferred(function () use($loop, $socket, $query) {
+        $deferred = new Deferred(function () use($loop, $socket, $query) {
             // cancellation should remove socket from loop and close socket
             $loop->removeReadStream($socket);
             \fclose($socket);
-            throw new \WP_Ultimo\Dependencies\React\Dns\Query\CancellationException('DNS query for ' . $query->name . ' has been cancelled');
+            throw new \React\Dns\Query\CancellationException('DNS query for ' . $query->describe() . ' has been cancelled');
         });
+        $max = $this->maxPacketSize;
         $parser = $this->parser;
-        $loop->addReadStream($socket, function ($socket) use($loop, $deferred, $query, $parser, $request) {
+        $nameserver = $this->nameserver;
+        $loop->addReadStream($socket, function ($socket) use($loop, $deferred, $query, $parser, $request, $max, $nameserver) {
             // try to read a single data packet from the DNS server
             // ignoring any errors, this is uses UDP packets and not a stream of data
-            $data = @\fread($socket, 512);
+            $data = @\fread($socket, $max);
+            if ($data === \false) {
+                return;
+            }
             try {
                 $response = $parser->parseMessage($data);
             } catch (\Exception $e) {
@@ -152,7 +167,7 @@ final class UdpTransportExecutor implements \WP_Ultimo\Dependencies\React\Dns\Qu
             $loop->removeReadStream($socket);
             \fclose($socket);
             if ($response->tc) {
-                $deferred->reject(new \RuntimeException('DNS query for ' . $query->name . ' failed: The server returned a truncated result for a UDP query', \defined('SOCKET_EMSGSIZE') ? \SOCKET_EMSGSIZE : 90));
+                $deferred->reject(new \RuntimeException('DNS query for ' . $query->describe() . ' failed: The DNS server ' . $nameserver . ' returned a truncated result for a UDP query', \defined('SOCKET_EMSGSIZE') ? \SOCKET_EMSGSIZE : 90));
                 return;
             }
             $deferred->resolve($response);

@@ -2,7 +2,7 @@
 
 namespace WP_Ultimo\Dependencies\Stripe;
 
-class BaseStripeClient implements \WP_Ultimo\Dependencies\Stripe\StripeClientInterface
+class BaseStripeClient implements StripeClientInterface, StripeStreamingClientInterface
 {
     /** @var string default base URL for Stripe's API */
     const DEFAULT_API_BASE = 'https://api.stripe.com';
@@ -121,6 +121,24 @@ class BaseStripeClient implements \WP_Ultimo\Dependencies\Stripe\StripeClientInt
         return $obj;
     }
     /**
+     * Sends a request to Stripe's API, passing chunks of the streamed response
+     * into a user-provided $readBodyChunkCallable callback.
+     *
+     * @param string $method the HTTP method
+     * @param string $path the path of the request
+     * @param callable $readBodyChunkCallable a function that will be called
+     * @param array $params the parameters of the request
+     * @param array|\Stripe\Util\RequestOptions $opts the special modifiers of the request
+     * with chunks of bytes from the body if the request is successful
+     */
+    public function requestStream($method, $path, $readBodyChunkCallable, $params, $opts)
+    {
+        $opts = $this->defaultOpts->merge($opts, \true);
+        $baseUrl = $opts->apiBase ?: $this->getApiBase();
+        $requestor = new \WP_Ultimo\Dependencies\Stripe\ApiRequestor($this->apiKeyForRequest($opts), $baseUrl);
+        list($response, $opts->apiKey) = $requestor->requestStream($method, $path, $readBodyChunkCallable, $params, $opts->headers);
+    }
+    /**
      * Sends a request to Stripe's API.
      *
      * @param string $method the HTTP method
@@ -136,6 +154,27 @@ class BaseStripeClient implements \WP_Ultimo\Dependencies\Stripe\StripeClientInt
         if (!$obj instanceof \WP_Ultimo\Dependencies\Stripe\Collection) {
             $received_class = \get_class($obj);
             $msg = "Expected to receive `Stripe\\Collection` object from Stripe API. Instead received `{$received_class}`.";
+            throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException($msg);
+        }
+        $obj->setFilters($params);
+        return $obj;
+    }
+    /**
+     * Sends a request to Stripe's API.
+     *
+     * @param string $method the HTTP method
+     * @param string $path the path of the request
+     * @param array $params the parameters of the request
+     * @param array|\Stripe\Util\RequestOptions $opts the special modifiers of the request
+     *
+     * @return \Stripe\SearchResult of ApiResources
+     */
+    public function requestSearchResult($method, $path, $params, $opts)
+    {
+        $obj = $this->request($method, $path, $params, $opts);
+        if (!$obj instanceof \WP_Ultimo\Dependencies\Stripe\SearchResult) {
+            $received_class = \get_class($obj);
+            $msg = "Expected to receive `Stripe\\SearchResult` object from Stripe API. Instead received `{$received_class}`.";
             throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException($msg);
         }
         $obj->setFilters($params);
@@ -212,7 +251,9 @@ class BaseStripeClient implements \WP_Ultimo\Dependencies\Stripe\StripeClientInt
         // check absence of extra keys
         $extraConfigKeys = \array_diff(\array_keys($config), \array_keys($this->getDefaultConfig()));
         if (!empty($extraConfigKeys)) {
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException('Found unknown key(s) in configuration array: ' . \implode(',', $extraConfigKeys));
+            // Wrap in single quote to more easily catch trailing spaces errors
+            $invalidKeys = "'" . \implode("', '", $extraConfigKeys) . "'";
+            throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException('Found unknown key(s) in configuration array: ' . $invalidKeys);
         }
     }
 }

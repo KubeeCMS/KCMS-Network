@@ -17,7 +17,7 @@ class ColumnTypeGuesser
      * @param ClassMetadata $class
      * @return \Closure|null
      */
-    public function guessFormat($fieldName, \WP_Ultimo\Dependencies\Doctrine\Common\Persistence\Mapping\ClassMetadata $class)
+    public function guessFormat($fieldName, ClassMetadata $class)
     {
         $generator = $this->generator;
         $type = $class->getTypeOfField($fieldName);

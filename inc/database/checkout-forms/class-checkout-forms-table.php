@@ -74,8 +74,8 @@ final class Checkout_Forms_Table extends Table {
 			settings longtext DEFAULT NULL,
 			custom_css longtext DEFAULT NULL,
 			allowed_countries text DEFAULT NULL,
-			date_created datetime NOT NULL default '0000-00-00 00:00:00',
-			date_modified datetime NOT NULL default '0000-00-00 00:00:00',
+			date_created datetime NULL,
+			date_modified datetime NULL,
 			PRIMARY KEY (id)";
 
 	} // end set_schema;

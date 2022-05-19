@@ -1,25 +1,26 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\EventLoop;
+namespace React\EventLoop;
 
 use BadMethodCallException;
 use Event;
 use EventBase;
-use WP_Ultimo\Dependencies\React\EventLoop\Tick\FutureTickQueue;
-use WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer;
+use React\EventLoop\Tick\FutureTickQueue;
+use React\EventLoop\Timer\Timer;
 use SplObjectStorage;
 /**
- * An `ext-libevent` based event loop.
+ * [Deprecated] An `ext-libevent` based event loop.
  *
- * This uses the [`libevent` PECL extension](https://pecl.php.net/package/libevent).
+ * This uses the [`libevent` PECL extension](https://pecl.php.net/package/libevent),
+ * that provides an interface to `libevent` library.
  * `libevent` itself supports a number of system-specific backends (epoll, kqueue).
  *
  * This event loop does only work with PHP 5.
  * An [unofficial update](https://github.com/php/pecl-event-libevent/pull/2) for
  * PHP 7 does exist, but it is known to cause regular crashes due to `SEGFAULT`s.
  * To reiterate: Using this event loop on PHP 7 is not recommended.
- * Accordingly, the [`Factory`](#factory) will not try to use this event loop on
- * PHP 7.
+ * Accordingly, neither the [`Loop` class](#loop) nor the deprecated
+ * [`Factory` class](#factory) will try to use this event loop on PHP 7.
  *
  * This event loop is known to trigger a readable listener only if
  * the stream *becomes* readable (edge-triggered) and may not trigger if the
@@ -31,8 +32,9 @@ use SplObjectStorage;
  * See also [`addReadStream()`](#addreadstream) for more details.
  *
  * @link https://pecl.php.net/package/libevent
+ * @deprecated 1.2.0, use [`ExtEventLoop`](#exteventloop) instead.
  */
-final class ExtLibeventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInterface
+final class ExtLibeventLoop implements \React\EventLoop\LoopInterface
 {
     /** @internal */
     const MICROSECONDS_PER_SECOND = 1000000;
@@ -51,12 +53,12 @@ final class ExtLibeventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\L
     public function __construct()
     {
         if (!\function_exists('event_base_new')) {
-            throw new \BadMethodCallException('Cannot create ExtLibeventLoop, ext-libevent extension missing');
+            throw new BadMethodCallException('Cannot create ExtLibeventLoop, ext-libevent extension missing');
         }
         $this->eventBase = \event_base_new();
-        $this->futureTickQueue = new \WP_Ultimo\Dependencies\React\EventLoop\Tick\FutureTickQueue();
-        $this->timerEvents = new \SplObjectStorage();
-        $this->signals = new \WP_Ultimo\Dependencies\React\EventLoop\SignalsHandler();
+        $this->futureTickQueue = new FutureTickQueue();
+        $this->timerEvents = new SplObjectStorage();
+        $this->signals = new \React\EventLoop\SignalsHandler();
         $this->createTimerCallback();
         $this->createStreamCallback();
     }
@@ -108,17 +110,17 @@ final class ExtLibeventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\L
     }
     public function addTimer($interval, $callback)
     {
-        $timer = new \WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer($interval, $callback, \false);
+        $timer = new Timer($interval, $callback, \false);
         $this->scheduleTimer($timer);
         return $timer;
     }
     public function addPeriodicTimer($interval, $callback)
     {
-        $timer = new \WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer($interval, $callback, \true);
+        $timer = new Timer($interval, $callback, \true);
         $this->scheduleTimer($timer);
         return $timer;
     }
-    public function cancelTimer(\WP_Ultimo\Dependencies\React\EventLoop\TimerInterface $timer)
+    public function cancelTimer(\React\EventLoop\TimerInterface $timer)
     {
         if ($this->timerEvents->contains($timer)) {
             $event = $this->timerEvents[$timer];
@@ -173,7 +175,7 @@ final class ExtLibeventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\L
      *
      * @param TimerInterface $timer
      */
-    private function scheduleTimer(\WP_Ultimo\Dependencies\React\EventLoop\TimerInterface $timer)
+    private function scheduleTimer(\React\EventLoop\TimerInterface $timer)
     {
         $this->timerEvents[$timer] = $event = \event_timer_new();
         \event_timer_set($event, $this->timerCallback, $timer);
@@ -199,7 +201,7 @@ final class ExtLibeventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\L
             }
             // Reschedule periodic timers ...
             if ($timer->isPeriodic()) {
-                \event_add($timers[$timer], $timer->getInterval() * \WP_Ultimo\Dependencies\React\EventLoop\ExtLibeventLoop::MICROSECONDS_PER_SECOND);
+                \event_add($timers[$timer], $timer->getInterval() * \React\EventLoop\ExtLibeventLoop::MICROSECONDS_PER_SECOND);
                 // Clean-up one shot timers ...
             } else {
                 $that->cancelTimer($timer);

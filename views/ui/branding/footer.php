@@ -24,16 +24,37 @@ $logo = '<svg xmlns="http://www.w3.org/2000/svg" class="wu-fill-current wu-mx-1 
     <li class="wu-inline-block wu-mx-1 wu-font-medium">
       <?php printf(__('Version %s', 'wp-ultimo'), wu_get_version()); ?>
     </li>
-    <li class="wu-inline-block wu-mx-1">
-      <a href="<?php echo wu_network_admin_url('wp-ultimo-system-info'); ?>" class="wu-text-gray-500 hover:wu-text-gray-600">
-        <?php _e('System Info', 'wp-ultimo'); ?>
-      </a>
-    </li>
-    <li class="wu-inline-block wu-mx-1">
-      <a href="<?php echo wu_network_admin_url('wp-ultimo-jobs'); ?>" class="wu-text-gray-500 hover:wu-text-gray-600">
-        <?php _e('Job Queue', 'wp-ultimo'); ?>
-      </a>
-    </li>
+
+    <?php if (WP_Ultimo()->is_loaded()) : ?>
+
+      <li class="wu-inline-block wu-mx-1">
+        <a href="<?php echo wu_network_admin_url('wp-ultimo-system-info'); ?>" class="wu-text-gray-500 hover:wu-text-gray-600">
+          <?php _e('System Info', 'wp-ultimo'); ?>
+        </a>
+      </li>
+
+    <?php endif; ?>
+    
+    <?php if (WP_Ultimo()->is_loaded() && current_user_can('wu_license')) : ?>
+      
+      <li class="wu-inline-block wu-mx-1">
+        <a href="<?php echo wu_network_admin_url('wp-ultimo-account'); ?>" class="wu-text-gray-500 hover:wu-text-gray-600">
+          <?php _e('Account', 'wp-ultimo'); ?>
+        </a>
+      </li>
+
+    <?php endif; ?>
+
+    <?php if (WP_Ultimo()->is_loaded()) : ?>
+
+      <li class="wu-inline-block wu-mx-1">
+        <a href="<?php echo wu_network_admin_url('wp-ultimo-jobs'); ?>" class="wu-text-gray-500 hover:wu-text-gray-600">
+          <?php _e('Job Queue', 'wp-ultimo'); ?>
+        </a>
+      </li>
+
+    <?php endif; ?>
+    
     <?php do_action('wu_footer_left'); ?>
     <li class="wu-inline-block wu-mx-2">
       •
@@ -54,8 +75,8 @@ $logo = '<svg xmlns="http://www.w3.org/2000/svg" class="wu-fill-current wu-mx-1 
       </a>
     </li>
     <li class="wu-inline-block wu-mx-1">
-      <a href="https://www.facebook.com/groups/wpultimo/" target="_blank" class="wu-text-gray-500 hover:wu-text-gray-600">
-        <?php _e('Facebook Group', 'wp-ultimo'); ?>
+      <a href="https://community.wpultimo.com/home" target="_blank" class="wu-text-gray-500 hover:wu-text-gray-600">
+        <?php _e('Community', 'wp-ultimo'); ?>
       </a>
     </li>
     <li class="wu-inline-block wu-mx-1">

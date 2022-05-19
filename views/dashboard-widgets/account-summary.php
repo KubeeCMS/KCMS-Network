@@ -75,7 +75,7 @@
       <div>
 
         <strong class="wu-text-gray-800 wu-text-base">
-		<?php printf(_n('%s day', '%s days', $site_trial, 'wp-ultimo'), $site_trial); ?>
+		      <?php printf(_n('%s day', '%s days', $site_trial, 'wp-ultimo'), $site_trial); ?>
         </strong>
 
       </div>

@@ -33,7 +33,7 @@ class Screenshot {
 
 		$url = wu_with_license_key(sprintf('https://api.wpultimo.com/screenshot?url=%s', $domain));
 
-		return add_query_arg('ext', '.png', $url);
+		return $url . '&ext=.png';
 
 	} // end api_url;
 
@@ -63,21 +63,45 @@ class Screenshot {
 	 */
 	public static function save_image_from_url($url) {
 
+		// translators: %s is the API URL.
+		$log_prefix = sprintf(__('Downloading image from "%s":'), $url) . ' ';
+
 		$response = wp_remote_get($url, array(
 			'timeout' => 50,
 		));
 
-		if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
+		if (wp_remote_retrieve_response_code($response) !== 200) {
+
+			wu_log_add('screenshot-generator', $log_prefix . wp_remote_retrieve_response_message($response));
 
 			return false;
 
 		} // end if;
 
-		$upload = wp_upload_bits(basename($url), null, $response['body']);
+		if (is_wp_error($response)) {
+
+			wu_log_add('screenshot-generator', $log_prefix . $response);
+
+			return false;
+
+		} // end if;
+
+		/*
+		 * Check if the results contain a PNG header.
+		 */
+		if (strpos($response['body'], "\x89\x50\x4e\x47\x0d\x0a\x1a\x0a") !== 0) {
+
+			wu_log_add('screenshot-generator', $log_prefix . __('Result is not a PNG file.', 'wp-ultimo'));
+
+			return false;
+
+		} // end if;
+
+		$upload = wp_upload_bits('screenshot-' . gmdate('Y-m-d-H-i-s') . '.png', null, $response['body']);
 
 		if (!empty($upload['error'])) {
 
-			wu_log_add('screenshot-generator', json_encode($upload['error']));
+			wu_log_add('screenshot-generator', $log_prefix . json_encode($upload['error']));
 
 			return false;
 
@@ -108,6 +132,8 @@ class Screenshot {
 
 		// Assign metadata to attachment
 		wp_update_attachment_metadata($attach_id, $attach_data);
+
+		wu_log_add('screenshot-generator', $log_prefix . __('Success!', 'wp-ultimo'));
 
 		return $attach_id;
 

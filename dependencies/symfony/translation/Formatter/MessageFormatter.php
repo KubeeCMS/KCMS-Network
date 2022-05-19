@@ -24,9 +24,9 @@ class MessageFormatter implements \Symfony\Component\Translation\Formatter\Messa
     /**
      * @param TranslatorInterface|null $translator An identity translator to use as selector for pluralization
      */
-    public function __construct(\WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface $translator = null, \Symfony\Component\Translation\Formatter\IntlFormatterInterface $intlFormatter = null)
+    public function __construct(TranslatorInterface $translator = null, \Symfony\Component\Translation\Formatter\IntlFormatterInterface $intlFormatter = null)
     {
-        $this->translator = $translator ?? new \Symfony\Component\Translation\IdentityTranslator();
+        $this->translator = $translator ?? new IdentityTranslator();
         $this->intlFormatter = $intlFormatter ?? new \Symfony\Component\Translation\Formatter\IntlFormatter();
     }
     /**
@@ -34,7 +34,7 @@ class MessageFormatter implements \Symfony\Component\Translation\Formatter\Messa
      */
     public function format(string $message, string $locale, array $parameters = [])
     {
-        if ($this->translator instanceof \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface) {
+        if ($this->translator instanceof TranslatorInterface) {
             return $this->translator->trans($message, $parameters, null, $locale);
         }
         return \strtr($message, $parameters);

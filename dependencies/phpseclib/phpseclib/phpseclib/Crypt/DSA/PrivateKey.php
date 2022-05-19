@@ -3,8 +3,6 @@
 /**
  * DSA Private Key
  *
- * @category  Crypt
- * @package   DSA
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2015 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -12,25 +10,22 @@
  */
 namespace phpseclib3\Crypt\DSA;
 
+use phpseclib3\Crypt\Common;
 use phpseclib3\Crypt\DSA;
 use phpseclib3\Crypt\DSA\Formats\Signature\ASN1 as ASN1Signature;
 use phpseclib3\Math\BigInteger;
-use phpseclib3\Crypt\Common;
 /**
  * DSA Private Key
  *
- * @package DSA
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-class PrivateKey extends \phpseclib3\Crypt\DSA implements \phpseclib3\Crypt\Common\PrivateKey
+class PrivateKey extends DSA implements Common\PrivateKey
 {
     use Common\Traits\PasswordProtected;
     /**
      * DSA secret exponent x
      *
      * @var \phpseclib3\Math\BigInteger
-     * @access private
      */
     protected $x;
     /**
@@ -52,7 +47,6 @@ class PrivateKey extends \phpseclib3\Crypt\DSA implements \phpseclib3\Crypt\Comm
      * without the parameters and the PKCS1 DSA public key format does not include the parameters.
      *
      * @see self::getPrivateKey()
-     * @access public
      * @return mixed
      */
     public function getPublicKey()
@@ -62,13 +56,12 @@ class PrivateKey extends \phpseclib3\Crypt\DSA implements \phpseclib3\Crypt\Comm
             $this->y = $this->g->powMod($this->x, $this->p);
         }
         $key = $type::savePublicKey($this->p, $this->q, $this->g, $this->y);
-        return \phpseclib3\Crypt\DSA::loadFormat('PKCS8', $key)->withHash($this->hash->getHash())->withSignatureFormat($this->shortFormat);
+        return DSA::loadFormat('PKCS8', $key)->withHash($this->hash->getHash())->withSignatureFormat($this->shortFormat);
     }
     /**
      * Create a signature
      *
      * @see self::verify()
-     * @access public
      * @param string $message
      * @return mixed
      */
@@ -82,14 +75,14 @@ class PrivateKey extends \phpseclib3\Crypt\DSA implements \phpseclib3\Crypt\Comm
                 if ($this->shortFormat == 'ASN1') {
                     return $signature;
                 }
-                \extract(\phpseclib3\Crypt\DSA\Formats\Signature\ASN1::load($signature));
+                \extract(ASN1Signature::load($signature));
                 return $format::save($r, $s);
             }
         }
         $h = $this->hash->hash($message);
         $h = $this->bits2int($h);
         while (\true) {
-            $k = \phpseclib3\Math\BigInteger::randomRange(self::$one, $this->q->subtract(self::$one));
+            $k = BigInteger::randomRange(self::$one, $this->q->subtract(self::$one));
             $r = $this->g->powMod($k, $this->p);
             list(, $r) = $r->divide($this->q);
             if ($r->equals(self::$zero)) {

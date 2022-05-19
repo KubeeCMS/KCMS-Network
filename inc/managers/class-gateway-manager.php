@@ -11,8 +11,8 @@
 
 namespace WP_Ultimo\Managers;
 
-use WP_Ultimo\Managers\Base_Manager;
-use WP_Ultimo\Logger;
+use \WP_Ultimo\Managers\Base_Manager;
+use \WP_Ultimo\Gateways\Ignorable_Exception;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -41,6 +41,14 @@ class Gateway_Manager extends Base_Manager {
 	 * @var array
 	 */
 	protected $enabled_gateways = array();
+
+	/**
+	 * Keeps a list of the gateways with auto-renew.
+	 *
+	 * @since 2.0.0
+	 * @var array
+	 */
+	protected $auto_renewable_gateways = array();
 
 	/**
 	 * Instantiate the necessary hooks.
@@ -73,13 +81,20 @@ class Gateway_Manager extends Base_Manager {
 
 		/*
 		 * Handle gateway confirmations.
+		 * We need it both on the front-end and the back-end.
 		 */
 		add_action('template_redirect', array($this, 'process_gateway_confirmations'), -99999);
+		add_action('load-admin_page_wu-checkout', array($this, 'process_gateway_confirmations'), -99999);
 
 		/*
 		 * Waits for webhook signals and deal with them.
 		 */
 		add_action('init', array($this, 'maybe_process_webhooks'), 1);
+
+		/*
+		 * Waits for webhook signals and deal with them.
+		 */
+		add_action('admin_init', array($this, 'maybe_process_v1_webhooks'), 1);
 
 		/*
 		 * Allow developers to add new gateways.
@@ -99,12 +114,143 @@ class Gateway_Manager extends Base_Manager {
 		$gateway = wu_request('wu-gateway');
 
 		if ($gateway && !is_admin() && is_main_site()) {
+			/*
+			 * Do not cache this!
+			 */
+			!defined('DONOTCACHEPAGE') && define('DONOTCACHEPAGE', true); // phpcs:ignore
 
-			do_action("wu_{$gateway}_process_webhooks");
+			try {
+				/*
+				 * Passes it down to Gateways.
+				 *
+				 * Gateways will hook into here
+				 * to handle their respective webhook
+				 * calls.
+				 *
+				 * We also wrap it inside a try/catch
+				 * to make sure we log errors,
+				 * tell network admins, and make sure
+				 * the gateway tries again by sending back
+				 * a non-200 HTTP code.
+				 */
+				do_action("wu_{$gateway}_process_webhooks");
+
+				http_response_code(200);
+
+				die('Thanks!');
+
+			} catch (Ignorable_Exception $e) {
+
+				$message = sprintf('We failed to handle a webhook call, but in this case, no further action is necessary. Message: %s', $e->getMessage());
+
+				wu_log_add("wu-{$gateway}-webhook-errors", $message);
+
+				/*
+				 * Send the error back, but with a 200.
+				 */
+				wp_send_json_error(new \WP_Error('webhook-error', $message), 200);
+
+			} catch (\Throwable $e) {
+
+				$message = sprintf('We failed to handle a webhook call. Error: %s', $e->getMessage());
+
+				wu_log_add("wu-{$gateway}-webhook-errors", $message);
+
+				/*
+				 * Force a 500.
+				 *
+				 * Most gateways will try again later when
+				 * a non-200 code is returned.
+				 */
+				wp_send_json_error(new \WP_Error('webhook-error', $message), 500);
+
+			} // end try;
 
 		} // end if;
 
 	} // end maybe_process_webhooks;
+
+	/**
+	 * Checks if we need to process webhooks received by legacy gateways.
+	 *
+	 * @since 2.0.4
+	 * @return void
+	 */
+	public function maybe_process_v1_webhooks() {
+
+		$action = wu_request('action', '');
+
+		if ($action && strpos($action, 'notify_gateway_') !== false) {
+			/*
+			 * Get the gateway id from the action.
+			 */
+			$gateway_id = str_replace(array('nopriv_', 'notify_gateway_'), '', $action);
+
+			$gateway = wu_get_gateway($gateway_id);
+
+			if ($gateway) {
+
+				$gateway->before_backwards_compatible_webhook();
+
+				/*
+				 * Do not cache this!
+				 */
+				!defined('DONOTCACHEPAGE') && define('DONOTCACHEPAGE', true); // phpcs:ignore
+
+				try {
+					/*
+					 * Passes it down to Gateways.
+					 *
+					 * Gateways will hook into here
+					 * to handle their respective webhook
+					 * calls.
+					 *
+					 * We also wrap it inside a try/catch
+					 * to make sure we log errors,
+					 * tell network admins, and make sure
+					 * the gateway tries again by sending back
+					 * a non-200 HTTP code.
+					 */
+					do_action("wu_{$gateway_id}_process_webhooks");
+
+					http_response_code(200);
+
+					die('Thanks!');
+
+				} catch (Ignorable_Exception $e) {
+
+					$message = sprintf('We failed to handle a webhook call, but in this case, no further action is necessary. Message: %s', $e->getMessage());
+
+					wu_log_add("wu-{$gateway_id}-webhook-errors", $message);
+
+					/*
+					* Send the error back, but with a 200.
+					*/
+					wp_send_json_error(new \WP_Error('webhook-error', $message), 200);
+
+				} catch (\Throwable $e) {
+
+					$message = sprintf('We failed to handle a webhook call. Error: %s', $e->getMessage());
+
+					wu_log_add("wu-{$gateway_id}-webhook-errors", $message);
+
+					/*
+					 * Force a 500.
+					 *
+					 * Most gateways will try again later when
+					 * a non-200 code is returned.
+					 */
+					http_response_code(500);
+
+					wp_send_json_error(new \WP_Error('webhook-error', $message));
+
+				} // end try;
+
+			} // end if;
+
+		} // end if;
+
+	} // end maybe_process_v1_webhooks;
 
 	/**
 	 * Let gateways deal with their confirmation steps.
@@ -115,14 +261,19 @@ class Gateway_Manager extends Base_Manager {
 	 * @return void
 	 */
 	public function process_gateway_confirmations() {
-
-		if (!wu_request('wu-confirm')) {
+		/*
+		 * First we check for the confirmation parameter.
+		 */
+		if (!wu_request('wu-confirm') || (wu_request('status') && wu_request('status') === 'done')) {
 
 			return;
 
 		} // end if;
 
-		if (!wu_is_registration_page()) {
+		/*
+		 * Next, we check for the registration page.
+		 */
+		if (!wu_is_registration_page() && !is_admin()) {
 
 			return;
 
@@ -134,11 +285,46 @@ class Gateway_Manager extends Base_Manager {
 
 		if (!$gateway) {
 
-			return;
+			$error = new \WP_Error('missing_gateway', __('Missing gateway parameter.', 'wp-ultimo'));
+
+			wp_die($error, __('Error', 'wp-ultimo'), array('back_link' => true, 'response' => '200'));
 
 		} // end if;
 
-		$gateway->process_confirmation();
+		try {
+
+			$payment_hash = wu_request('payment');
+
+			$payment = wu_get_payment_by_hash($payment_hash);
+
+			if ($payment) {
+
+				$gateway->set_payment($payment);
+
+			} // end if;
+
+			/*
+			 * Pass it down to the gateway.
+			 *
+			 * Here you can throw exceptions, that
+			 * we will catch it and throw it as a wp_die
+			 * message.
+			 */
+			$results = $gateway->process_confirmation();
+
+			if (is_wp_error($results)) {
+
+				wp_die($results, __('Error', 'wp-ultimo'), array('back_link' => true, 'response' => '200'));
+
+			} // end if;
+
+		} catch (\Throwable $e) {
+
+			$error = new \WP_Error('confirm-error-' . $e->getCode(), $e->getMessage());
+
+			wp_die($error, __('Error', 'wp-ultimo'), array('back_link' => true, 'response' => '200'));
+
+		} // end try;
 
 	} // end process_gateway_confirmations;
 
@@ -201,6 +387,11 @@ class Gateway_Manager extends Base_Manager {
 		 * Stripe Payments
 		 */
 		wu_register_gateway('stripe', __('Stripe', 'wp-ultimo'), __('Stripe is a suite of payment APIs that powers commerce for businesses of all sizes, including subscription management.', 'wp-ultimo'), '\\WP_Ultimo\\Gateways\\Stripe_Gateway');
+
+		/*
+		 * Stripe Checkout Payments
+		 */
+		wu_register_gateway('stripe-checkout', __('Stripe Checkout', 'wp-ultimo'), __('Stripe Checkout is the hosted solution for checkouts using Stripe.', 'wp-ultimo'), '\\WP_Ultimo\\Gateways\\Stripe_Checkout_Gateway');
 
 		/*
 		 * PayPal Payments
@@ -308,6 +499,16 @@ class Gateway_Manager extends Base_Manager {
 
 		$gateway_id = $gateway->get_id();
 
+		/*
+		 * If the gateway supports recurring
+		 * payments, add it to the list.
+		 */
+		if ($gateway->supports_recurring()) {
+
+			$this->auto_renewable_gateways[] = $gateway_id;
+
+		} // end if;
+
 		add_action('wu_checkout_scripts', array($gateway, 'register_scripts'));
 
 		add_action('init', array($gateway, 'hooks'));
@@ -320,18 +521,11 @@ class Gateway_Manager extends Base_Manager {
 
 		add_action("wu_{$gateway_id}_remote_subscription_url", array($gateway, 'get_subscription_url_on_gateway'));
 
-		add_action('wu_after_save_settings', array($gateway, 'install_webhook'), 10, 3);
+		add_action("wu_{$gateway_id}_remote_customer_url", array($gateway, 'get_customer_url_on_gateway'));
 
-		add_filter('wu_customer_payment_methods', function($fields, $customer) use ($gateway) {
-
-			$gateway->customer = $customer;
-
-			$extra_fields = (array) $gateway->payment_methods();
-
-			return array_merge($fields, $extra_fields);
-
-		}, 10, 2);
-
+		/*
+		 * Renders the gateway fields.
+		 */
 		add_action('wu_checkout_gateway_fields', function($checkout) use ($gateway) {
 
 			$field_content = call_user_func(array($gateway, 'fields'));
@@ -340,7 +534,7 @@ class Gateway_Manager extends Base_Manager {
 
 			?>
 
-			<div v-cloak v-show="gateway == '<?php echo esc_attr($gateway->get_id()); ?>' && !(order && order.is_free)" class="wu-overflow">
+			<div v-cloak v-show="gateway == '<?php echo esc_attr($gateway->get_id()); ?>' && order && order.should_collect_payment" class="wu-overflow">
 
 				<?php echo $field_content; ?>
 
@@ -353,5 +547,17 @@ class Gateway_Manager extends Base_Manager {
 		});
 
 	} // end install_hooks;
+
+	/**
+	 * Returns an array with the list of gateways that support auto-renew.
+	 *
+	 * @since 2.0.0
+	 * @return mixed
+	 */
+	public function get_auto_renewable_gateways() {
+
+		return (array) $this->auto_renewable_gateways;
+
+	} // end get_auto_renewable_gateways;
 
 } // end class Gateway_Manager;

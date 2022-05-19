@@ -7,6 +7,7 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\PdfReader\DataStructure;
 
 use setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException;
@@ -16,6 +17,7 @@ use setasign\Fpdi\PdfParser\Type\PdfArray;
 use setasign\Fpdi\PdfParser\Type\PdfNumeric;
 use setasign\Fpdi\PdfParser\Type\PdfType;
 use setasign\Fpdi\PdfParser\Type\PdfTypeException;
+
 /**
  * Class representing a rectangle
  */
@@ -25,18 +27,22 @@ class Rectangle
      * @var int|float
      */
     protected $llx;
+
     /**
      * @var int|float
      */
     protected $lly;
+
     /**
      * @var int|float
      */
     protected $urx;
+
     /**
      * @var int|float
      */
     protected $ury;
+
     /**
      * Create a rectangle instance by a PdfArray.
      *
@@ -47,15 +53,17 @@ class Rectangle
      * @throws CrossReferenceException
      * @throws PdfParserException
      */
-    public static function byPdfArray($array, \setasign\Fpdi\PdfParser\PdfParser $parser)
+    public static function byPdfArray($array, PdfParser $parser)
     {
-        $array = \setasign\Fpdi\PdfParser\Type\PdfArray::ensure(\setasign\Fpdi\PdfParser\Type\PdfType::resolve($array, $parser), 4)->value;
-        $ax = \setasign\Fpdi\PdfParser\Type\PdfNumeric::ensure(\setasign\Fpdi\PdfParser\Type\PdfType::resolve($array[0], $parser))->value;
-        $ay = \setasign\Fpdi\PdfParser\Type\PdfNumeric::ensure(\setasign\Fpdi\PdfParser\Type\PdfType::resolve($array[1], $parser))->value;
-        $bx = \setasign\Fpdi\PdfParser\Type\PdfNumeric::ensure(\setasign\Fpdi\PdfParser\Type\PdfType::resolve($array[2], $parser))->value;
-        $by = \setasign\Fpdi\PdfParser\Type\PdfNumeric::ensure(\setasign\Fpdi\PdfParser\Type\PdfType::resolve($array[3], $parser))->value;
+        $array = PdfArray::ensure(PdfType::resolve($array, $parser), 4)->value;
+        $ax = PdfNumeric::ensure(PdfType::resolve($array[0], $parser))->value;
+        $ay = PdfNumeric::ensure(PdfType::resolve($array[1], $parser))->value;
+        $bx = PdfNumeric::ensure(PdfType::resolve($array[2], $parser))->value;
+        $by = PdfNumeric::ensure(PdfType::resolve($array[3], $parser))->value;
+
         return new self($ax, $ay, $bx, $by);
     }
+
     /**
      * Rectangle constructor.
      *
@@ -71,6 +79,7 @@ class Rectangle
         $this->urx = \max($ax, $bx);
         $this->ury = \max($ay, $by);
     }
+
     /**
      * Get the width of the rectangle.
      *
@@ -80,6 +89,7 @@ class Rectangle
     {
         return $this->urx - $this->llx;
     }
+
     /**
      * Get the height of the rectangle.
      *
@@ -89,6 +99,7 @@ class Rectangle
     {
         return $this->ury - $this->lly;
     }
+
     /**
      * Get the lower left abscissa.
      *
@@ -98,6 +109,7 @@ class Rectangle
     {
         return $this->llx;
     }
+
     /**
      * Get the lower left ordinate.
      *
@@ -107,6 +119,7 @@ class Rectangle
     {
         return $this->lly;
     }
+
     /**
      * Get the upper right abscissa.
      *
@@ -116,6 +129,7 @@ class Rectangle
     {
         return $this->urx;
     }
+
     /**
      * Get the upper right ordinate.
      *
@@ -125,6 +139,7 @@ class Rectangle
     {
         return $this->ury;
     }
+
     /**
      * Get the rectangle as an array.
      *
@@ -132,8 +147,14 @@ class Rectangle
      */
     public function toArray()
     {
-        return [$this->llx, $this->lly, $this->urx, $this->ury];
+        return [
+            $this->llx,
+            $this->lly,
+            $this->urx,
+            $this->ury
+        ];
     }
+
     /**
      * Get the rectangle as a PdfArray.
      *
@@ -141,11 +162,12 @@ class Rectangle
      */
     public function toPdfArray()
     {
-        $array = new \setasign\Fpdi\PdfParser\Type\PdfArray();
-        $array->value[] = \setasign\Fpdi\PdfParser\Type\PdfNumeric::create($this->llx);
-        $array->value[] = \setasign\Fpdi\PdfParser\Type\PdfNumeric::create($this->lly);
-        $array->value[] = \setasign\Fpdi\PdfParser\Type\PdfNumeric::create($this->urx);
-        $array->value[] = \setasign\Fpdi\PdfParser\Type\PdfNumeric::create($this->ury);
+        $array = new PdfArray();
+        $array->value[] = PdfNumeric::create($this->llx);
+        $array->value[] = PdfNumeric::create($this->lly);
+        $array->value[] = PdfNumeric::create($this->urx);
+        $array->value[] = PdfNumeric::create($this->ury);
+
         return $array;
     }
 }

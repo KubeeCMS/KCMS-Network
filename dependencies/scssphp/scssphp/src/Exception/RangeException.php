@@ -15,7 +15,9 @@ namespace WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception;
  * Range exception
  *
  * @author Anthon Pang <anthon.pang@gmail.com>
+ *
+ * @internal
  */
-class RangeException extends \Exception implements \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\SassException
+final class RangeException extends \Exception implements SassException
 {
 }

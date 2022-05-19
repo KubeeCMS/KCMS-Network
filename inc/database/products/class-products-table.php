@@ -43,7 +43,17 @@ final class Products_Table extends Table {
 	 * @since 2.0.0
 	 * @var string
 	 */
-	protected $version = '2.0.0';
+	protected $version = '2.0.1-revision.20210607';
+
+	/**
+	 * List of table upgrades.
+	 *
+	 * @var array
+	 */
+	protected $upgrades = array(
+		'2.0.1-revision.20210419' => 20210419,
+		'2.0.1-revision.20210607' => 20210607,
+	);
 
 	/**
 	 * Products constructor.
@@ -73,6 +83,7 @@ final class Products_Table extends Table {
 			parent_id bigint(20),
 			migrated_from_id bigint(20) DEFAULT NULL,
 			description longtext NOT NULL default '',
+			product_group varchar(20) DEFAULT '',
 			currency varchar(10) NOT NULL DEFAULT 'USD',
 			pricing_type varchar(10) NOT NULL DEFAULT 'paid',
 			amount decimal(13,4) default 0,
@@ -86,10 +97,71 @@ final class Products_Table extends Table {
 			list_order tinyint default 10,
 			active tinyint(4) default 1,
 			type tinytext NOT NULL DEFAULT '',
-			date_created datetime NOT NULL default '0000-00-00 00:00:00',
-			date_modified datetime NOT NULL default '0000-00-00 00:00:00',
+			date_created datetime NULL,
+			date_modified datetime NULL,
 			PRIMARY KEY (id)";
 
 	} // end set_schema;
+
+	/**
+	 * Adds the product_group column.
+	 *
+	 * This does not work on older versions of MySQL, so we needed
+	 * the other migration below.
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	protected function __20210419() { // phpcs:ignore
+
+		$result = $this->column_exists('product_group');
+
+		// Maybe add column
+		if (empty($result)) {
+
+			$query = "ALTER TABLE {$this->table_name} ADD COLUMN `product_group` varchar(20) default '' AFTER `description`;";
+
+			$result = $this->get_db()->query($query);
+
+		} // end if;
+
+		// Return success/fail
+		return $this->is_success($result);
+
+	} // end __20210419;
+
+	/**
+	 * Adds the product_group column.
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	protected function __20210607() { // phpcs:ignore
+
+		$result = $this->column_exists('product_group');
+
+		// Maybe add column
+		if (empty($result)) {
+
+			$query_set = "SET sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';";
+
+			$result_set = $this->get_db()->query($query_set);
+
+			if ($this->is_success($result_set) === false) {
+
+				return false;
+
+			} // end if;
+
+			$query = "ALTER TABLE {$this->table_name} ADD COLUMN `product_group` varchar(20) default '' AFTER `description`;";
+
+			$result = $this->get_db()->query($query);
+
+		} // end if;
+
+		// Return success/fail
+		return $this->is_success($result);
+
+	} // end __20210607;
 
 } // end class Products_Table;

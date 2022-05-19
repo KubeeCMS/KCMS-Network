@@ -51,7 +51,7 @@ class ErrorBag
         list($key, $ruleName) = $this->parsekey($key);
         if ($this->isWildcardKey($key)) {
             $messages = $this->filterMessagesForWildcardKey($key, $ruleName);
-            return \count(\WP_Ultimo\Dependencies\Rakit\Validation\Helper::arrayDot($messages)) > 0;
+            return \count(Helper::arrayDot($messages)) > 0;
         } else {
             $messages = isset($this->messages[$key]) ? $this->messages[$key] : null;
             if (!$ruleName) {
@@ -72,7 +72,7 @@ class ErrorBag
         list($key, $ruleName) = $this->parsekey($key);
         if ($this->isWildcardKey($key)) {
             $messages = $this->filterMessagesForWildcardKey($key, $ruleName);
-            $flattenMessages = \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arrayDot($messages);
+            $flattenMessages = Helper::arrayDot($messages);
             return \array_shift($flattenMessages);
         } else {
             $keyMessages = isset($this->messages[$key]) ? $this->messages[$key] : [];
@@ -147,7 +147,7 @@ class ErrorBag
             if ($dotNotation) {
                 $results[$key] = $this->formatMessage(\array_shift($messages[$key]), $format);
             } else {
-                \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arraySet($results, $key, $this->formatMessage(\array_shift($messages[$key]), $format));
+                Helper::arraySet($results, $key, $this->formatMessage(\array_shift($messages[$key]), $format));
             }
         }
         return $results;

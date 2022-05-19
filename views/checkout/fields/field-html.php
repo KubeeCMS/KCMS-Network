@@ -5,27 +5,30 @@
  * @since 2.0.0
  */
 ?>
-<div class="<?php echo esc_attr($field->wrapper_classes); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
+
+<div class="<?php echo esc_attr(trim($field->wrapper_classes)); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
   <div class="wu-block wu-w-full">
 
-    <span class="">
+    <?php
 
-      <?php echo $field->title; ?>
+    /**
+     * Adds the partial title template.
+     * @since 2.0.0
+     */
+    wu_get_template('checkout/fields/partials/field-title', array(
+      'field' => $field,
+    ));
 
-      <?php if ($field->tooltip) : ?>
+    /**
+     * Adds the partial description template.
+     * @since 2.0.0
+     */
+    wu_get_template('checkout/fields/partials/field-description', array(
+      'field' => $field,
+    ));
 
-        <?php echo wu_tooltip($field->tooltip); ?>
-
-      <?php endif; ?>
-
-    </span>
-
-    <?php if ($field->desc) : ?>
-
-      <?php echo $field->desc; ?>
-
-    <?php endif; ?>
+    ?>
 
     <div class="wu-block wu-w-full wu-mt-4">
 
@@ -33,7 +36,18 @@
 
     </div>
 
-  </div>
+    <?php
 
+    /**
+     * Adds the partial title template.
+     * @since 2.0.0
+     */
+    wu_get_template('checkout/fields/partials/field-errors', array(
+      'field' => $field,
+    ));
+
+    ?>
+
+  </div>
 
 </div>

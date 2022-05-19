@@ -1,12 +1,13 @@
 <?php
 /**
- * Form functions for WP Ultimo.
+ * Form Functions
  *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Form
- * @version     2.0.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
+
+// Exit if accessed directly
+defined('ABSPATH') || exit;
 
 use \WP_Ultimo\Managers\Form_Manager;
 

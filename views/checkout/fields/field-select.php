@@ -5,24 +5,22 @@
  * @since 2.0.0
  */
 ?>
-<p class="<?php echo esc_attr($field->wrapper_classes); ?>">
+<div class="<?php echo esc_attr(trim($field->wrapper_classes)); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
-  <label class="wu-block" for="field-<?php echo esc_attr($field->id); ?>">
+  <?php
 
-    <?php echo $field->title; ?>
+  /**
+   * Adds the partial title template.
+   * @since 2.0.0
+   */
+  wu_get_template('checkout/fields/partials/field-title', array(
+    'field' => $field,
+  ));
 
-    <?php if ($field->required): ?>
-
-      <span class="wu-text-red-500">*</span>
-
-    <?php endif; ?>
-
-    <?php echo wu_tooltip($field->tooltip); ?>
-
-  </label>
+  ?>
 
   <select
-    class="form-control wu-w-full wu-my-1 <?php echo esc_attr($field->classes); ?>"
+    class="form-control wu-w-full wu-my-1 <?php echo esc_attr(trim($field->classes)); ?>"
     id="field-<?php echo esc_attr($field->id); ?>"
     name="<?php echo esc_attr($field->id); ?>"
     value="<?php echo esc_attr($field->value); ?>"
@@ -30,25 +28,40 @@
   >
 
   <?php if ($field->placeholder) : ?>
-
+    
     <option <?php checked(!$field->value); ?> class="wu-opacity-75"><?php echo $field->placeholder; ?></option>
-
-  <?php endif; ?>
-
-  <?php foreach ($field->options as $key => $label) : ?>
-
-    <option
+    
+    <?php endif; ?>
+    
+    <?php foreach ($field->options as $key => $label) : ?>
+      
+      <option
       value="<?php echo esc_attr($key); ?>"
       <?php checked($key, $field->value); ?>
-    >
+      >
       <?php echo $label; ?>
     </option>
+    
+    <?php endforeach; ?>
+    
+    <?php if ($field->options_template) : ?>
 
-  <?php endforeach; ?>
+      <?php echo $field->options_template; ?>
+
+    <?php endif; ?>
 
   </select>
 
-  <span v-cloak class="wu-block wu-bg-red-100 wu-p-2" v-if="get_error('<?php echo esc_attr($field->id); ?>')" v-html="get_error('<?php echo esc_attr($field->id); ?>').message">
-  </span>
+  <?php
 
-</p>
+  /**
+   * Adds the partial title template.
+   * @since 2.0.0
+   */
+  wu_get_template('checkout/fields/partials/field-errors', array(
+    'field' => $field,
+  ));
+
+  ?>
+
+</div>

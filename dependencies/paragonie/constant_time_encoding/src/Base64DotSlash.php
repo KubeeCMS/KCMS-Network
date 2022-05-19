@@ -31,7 +31,7 @@ namespace WP_Ultimo\Dependencies\ParagonIE\ConstantTime;
  *
  * @package ParagonIE\ConstantTime
  */
-abstract class Base64DotSlash extends \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Base64
+abstract class Base64DotSlash extends Base64
 {
     /**
      * Uses bitwise operators instead of table-lookups to turn 6-bit integers

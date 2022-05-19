@@ -106,7 +106,7 @@ class Color
     {
         // Make sure it's HSL
         if (empty($hsl) || !isset($hsl["H"], $hsl["S"], $hsl["L"])) {
-            throw new \Exception("Param was not an HSL array");
+            throw new Exception("Param was not an HSL array");
         }
         list($H, $S, $L) = array($hsl['H'] / 360, $hsl['S'], $hsl['L']);
         if ($S == 0) {
@@ -120,14 +120,14 @@ class Color
                 $var_2 = $L + $S - $S * $L;
             }
             $var_1 = 2 * $L - $var_2;
-            $r = \round(255 * self::hueToRgb($var_1, $var_2, $H + 1 / 3));
-            $g = \round(255 * self::hueToRgb($var_1, $var_2, $H));
-            $b = \round(255 * self::hueToRgb($var_1, $var_2, $H - 1 / 3));
+            $r = 255 * self::hueToRgb($var_1, $var_2, $H + 1 / 3);
+            $g = 255 * self::hueToRgb($var_1, $var_2, $H);
+            $b = 255 * self::hueToRgb($var_1, $var_2, $H - 1 / 3);
         }
         // Convert to hex
-        $r = \dechex($r);
-        $g = \dechex($g);
-        $b = \dechex($b);
+        $r = \dechex(\round($r));
+        $g = \dechex(\round($g));
+        $b = \dechex(\round($b));
         // Make sure we get 2 digits for decimals
         $r = \strlen("" . $r) === 1 ? "0" . $r : $r;
         $g = \strlen("" . $g) === 1 ? "0" . $g : $g;
@@ -163,13 +163,13 @@ class Color
     {
         // Make sure it's RGB
         if (empty($rgb) || !isset($rgb["R"], $rgb["G"], $rgb["B"])) {
-            throw new \Exception("Param was not an RGB array");
+            throw new Exception("Param was not an RGB array");
         }
         // https://github.com/mexitek/phpColors/issues/25#issuecomment-88354815
         // Convert RGB to HEX
-        $hex[0] = \str_pad(\dechex($rgb['R']), 2, '0', \STR_PAD_LEFT);
-        $hex[1] = \str_pad(\dechex($rgb['G']), 2, '0', \STR_PAD_LEFT);
-        $hex[2] = \str_pad(\dechex($rgb['B']), 2, '0', \STR_PAD_LEFT);
+        $hex[0] = \str_pad(\dechex((int) $rgb['R']), 2, '0', \STR_PAD_LEFT);
+        $hex[1] = \str_pad(\dechex((int) $rgb['G']), 2, '0', \STR_PAD_LEFT);
+        $hex[2] = \str_pad(\dechex((int) $rgb['B']), 2, '0', \STR_PAD_LEFT);
         // Make sure that 2 digits are allocated to each color.
         $hex[0] = \strlen($hex[0]) === 1 ? '0' . $hex[0] : $hex[0];
         $hex[1] = \strlen($hex[1]) === 1 ? '0' . $hex[1] : $hex[1];
@@ -186,7 +186,7 @@ class Color
     {
         // Make sure it's RGB
         if (empty($rgb) || !isset($rgb["R"], $rgb["G"], $rgb["B"])) {
-            throw new \Exception("Param was not an RGB array");
+            throw new Exception("Param was not an RGB array");
         }
         return 'rgb(' . $rgb['R'] . ', ' . $rgb['G'] . ', ' . $rgb['B'] . ')';
     }
@@ -460,13 +460,13 @@ class Color
         $color = \str_replace("#", "", $hex);
         // Validate hex string
         if (!\preg_match('/^[a-fA-F0-9]+$/', $color)) {
-            throw new \Exception("HEX color does not match format");
+            throw new Exception("HEX color does not match format");
         }
         // Make sure it's 6 digits
         if (\strlen($color) === 3) {
             $color = $color[0] . $color[0] . $color[1] . $color[1] . $color[2] . $color[2];
         } elseif (\strlen($color) !== 6) {
-            throw new \Exception("HEX color needs to be 6 or 3 digits long");
+            throw new Exception("HEX color needs to be 6 or 3 digits long");
         }
         return $color;
     }

@@ -2,7 +2,7 @@
 
 namespace WP_Ultimo\Dependencies\DeepCopy\Filter;
 
-class KeepFilter implements \WP_Ultimo\Dependencies\DeepCopy\Filter\Filter
+class KeepFilter implements Filter
 {
     /**
      * Keeps the value of the object property.

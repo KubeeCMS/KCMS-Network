@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class Nullable extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class Nullable extends Rule
 {
     /**
      * Check the $value is valid

@@ -13,7 +13,7 @@ class WebhookEndpointService extends \WP_Ultimo\Dependencies\Stripe\Service\Abst
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\WebhookEndpoint>
      */
     public function all($params = null, $opts = null)
     {

@@ -146,21 +146,21 @@ class Whitelabel {
 
 			$search_and_replace = array();
 
+			$site_plural = wu_get_setting('rename_site_plural');
+
+			if ($site_plural) {
+
+				$search_and_replace['sites'] = strtolower($site_plural);
+				$search_and_replace['Sites'] = ucfirst($site_plural);
+
+			} // end if;
+
 			$site_singular = wu_get_setting('rename_site_singular');
 
 			if ($site_singular) {
 
 				$search_and_replace['site'] = strtolower($site_singular);
 				$search_and_replace['Site'] = ucfirst($site_singular);
-
-			} // end if;
-
-			$site_plural = wu_get_setting('rename_site_singular');
-
-			if ($site_plural) {
-
-				$search_and_replace['sites'] = strtolower($site_plural);
-				$search_and_replace['Sites'] = ucfirst($site_plural);
 
 			} // end if;
 
@@ -217,7 +217,7 @@ class Whitelabel {
 			'type'  => 'header',
 		));
 
-		$preview_image = sprintf(' <span class="wu-image-preview wu-text-gray-600 wu-bg-gray-200 wu-p-1 wu-px-2 wu-ml-1 wu-inline-block wu-text-2xs wu-uppercase wu-font-bold wu-rounded wu-cursor-pointer wu-border-gray-300 wu-border wu-border-solid" data-image="%s">%s %s</span>', wu_get_asset('settings/settings-hide-wp-logo-preview.png'), "<span class='dashicons-wu-image wu-align-middle wu-mr-1'></span>", __('Preview', 'wp-ultimo'));
+		$preview_image = wu_preview_image(wu_get_asset('settings/settings-hide-wp-logo-preview.png'));
 
 		wu_register_settings_field('whitelabel', 'hide_wordpress_logo', array(
 			'title'   => __('Hide WordPress Logo', 'wp-ultimo') . $preview_image,
@@ -236,7 +236,7 @@ class Whitelabel {
 		wu_register_settings_field('whitelabel', 'rename_wordpress', array(
 			'title'       => __('Replace the word "WordPress"', 'wp-ultimo'),
 			'placeholder' => __('e.g. My App', 'wp-ultimo'),
-			'tooltip'     => __('Replace all occurrences of the word "WordPress" with a different word.', 'wp-ultimo'),
+			'desc'        => __('Replace all occurrences of the word "WordPress" with a different word.', 'wp-ultimo'),
 			'type'        => 'text',
 			'default'     => '',
 		));
@@ -244,7 +244,7 @@ class Whitelabel {
 		wu_register_settings_field('whitelabel', 'rename_site_singular', array(
 			'title'           => __('Replace the word "Site" (singular)', 'wp-ultimo'),
 			'placeholder'     => __('e.g. App', 'wp-ultimo'),
-			'tooltip'         => __('Replace all occurrences of the word "Site" with a different word.', 'wp-ultimo'),
+			'desc'            => __('Replace all occurrences of the word "Site" with a different word.', 'wp-ultimo'),
 			'type'            => 'text',
 			'default'         => '',
 			'wrapper_classes' => 'wu-w-1/2',
@@ -253,7 +253,7 @@ class Whitelabel {
 		wu_register_settings_field('whitelabel', 'rename_site_plural', array(
 			'title'           => __('Replace the word "Sites" (plural)', 'wp-ultimo'),
 			'placeholder'     => __('e.g. Apps', 'wp-ultimo'),
-			'tooltip'         => __('Replace all occurrences of the word "Sites" with a different word.', 'wp-ultimo'),
+			'desc'            => __('Replace all occurrences of the word "Sites" with a different word.', 'wp-ultimo'),
 			'type'            => 'text',
 			'default'         => '',
 			'wrapper_classes' => 'wu-w-1/2',

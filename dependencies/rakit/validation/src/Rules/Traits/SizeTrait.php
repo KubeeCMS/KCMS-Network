@@ -41,10 +41,10 @@ trait SizeTrait
             return (float) $size;
         }
         if (!\is_string($size)) {
-            throw new \InvalidArgumentException("Size must be string or numeric Bytes", 1);
+            throw new InvalidArgumentException("Size must be string or numeric Bytes", 1);
         }
         if (!\preg_match("/^(?<number>((\\d+)?\\.)?\\d+)(?<format>(B|K|M|G|T|P)B?)?\$/i", $size, $match)) {
-            throw new \InvalidArgumentException("Size is not valid format", 1);
+            throw new InvalidArgumentException("Size is not valid format", 1);
         }
         $number = (float) $match['number'];
         $format = isset($match['format']) ? $match['format'] : '';

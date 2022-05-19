@@ -1,14 +1,13 @@
 <?php
 /**
- * Events Functions
+ * Event Functions
  *
- * Public APIs to load and deal with WP Ultimo events.
- *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Event_Manager
- * @version     2.0.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
+
+// Exit if accessed directly
+defined('ABSPATH') || exit;
 
 use \WP_Ultimo\Managers\Event_Manager;
 use \WP_Ultimo\Models\Event;
@@ -111,7 +110,7 @@ function wu_get_events($query = array()) {
  * @since 2.0.0
  *
  * @param integer $event_id ID of the event to retrieve.
- * @return @return \WP_Ultimo\Models\Event|false
+ * @return \WP_Ultimo\Models\Event|false
  */
 function wu_get_event($event_id) {
 
@@ -153,7 +152,7 @@ function wu_create_event($event_data) {
 		'author_id'    => $author_id,
 		'object_type'  => 'network',
 		'object_id'    => 0,
-		'date_created' => current_time('mysql'),
+		'date_created' => wu_get_current_time('mysql', true),
 		'payload'      => array(
 			'key'       => 'None',
 			'old_value' => 'None',
@@ -337,3 +336,28 @@ function wu_generate_event_payload($model_name, $model = false) {
 	return $payload;
 
 } // end wu_generate_event_payload;
+
+/**
+ * Checks if the payload is a callable or if it's ready to use.
+ *
+ * @since 2.0.8
+ *
+ * @param mixed $payload The payload.
+ * @return array
+ */
+function wu_maybe_lazy_load_payload($payload) {
+
+	if (is_callable($payload)) {
+
+		$payload = (array) call_user_func($payload);
+
+	} // end if;
+
+	/*
+	 * Adds the version number for control purposes.
+	 */
+	$payload['wu_version'] = wu_get_version();
+
+	return $payload;
+
+} // end wu_maybe_lazy_load_payload;

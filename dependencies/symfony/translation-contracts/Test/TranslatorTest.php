@@ -26,11 +26,24 @@ use WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorTrait;
  *
  * @author Clemens Tolboom clemens@build2be.nl
  */
-class TranslatorTest extends \PHPUnit\Framework\TestCase
+class TranslatorTest extends TestCase
 {
+    private $defaultLocale;
+    protected function setUp() : void
+    {
+        $this->defaultLocale = \Locale::getDefault();
+        \Locale::setDefault('en');
+    }
+    protected function tearDown() : void
+    {
+        \Locale::setDefault($this->defaultLocale);
+    }
+    /**
+     * @return TranslatorInterface
+     */
     public function getTranslator()
     {
-        return new class implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface
+        return new class implements TranslatorInterface
         {
             use TranslatorTrait;
         };
@@ -49,7 +62,6 @@ class TranslatorTest extends \PHPUnit\Framework\TestCase
     public function testTransChoiceWithExplicitLocale($expected, $id, $number)
     {
         $translator = $this->getTranslator();
-        $translator->setLocale('en');
         $this->assertEquals($expected, $translator->trans($id, ['%count%' => $number]));
     }
     /**
@@ -59,14 +71,21 @@ class TranslatorTest extends \PHPUnit\Framework\TestCase
      */
     public function testTransChoiceWithDefaultLocale($expected, $id, $number)
     {
-        \Locale::setDefault('en');
         $translator = $this->getTranslator();
+        $this->assertEquals($expected, $translator->trans($id, ['%count%' => $number]));
+    }
+    /**
+     * @dataProvider getTransChoiceTests
+     */
+    public function testTransChoiceWithEnUsPosix($expected, $id, $number)
+    {
+        $translator = $this->getTranslator();
+        $translator->setLocale('en_US_POSIX');
         $this->assertEquals($expected, $translator->trans($id, ['%count%' => $number]));
     }
     public function testGetSetLocale()
     {
         $translator = $this->getTranslator();
-        $translator->setLocale('en');
         $this->assertEquals('en', $translator->getLocale());
     }
     /**
@@ -112,10 +131,10 @@ class TranslatorTest extends \PHPUnit\Framework\TestCase
     /**
      * @dataProvider getChooseTests
      */
-    public function testChoose($expected, $id, $number)
+    public function testChoose($expected, $id, $number, $locale = null)
     {
         $translator = $this->getTranslator();
-        $this->assertEquals($expected, $translator->trans($id, ['%count%' => $number]));
+        $this->assertEquals($expected, $translator->trans($id, ['%count%' => $number], null, $locale));
     }
     public function testReturnMessageIfExactlyOneStandardRuleIsGiven()
     {
@@ -127,7 +146,7 @@ class TranslatorTest extends \PHPUnit\Framework\TestCase
      */
     public function testThrowExceptionIfMatchingMessageCannotBeFound($id, $number)
     {
-        $this->expectException('InvalidArgumentException');
+        $this->expectException(\InvalidArgumentException::class);
         $translator = $this->getTranslator();
         $translator->trans($id, ['%count%' => $number]);
     }
@@ -204,6 +223,16 @@ class TranslatorTest extends \PHPUnit\Framework\TestCase
             ['', '|', 1],
             // Empty plural set (3 plural forms) from a .PO file
             ['', '||', 1],
+            // Floating values
+            ['1.5 liters', '%count% liter|%count% liters', 1.5],
+            ['1.5 litre', '%count% litre|%count% litres', 1.5, 'fr'],
+            // Negative values
+            ['-1 degree', '%count% degree|%count% degrees', -1],
+            ['-1 degré', '%count% degré|%count% degrés', -1],
+            ['-1.5 degrees', '%count% degree|%count% degrees', -1.5],
+            ['-1.5 degré', '%count% degré|%count% degrés', -1.5, 'fr'],
+            ['-2 degrees', '%count% degree|%count% degrees', -2],
+            ['-2 degrés', '%count% degré|%count% degrés', -2],
         ];
     }
     /**
@@ -231,7 +260,7 @@ class TranslatorTest extends \PHPUnit\Framework\TestCase
      */
     public function successLangcodes()
     {
-        return [['1', ['ay', 'bo', 'cgg', 'dz', 'id', 'ja', 'jbo', 'ka', 'kk', 'km', 'ko', 'ky']], ['2', ['nl', 'fr', 'en', 'de', 'de_GE', 'hy', 'hy_AM']], ['3', ['be', 'bs', 'cs', 'hr']], ['4', ['cy', 'mt', 'sl']], ['6', ['ar']]];
+        return [['1', ['ay', 'bo', 'cgg', 'dz', 'id', 'ja', 'jbo', 'ka', 'kk', 'km', 'ko', 'ky']], ['2', ['nl', 'fr', 'en', 'de', 'de_GE', 'hy', 'hy_AM', 'en_US_POSIX']], ['3', ['be', 'bs', 'cs', 'hr']], ['4', ['cy', 'mt', 'sl']], ['6', ['ar']]];
     }
     /**
      * This array should be at least empty within the near future.

@@ -50,8 +50,7 @@ class Disk_Space_Limits {
 		 * the code will return and none of the hooks below will run.
 		 *
 		 * @since 1.7.0
-		 * @param WU_Plan|false Current plan object
-		 * @param integer User ID
+		 * @return bool
 		 */
 		if (!apply_filters('wu_apply_plan_limits', wu_get_current_site()->has_limitations())) {
 
@@ -81,7 +80,7 @@ class Disk_Space_Limits {
 	 */
 	public function apply_disk_space_limitations($disk_space) {
 
-		$modified_disk_space = wu_get_current_site()->get_quota('disk_space');
+		$modified_disk_space = wu_get_current_site()->get_limitations()->disk_space->get_limit();
 
 		if (is_numeric($modified_disk_space)) {
 

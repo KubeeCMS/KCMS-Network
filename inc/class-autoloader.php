@@ -59,20 +59,14 @@ class Autoloader {
 	} // end init;
 
 	/**
-	 * Checks for unit tests and WP_DEBUG.
+	 * Checks for unit tests and WP_ULTIMO_DEBUG.
 	 *
 	 * @since 2.0.0
 	 * @return boolean
 	 */
 	public static function is_debug() {
 
-		if (defined('WP_TESTS_MULTISITE') && WP_TESTS_MULTISITE) {
-
-			return false;
-
-		} // end if;
-
-		return defined('WP_DEBUG') && WP_DEBUG;
+		return false; // return wu_is_debug();
 
 	} // end is_debug;
 

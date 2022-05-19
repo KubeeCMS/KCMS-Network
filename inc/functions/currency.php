@@ -1,13 +1,9 @@
 <?php
 /**
- * Currency Functions
+ * Country Functions
  *
- * Helper functions to handle currency conversion and similar
- *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Helper/Currency
- * @version     1.4.0
+ * @package WP_Ultimo\Functions
+ * @since   1.4.0
  */
 
 // Exit if accessed directly
@@ -236,7 +232,7 @@ function wu_get_currency_symbol($currency = '') {
  */
 function wu_format_currency($value, $currency = null, $format = null, $thousands_sep = null, $decimal_sep = null, $precision = null) {
 
-	$value = floatval(str_replace(',', '.', $value));
+	$value = wu_to_float($value);
 
 	$args = array(
 		'currency'      => $currency,

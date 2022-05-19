@@ -1,12 +1,19 @@
 /**
-Legacy File, do not lint
-*/
+ * Legacy File, do not lint.
+ */
 /* stylelint-disable */
 /* Body BG */
 body {
   background-image: none;
   background-position: center center;
   background-size: cover;
+}
+
+.wu-setup #wu-thank-you-element {
+  margin: 0 -150px;
+}
+.wu-setup #wu-thank-you-element table {
+  width: 100%;
 }
 
 .wu-setup .button .dashicons,
@@ -34,19 +41,16 @@ body {
   width: 100%;
 }
 
-.wu-setup form#loginform p.submit {
-  margin: 0 0 -46px 0;
+.wu-setup form#loginform p.submit,
+.wu-setup form#loginform .wu_submit_button {
   padding: 24px;
-  background-color: #efefef;
-  position: relative;
-  box-sizing: border-box;
-  float: none;
-  overflow: hidden;
-  width: 100%;
 }
 .wu-setup form#loginform p.submit button,
 .wu-setup form#loginform p.submit a,
-.wu-setup form#loginform p.submit input {
+.wu-setup form#loginform p.submit input,
+.wu-setup form#loginform .wu_submit_button button,
+.wu-setup form#loginform .wu_submit_button a,
+.wu-setup form#loginform .wu_submit_button input {
   text-transform: uppercase;
   font-size: 11px;
 }
@@ -65,7 +69,7 @@ body {
 
 #nav,
 #backtoblog {
-  margin: 0 0 5px 0 !important;
+  margin: 0 0 5px !important;
   padding: 12px 0 !important;
   text-align: center;
   font-size: 11px !important;
@@ -79,7 +83,7 @@ body {
   text-decoration: none;
   font-size: 12px;
   text-align: center;
-  margin: 20px auto -10px auto;
+  margin: 20px auto -10px;
   display: block;
 }
 
@@ -245,7 +249,7 @@ div.wu-setup #login {
 }
 .wu-setup-content .form-table table.tax-rates td {
   border: 1px solid #eeeeee;
-  padding: 6px 6px;
+  padding: 6px;
   text-align: center;
   vertical-align: middle;
 }
@@ -330,7 +334,7 @@ div.wu-setup #login {
 }
 .wu-setup-content .wu-setup-pages .page-options p input {
   vertical-align: middle;
-  margin: 1px 0 0 0;
+  margin: 1px 0 0;
   height: 1.75em;
   width: 1.75em;
   line-height: 1.75em;
@@ -413,7 +417,7 @@ div.wu-setup #login {
 .wu-setup-content .wu-setup-tracker,
 .wu-setup-content .updated {
   padding: 24px 24px 0;
-  margin: 0 0 24px 0;
+  margin: 0 0 24px;
   overflow: hidden;
   background: #f5f5f5;
 }
@@ -424,7 +428,7 @@ div.wu-setup #login {
 }
 .wu-setup-content .wu-setup-tracker p:last-child,
 .wu-setup-content .updated p:last-child {
-  margin: 0 0 24px 0;
+  margin: 0 0 24px;
 }
 
 .wu-links-list {
@@ -463,7 +467,7 @@ div.wu-setup #login {
 }
 
 .wu-setup-steps {
-  padding: 40px 0 24px 0 !important;
+  padding: 40px 0 24px !important;
   margin: 0;
   list-style: none outside;
   color: #cccccc;
@@ -576,7 +580,7 @@ div.wu-setup #login {
   text-transform: uppercase;
   font-size: 13px;
   display: block;
-  margin: 30px 0 10px 0;
+  margin: 30px 0 10px;
 }
 
 .wu-setup-content input.wu-input-half,
@@ -606,13 +610,16 @@ div.wu-setup #login {
 
 .wu-legacy-signup-body .wu_submit_button {
   display: block;
-  margin: 12px -24px -46px -24px !important;
+  margin: 0 -24px -46px !important;
   padding: 24px !important;
   background-color: #efefef;
   position: relative;
   box-sizing: border-box;
   float: none;
   overflow: hidden;
+}
+.wu-legacy-signup-body .wu_submit_button button {
+  float: none !important;
 }
 
 /**

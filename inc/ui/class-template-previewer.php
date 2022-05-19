@@ -9,9 +9,7 @@
 
 namespace WP_Ultimo\UI;
 
-use WP_Ultimo\Logger;
-use WP_Ultimo\UI\Base_Element;
-use WP_Ultimo\License;
+use WP_Ultimo\Database\Sites\Site_Type;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -26,7 +24,15 @@ class Template_Previewer {
 	use \WP_Ultimo\Traits\Singleton;
 
 	/**
-	 * Keeps the settings key fopr the top-bar.
+	 * Keeps a list of the available templates for the products selected.
+	 *
+	 * @since 2.0.11
+	 * @var null|array
+	 */
+	protected $available_templates = null;
+
+	/**
+	 * Keeps the settings key for the top-bar.
 	 */
 	const KEY = 'top_bar_settings';
 
@@ -60,7 +66,9 @@ class Template_Previewer {
 
 			add_filter('wu_is_toolbox_enabled', '__return_false');
 
-			add_filter('home_url', array($this, 'append_preview_parameter'));
+			add_filter('home_url', array($this, 'append_preview_parameter'), 9999, 4);
+
+			add_action('send_headers', array($this, 'send_cross_origin_headers'), 1000);
 
 			return;
 
@@ -72,11 +80,35 @@ class Template_Previewer {
 
 			add_action('wp_enqueue_scripts', array($this, 'register_scripts'));
 
-			add_action('wp_print_styles', array($this, 'remove_unecessary_scripts'), 0);
+			add_action('wp_print_styles', array($this, 'remove_unnecessary_styles'), 0);
+
+			/**
+			 * Runs when inside the template previewer context.
+			 *
+			 * @since 2.0.4
+			 * @param self $template_previewer Instance of the current class.
+			 */
+			do_action('wu_template_previewer', $this);
 
 		} // end if;
 
 	} // end hooks;
+
+	/**
+	 * Send the cross origin headers to allow iframes to be loaded.
+	 *
+	 * @since 2.0.9
+	 * @return void
+	 */
+	public function send_cross_origin_headers() {
+
+		global $current_site;
+
+		$_SERVER['HTTP_ORIGIN'] = set_url_scheme("http://{$current_site->domain}");
+
+		send_origin_headers();
+
+	} // end send_cross_origin_headers;
 
 	/**
 	 * Register the necessary scripts.
@@ -94,10 +126,13 @@ class Template_Previewer {
 		$button_bg_color  = wu_color($settings['button_bg_color']);
 		$button_bg_darker = wu_color($button_bg_color->darken(4));
 
-		wp_register_script('wu-template-previewer', wu_get_asset('template-previewer.js', 'js'), array('jquery'), wu_get_version());
+		wp_register_script('wu-template-previewer', wu_get_asset('template-previewer.js', 'js'), array('jquery', 'wu-cookie-helpers'), wu_get_version());
 
 		wp_localize_script('wu-template-previewer', 'wu_template_previewer', array(
-			'domain' => str_replace('www.', '', $current_site->domain),
+			'domain'           => str_replace('www.', '', $current_site->domain),
+			'current_template' => wu_request($this->get_preview_parameter(), false),
+			'current_url'      => wu_get_current_url(),
+			'query_parameter'  => $this->get_preview_parameter(),
 		));
 
 		wp_enqueue_script('wu-template-previewer');
@@ -114,12 +149,12 @@ class Template_Previewer {
 	} // end register_scripts;
 
 	/**
-	 * Remove the unecessary scripts added by themes and other plugins.
+	 * Remove the unnecessary styles added by themes and other plugins.
 	 *
 	 * @since 2.0.0
 	 * @return void
 	 */
-	public function remove_unecessary_scripts() {
+	public function remove_unnecessary_styles() {
 
 		global $wp_styles;
 
@@ -129,19 +164,41 @@ class Template_Previewer {
 			'dashicons',
 		);
 
-	} // end remove_unecessary_scripts;
+	} // end remove_unnecessary_styles;
 
 	/**
 	 * Append preview parameter.
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $url The URL.
+	 * @param string      $url The URL.
+	 * @param string      $path        Path relative to the home URL. Blank string if no path is specified.
+	 * @param string|null $orig_scheme Scheme to give the home URL context. Accepts 'http', 'https',
+	 *                                 'relative', 'rest', or null.
+	 * @param int|null    $blog_id     Site ID, or null for the current site.
 	 * @return string
 	 */
-	public function append_preview_parameter($url) {
+	public function append_preview_parameter($url, $path, $orig_scheme, $blog_id) {
 
-		return add_query_arg('preview', 'true', $url);
+		$allowed_schemes = array(
+			null,
+			'http',
+			'https',
+		);
+
+		if (in_array($orig_scheme, $allowed_schemes, true) === false) {
+
+			return $url;
+
+		} // end if;
+
+		if (apply_filters('wu_append_preview_parameter', true, $this) === false) {
+
+			return $url;
+
+		} // end if;
+
+		return add_query_arg('wu-preview', 1, $url);
 
 	} // end append_preview_parameter;
 
@@ -155,7 +212,17 @@ class Template_Previewer {
 	 */
 	public function get_preview_url($site_id) {
 
-		return add_query_arg($this->get_preview_parameter(), $site_id);
+		$args = array(
+			$this->get_preview_parameter() => $site_id,
+		);
+
+		if (wu_request('open')) {
+
+			$args['open'] = 1;
+
+		} // end if;
+
+		return add_query_arg($args, home_url());
 
 	} // end get_preview_url;
 
@@ -176,20 +243,9 @@ class Template_Previewer {
 		/**
 		 * Check if this is a site template
 		 */
-		if (!$selected_template->get_type() === 'site-template') {
+		if ($selected_template->get_type() !== Site_Type::SITE_TEMPLATE && !wu_request('customizer')) {
 
-			/**
-			 * We need to check to see if this is a user checking out his own site
-			 *
-			 * @since 1.7.4
-			 */
-			$subscription = wu_get_current_subscription();
-
-			if (!$subscription || !in_array($template_value, $subscription->get_sites_ids(), true)) {
-
-				wp_die(__('This template is not available', 'wp-ultimo'));
-
-			} // end if;
+			wp_die(__('This template is not available', 'wp-ultimo'));
 
 		} // end if;
 
@@ -199,11 +255,63 @@ class Template_Previewer {
 
 		$render_parameters = array(
 			'current_site'      => $current_site,
-			'templates'         => wu_get_site_templates(),
 			'categories'        => $categories,
 			'selected_template' => $selected_template,
 			'tp'                => $this,
 		);
+
+		$products_ids = isset($_COOKIE['wu_selected_products']) ? explode( ',', $_COOKIE['wu_selected_products']) : array();
+
+		$products = array_map('wu_get_product', $products_ids);
+
+		// clear array
+		$products = array_filter($products);
+
+		if (!empty($products)) {
+
+			$limits = new \WP_Ultimo\Objects\Limitations();
+
+			list($plan, $additional_products) = wu_segregate_products($products);
+
+			$products = array_merge(array($plan), $additional_products);
+
+			foreach ($products as $product) {
+
+				$limits = $limits->merge($product->get_limitations());
+
+			} // end foreach;
+
+			if ($limits->site_templates->get_mode() !== 'default') {
+
+				$site_ids = $limits->site_templates->get_available_site_templates();
+
+				$render_parameters['templates'] = array_map('wu_get_site', $site_ids);
+
+				/**
+				 * Check if the current site is a member of
+				 * the list of available templates
+				 */
+				if (!in_array($selected_template->get_id(), $site_ids, false)) {
+
+					$redirect_to = wu_get_current_url();
+
+					$redirect_to = add_query_arg($this->get_preview_parameter(), current($site_ids), $redirect_to);
+
+					wp_redirect($redirect_to);
+
+					exit;
+
+				} // end if;
+
+			} // end if;
+
+		} // end if;
+
+		if (!isset($render_parameters['templates'])) {
+
+			$render_parameters['templates'] = wu_get_site_templates();
+
+		} // end if;
 
 		$render_parameters = array_merge($render_parameters, $settings);
 
@@ -249,7 +357,7 @@ class Template_Previewer {
 	 */
 	public function is_preview() {
 
-		return !empty(wu_request('preview'));
+		return !empty(wu_request('wu-preview'));
 
 	} // end is_preview;
 
@@ -277,11 +385,20 @@ class Template_Previewer {
 			'enabled'                     => true,
 		);
 
-		$saved_settings = WP_Ultimo()->helper->get_option(Template_Previewer::KEY, array());
+		$saved_settings = wu_get_option(Template_Previewer::KEY, array());
 
 		$default_settings = array_merge($default_settings, $saved_settings);
 
-		$parsed_args = wp_parse_args($_REQUEST, $default_settings);
+		$server_request = $_REQUEST;
+
+		// Ensure that templates key does not change with request
+		if (isset($server_request['templates'])) {
+
+			unset($server_request['templates']);
+
+		} // end if;
+
+		$parsed_args = wp_parse_args($server_request, $default_settings);
 
 		$parsed_args['display_responsive_controls'] = wu_string_to_bool($parsed_args['display_responsive_controls']);
 		$parsed_args['use_custom_logo']             = wu_string_to_bool($parsed_args['use_custom_logo']);
@@ -331,7 +448,7 @@ class Template_Previewer {
 
 		} // end foreach;
 
-		return WP_Ultimo()->helper->save_option(Template_Previewer::KEY, $settings);
+		return wu_save_option(Template_Previewer::KEY, $settings);
 
 	} // end save_settings;
 

@@ -18,7 +18,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property string $subscription_item The ID of the subscription item this usage record contains data for.
  * @property int $timestamp The timestamp when this usage occurred.
  */
-class UsageRecord extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class UsageRecord extends ApiResource
 {
     const OBJECT_NAME = 'usage_record';
 }

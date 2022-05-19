@@ -2,14 +2,14 @@
 
 namespace WP_Ultimo\Dependencies\Gemz\Dns;
 
-use WP_Ultimo\Dependencies\React\Dns\Model\Record;
-use WP_Ultimo\Dependencies\React\Dns\Query\CoopExecutor;
-use WP_Ultimo\Dependencies\React\Dns\Query\Query;
-use WP_Ultimo\Dependencies\React\Dns\Query\TimeoutExecutor;
-use WP_Ultimo\Dependencies\React\EventLoop\Factory;
-use WP_Ultimo\Dependencies\React\Dns\Model\Message;
+use React\Dns\Model\Record;
+use React\Dns\Query\CoopExecutor;
+use React\Dns\Query\Query;
+use React\Dns\Query\TimeoutExecutor;
+use React\EventLoop\Factory;
+use React\Dns\Model\Message;
 use WP_Ultimo\Dependencies\Gemz\Dns\Exceptions\InvalidArgument;
-use WP_Ultimo\Dependencies\React\Dns\Query\TcpTransportExecutor;
+use React\Dns\Query\TcpTransportExecutor;
 class Dns
 {
     /** @var string */
@@ -23,7 +23,7 @@ class Dns
     /** @var float */
     protected $timeout = 3.0;
     /** @var array */
-    protected $recordTypes = ['A' => \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_A, 'CAA' => \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_CAA, 'CNAME' => \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_CNAME, 'SOA' => \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_SOA, 'TXT' => \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_TXT, 'MX' => \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_MX, 'AAAA' => \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_AAAA, 'SRV' => \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_SRV, 'NS' => \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_NS, 'PTR' => \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_PTR, 'SSHFP' => \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_SSHFP];
+    protected $recordTypes = ['A' => Message::TYPE_A, 'CAA' => Message::TYPE_CAA, 'CNAME' => Message::TYPE_CNAME, 'SOA' => Message::TYPE_SOA, 'TXT' => Message::TYPE_TXT, 'MX' => Message::TYPE_MX, 'AAAA' => Message::TYPE_AAAA, 'SRV' => Message::TYPE_SRV, 'NS' => Message::TYPE_NS, 'PTR' => Message::TYPE_PTR, 'SSHFP' => Message::TYPE_SSHFP];
     public static function for(string $domain, string $nameserver = '') : self
     {
         return new self($domain, $nameserver);
@@ -49,7 +49,7 @@ class Dns
     protected function sanitizeDomain(string $domain) : string
     {
         if (empty($domain)) {
-            throw \WP_Ultimo\Dependencies\Gemz\Dns\Exceptions\InvalidArgument::domainIsNotValid($domain);
+            throw InvalidArgument::domainIsNotValid($domain);
         }
         $domain = \str_replace(['http://', 'https://'], '', $domain);
         return \strtolower($domain);
@@ -62,11 +62,11 @@ class Dns
     public function records(...$types) : array
     {
         $types = $this->resolveTypes($types);
-        $loop = \WP_Ultimo\Dependencies\React\EventLoop\Factory::create();
+        $loop = Factory::create();
         foreach ($types as $type) {
-            $query = new \WP_Ultimo\Dependencies\React\Dns\Query\Query($this->domain, $this->recordTypes[$type], \WP_Ultimo\Dependencies\React\Dns\Model\Message::CLASS_IN);
-            $executor = new \WP_Ultimo\Dependencies\React\Dns\Query\CoopExecutor(new \WP_Ultimo\Dependencies\React\Dns\Query\TimeoutExecutor(new \WP_Ultimo\Dependencies\React\Dns\Query\TcpTransportExecutor($this->nameserver, $loop), $this->timeout, $loop));
-            $executor->query($query)->then(function (\WP_Ultimo\Dependencies\React\Dns\Model\Message $message) use($type) {
+            $query = new Query($this->domain, $this->recordTypes[$type], Message::CLASS_IN);
+            $executor = new CoopExecutor(new TimeoutExecutor(new TcpTransportExecutor($this->nameserver, $loop), $this->timeout, $loop));
+            $executor->query($query)->then(function (Message $message) use($type) {
                 $this->addResult($type, $message->answers);
             });
         }
@@ -79,7 +79,7 @@ class Dns
             $this->result[$type] = [];
         }
         foreach ($values as $value) {
-            if ($value instanceof \WP_Ultimo\Dependencies\React\Dns\Model\Record) {
+            if ($value instanceof Record) {
                 $this->result[$type][] = ['ttl' => $value->ttl, 'data' => $value->data];
                 continue;
             }
@@ -95,7 +95,7 @@ class Dns
         $types = \array_map('strtoupper', $types);
         foreach ($types as $type) {
             if (!\array_key_exists($type, $this->recordTypes)) {
-                throw \WP_Ultimo\Dependencies\Gemz\Dns\Exceptions\InvalidArgument::typeIsNotValid($type, $this->recordTypes);
+                throw InvalidArgument::typeIsNotValid($type, $this->recordTypes);
             }
         }
         return $types;

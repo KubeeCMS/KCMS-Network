@@ -10,7 +10,6 @@
 namespace WP_Ultimo\Integrations\Host_Providers;
 
 use WP_Ultimo\Integrations\Host_Providers\Base_Host_Provider;
-use WP_Ultimo\Logger;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -140,11 +139,11 @@ class Gridpane_Host_Provider extends Base_Host_Provider {
 	 * @since 2.0.0
 	 * @param string $domain The domain name being mapped.
 	 * @param int    $site_id ID of the site that is receiving that mapping.
-	 * @return void
+	 * @return object\WP_Error
 	 */
 	public function on_add_domain($domain, $site_id) {
 
-		$this->send_gridpane_api_request('domain/add-domain', array(
+		return $this->send_gridpane_api_request('application/add-domain', array(
 			'server_ip'  => WU_GRIDPANE_SERVER_ID,
 			'site_url'   => WU_GRIDPANE_APP_ID,
 			'domain_url' => $domain
@@ -158,11 +157,11 @@ class Gridpane_Host_Provider extends Base_Host_Provider {
 	 * @since 2.0.0
 	 * @param string $domain The domain name being removed.
 	 * @param int    $site_id ID of the site that is receiving that mapping.
-	 * @return void
+	 * @return object\WP_Error
 	 */
 	public function on_remove_domain($domain, $site_id) {
 
-		$this->send_gridpane_api_request('domain/delete-domain', array(
+		return $this->send_gridpane_api_request('application/delete-domain', array(
 			'server_ip'  => WU_GRIDPANE_SERVER_ID,
 			'site_url'   => WU_GRIDPANE_APP_ID,
 			'domain_url' => $domain
@@ -204,13 +203,25 @@ class Gridpane_Host_Provider extends Base_Host_Provider {
 
 		$results = $this->on_remove_domain('test.com', false);
 
-		if (is_wp_error($results)) {
+		if (wu_get_isset($results, 'message') === 'This action is unauthorized.') {
 
-			wp_send_json_error($results);
+			wp_send_json_error(array(
+				'error' => __('We were not able to successfully establish a connection.', 'wp-ultimo'),
+			));
 
 		} // end if;
 
-		wp_send_json_success($results);
+		if (is_wp_error($results)) {
+
+			wp_send_json_error(array(
+				'error' => __('We were not able to successfully establish a connection.', 'wp-ultimo'),
+			));
+
+		} // end if;
+
+		wp_send_json_success(array(
+			'success' => __('Connection successfully established.', 'wp-ultimo'),
+		));
 
 	} // end test_connection;
 

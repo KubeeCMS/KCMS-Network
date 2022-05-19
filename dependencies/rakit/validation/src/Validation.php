@@ -34,12 +34,12 @@ class Validation
      * @param array $messages
      * @return void
      */
-    public function __construct(\WP_Ultimo\Dependencies\Rakit\Validation\Validator $validator, array $inputs, array $rules, array $messages = [])
+    public function __construct(Validator $validator, array $inputs, array $rules, array $messages = [])
     {
         $this->validator = $validator;
         $this->inputs = $this->resolveInputAttributes($inputs);
         $this->messages = $messages;
-        $this->errors = new \WP_Ultimo\Dependencies\Rakit\Validation\ErrorBag();
+        $this->errors = new ErrorBag();
         foreach ($rules as $attributeKey => $rules) {
             $this->addAttribute($attributeKey, $rules);
         }
@@ -54,7 +54,7 @@ class Validation
     public function addAttribute(string $attributeKey, $rules)
     {
         $resolvedRules = $this->resolveRules($rules);
-        $attribute = new \WP_Ultimo\Dependencies\Rakit\Validation\Attribute($this, $attributeKey, $this->getAlias($attributeKey), $resolvedRules);
+        $attribute = new Attribute($this, $attributeKey, $this->getAlias($attributeKey), $resolvedRules);
         $this->attributes[$attributeKey] = $attribute;
     }
     /**
@@ -75,13 +75,13 @@ class Validation
      */
     public function validate(array $inputs = [])
     {
-        $this->errors = new \WP_Ultimo\Dependencies\Rakit\Validation\ErrorBag();
+        $this->errors = new ErrorBag();
         // reset error bag
         $this->inputs = \array_merge($this->inputs, $this->resolveInputAttributes($inputs));
         // Before validation hooks
         foreach ($this->attributes as $attributeKey => $attribute) {
             foreach ($attribute->getRules() as $rule) {
-                if ($rule instanceof \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Interfaces\BeforeValidate) {
+                if ($rule instanceof BeforeValidate) {
                     $rule->beforeValidate();
                 }
             }
@@ -95,7 +95,7 @@ class Validation
      *
      * @return \Rakit\Validation\ErrorBag
      */
-    public function errors() : \WP_Ultimo\Dependencies\Rakit\Validation\ErrorBag
+    public function errors() : ErrorBag
     {
         return $this->errors;
     }
@@ -105,7 +105,7 @@ class Validation
      * @param \Rakit\Validation\Attribute $attribute
      * @return void
      */
-    protected function validateAttribute(\WP_Ultimo\Dependencies\Rakit\Validation\Attribute $attribute)
+    protected function validateAttribute(Attribute $attribute)
     {
         if ($this->isArrayAttribute($attribute)) {
             $attributes = $this->parseArrayAttribute($attribute);
@@ -124,7 +124,7 @@ class Validation
         $isValid = \true;
         foreach ($rules as $ruleValidator) {
             $ruleValidator->setAttribute($attribute);
-            if ($ruleValidator instanceof \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Interfaces\ModifyValue) {
+            if ($ruleValidator instanceof ModifyValue) {
                 $value = $ruleValidator->modifyValue($value);
                 $isEmptyValue = $this->isEmptyValue($value);
             }
@@ -152,7 +152,7 @@ class Validation
      * @param \Rakit\Validation\Attribute $attribute
      * @return bool
      */
-    protected function isArrayAttribute(\WP_Ultimo\Dependencies\Rakit\Validation\Attribute $attribute) : bool
+    protected function isArrayAttribute(Attribute $attribute) : bool
     {
         $key = $attribute->getKey();
         return \strpos($key, '*') !== \false;
@@ -163,16 +163,16 @@ class Validation
      * @param \Rakit\Validation\Attribute $attribute
      * @return array
      */
-    protected function parseArrayAttribute(\WP_Ultimo\Dependencies\Rakit\Validation\Attribute $attribute) : array
+    protected function parseArrayAttribute(Attribute $attribute) : array
     {
         $attributeKey = $attribute->getKey();
-        $data = \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arrayDot($this->initializeAttributeOnData($attributeKey));
+        $data = Helper::arrayDot($this->initializeAttributeOnData($attributeKey));
         $pattern = \str_replace('\\*', '([^\\.]+)', \preg_quote($attributeKey));
         $data = \array_merge($data, $this->extractValuesForWildcards($data, $attributeKey));
         $attributes = [];
         foreach ($data as $key => $value) {
             if ((bool) \preg_match('/^' . $pattern . '\\z/', $key, $match)) {
-                $attr = new \WP_Ultimo\Dependencies\Rakit\Validation\Attribute($this, $key, null, $attribute->getRules());
+                $attr = new Attribute($this, $key, null, $attribute->getRules());
                 $attr->setPrimaryAttribute($attribute);
                 $attr->setKeyIndexes(\array_slice($match, 1));
                 $attributes[] = $attr;
@@ -201,7 +201,7 @@ class Validation
         if (\false === $asteriskPos || $asteriskPos === \mb_strlen($attributeKey, 'UTF-8') - 1) {
             return $data;
         }
-        return \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arraySet($data, $attributeKey, null, \true);
+        return Helper::arraySet($data, $attributeKey, null, \true);
     }
     /**
      * Get all of the exact attribute values for a given wildcard attribute.
@@ -223,7 +223,7 @@ class Validation
         $keys = \array_unique($keys);
         $data = [];
         foreach ($keys as $key) {
-            $data[$key] = \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arrayGet($this->inputs, $key);
+            $data[$key] = Helper::arrayGet($this->inputs, $key);
         }
         return $data;
     }
@@ -254,9 +254,9 @@ class Validation
     protected function extractDataFromPath($attributeKey) : array
     {
         $results = [];
-        $value = \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arrayGet($this->inputs, $attributeKey, '__missing__');
+        $value = Helper::arrayGet($this->inputs, $attributeKey, '__missing__');
         if ($value != '__missing__') {
-            \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arraySet($results, $attributeKey, $value);
+            Helper::arraySet($results, $attributeKey, $value);
         }
         return $results;
     }
@@ -268,7 +268,7 @@ class Validation
      * @param \Rakit\Validation\Rule $ruleValidator
      * @return void
      */
-    protected function addError(\WP_Ultimo\Dependencies\Rakit\Validation\Attribute $attribute, $value, \WP_Ultimo\Dependencies\Rakit\Validation\Rule $ruleValidator)
+    protected function addError(Attribute $attribute, $value, Rule $ruleValidator)
     {
         $ruleName = $ruleValidator->getKey();
         $message = $this->resolveMessage($attribute, $value, $ruleValidator);
@@ -282,7 +282,7 @@ class Validation
      */
     protected function isEmptyValue($value) : bool
     {
-        $requiredValidator = new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Required();
+        $requiredValidator = new Required();
         return \false === $requiredValidator->check($value, []);
     }
     /**
@@ -292,9 +292,9 @@ class Validation
      * @param \Rakit\Validation\Rule $rule
      * @return bool
      */
-    protected function ruleIsOptional(\WP_Ultimo\Dependencies\Rakit\Validation\Attribute $attribute, \WP_Ultimo\Dependencies\Rakit\Validation\Rule $rule) : bool
+    protected function ruleIsOptional(Attribute $attribute, Rule $rule) : bool
     {
-        return \false === $attribute->isRequired() and \false === $rule->isImplicit() and \false === $rule instanceof \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Required;
+        return \false === $attribute->isRequired() and \false === $rule->isImplicit() and \false === $rule instanceof Required;
     }
     /**
      * Resolve attribute name
@@ -302,7 +302,7 @@ class Validation
      * @param \Rakit\Validation\Attribute $attribute
      * @return string
      */
-    protected function resolveAttributeName(\WP_Ultimo\Dependencies\Rakit\Validation\Attribute $attribute) : string
+    protected function resolveAttributeName(Attribute $attribute) : string
     {
         $primaryAttribute = $attribute->getPrimaryAttribute();
         if (isset($this->aliases[$attribute->getKey()])) {
@@ -323,7 +323,7 @@ class Validation
      * @param \Rakit\Validation\Rule $validator
      * @return mixed
      */
-    protected function resolveMessage(\WP_Ultimo\Dependencies\Rakit\Validation\Attribute $attribute, $value, \WP_Ultimo\Dependencies\Rakit\Validation\Rule $validator) : string
+    protected function resolveMessage(Attribute $attribute, $value, Rule $validator) : string
     {
         $primaryAttribute = $attribute->getPrimaryAttribute();
         $params = \array_merge($validator->getParameters(), $validator->getParametersTexts());
@@ -406,13 +406,13 @@ class Validation
             if (\is_string($rule)) {
                 list($rulename, $params) = $this->parseRule($rule);
                 $validator = \call_user_func_array($validatorFactory, \array_merge([$rulename], $params));
-            } elseif ($rule instanceof \WP_Ultimo\Dependencies\Rakit\Validation\Rule) {
+            } elseif ($rule instanceof Rule) {
                 $validator = $rule;
-            } elseif ($rule instanceof \Closure) {
+            } elseif ($rule instanceof Closure) {
                 $validator = \call_user_func_array($validatorFactory, ['callback', $rule]);
             } else {
                 $ruleName = \is_object($rule) ? \get_class($rule) : \gettype($rule);
-                $message = "Rule must be a string, Closure or '" . \WP_Ultimo\Dependencies\Rakit\Validation\Rule::class . "' instance. " . $ruleName . " given";
+                $message = "Rule must be a string, Closure or '" . Rule::class . "' instance. " . $ruleName . " given";
                 throw new \Exception();
             }
             $resolvedRules[] = $validator;
@@ -493,7 +493,7 @@ class Validation
      */
     public function getValue(string $key)
     {
-        return \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arrayGet($this->inputs, $key);
+        return Helper::arrayGet($this->inputs, $key);
     }
     /**
      * Set input value
@@ -504,7 +504,7 @@ class Validation
      */
     public function setValue(string $key, $value)
     {
-        \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arraySet($this->inputs, $key, $value);
+        Helper::arraySet($this->inputs, $key, $value);
     }
     /**
      * Given $key and check value is exsited
@@ -514,14 +514,14 @@ class Validation
      */
     public function hasValue(string $key) : bool
     {
-        return \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arrayHas($this->inputs, $key);
+        return Helper::arrayHas($this->inputs, $key);
     }
     /**
      * Get Validator class instance
      *
      * @return \Rakit\Validation\Validator
      */
-    public function getValidator() : \WP_Ultimo\Dependencies\Rakit\Validation\Validator
+    public function getValidator() : Validator
     {
         return $this->validator;
     }
@@ -560,12 +560,12 @@ class Validation
      * @param mixed $value
      * @return void
      */
-    protected function setValidData(\WP_Ultimo\Dependencies\Rakit\Validation\Attribute $attribute, $value)
+    protected function setValidData(Attribute $attribute, $value)
     {
         $key = $attribute->getKey();
         if ($attribute->isArrayAttribute() || $attribute->isUsingDotNotation()) {
-            \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arraySet($this->validData, $key, $value);
-            \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arrayUnset($this->invalidData, $key);
+            Helper::arraySet($this->validData, $key, $value);
+            Helper::arrayUnset($this->invalidData, $key);
         } else {
             $this->validData[$key] = $value;
         }
@@ -586,12 +586,12 @@ class Validation
      * @param mixed $value
      * @return void
      */
-    protected function setInvalidData(\WP_Ultimo\Dependencies\Rakit\Validation\Attribute $attribute, $value)
+    protected function setInvalidData(Attribute $attribute, $value)
     {
         $key = $attribute->getKey();
         if ($attribute->isArrayAttribute() || $attribute->isUsingDotNotation()) {
-            \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arraySet($this->invalidData, $key, $value);
-            \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arrayUnset($this->validData, $key);
+            Helper::arraySet($this->invalidData, $key, $value);
+            Helper::arrayUnset($this->validData, $key);
         } else {
             $this->invalidData[$key] = $value;
         }

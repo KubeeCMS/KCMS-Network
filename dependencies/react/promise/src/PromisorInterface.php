@@ -1,6 +1,6 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Promise;
+namespace React\Promise;
 
 interface PromisorInterface
 {
@@ -9,5 +9,5 @@ interface PromisorInterface
      *
      * @return PromiseInterface
      */
-    public function promise();
+    public function promise() : \React\Promise\PromiseInterface;
 }

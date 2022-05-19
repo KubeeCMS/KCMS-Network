@@ -58,9 +58,9 @@ class WP_Config {
 
 			} // end if;
 
-			$config = $this->inject_contents($config, $hook_line + 1, PHP_EOL . $content);
+			$config = $this->inject_contents($config, $hook_line + 1, PHP_EOL . $content . PHP_EOL);
 
-			return file_put_contents($config_path, implode(null, $config), LOCK_EX);
+			return file_put_contents($config_path, implode('', $config), LOCK_EX);
 
 		} else {
 
@@ -74,7 +74,7 @@ class WP_Config {
 
 				$config[$line] = $content . PHP_EOL;
 
-				return file_put_contents($config_path, implode(null, $config), LOCK_EX);
+				return file_put_contents($config_path, implode('', $config), LOCK_EX);
 
 			} // end if;
 
@@ -149,19 +149,46 @@ class WP_Config {
 
 		global $wpdb;
 
-		$pattern = '/^\$table_prefix\s*=\s*[\'|\"]' . $wpdb->prefix . '[\'|\"]/';
+		/**
+		 * We check for three patterns when trying to figure our
+		 * where we can inject our constants:
+		 *
+		 * 1. We search for the $table_prefix variable definition;
+		 * 2. We search for more complex $table_prefix definitions - the ones that
+		 *    use env variables, for example;
+		 * 3. If that's not available, we look for the 'Happy Publishing' comment;
+		 * 4. If that's also not available, we look for the beginning of the file.
+		 *
+		 * The key represents the pattern and the value the number of lines to add.
+		 * A negative number of lines can be passed to write before the found line,
+		 * instead of writing after it.
+		 */
+		$patterns = apply_filters('wu_wp_config_reference_hook_line_patterns', array(
+			'/^\$table_prefix\s*=\s*[\'|\"]' . $wpdb->prefix . '[\'|\"]/' => 0,
+			'/^( ){0,}\$table_prefix\s*=.*[\'|\"]' . $wpdb->prefix . '[\'|\"]/' => 0,
+			'/(\/\* That\'s all, stop editing! Happy publishing\. \*\/)/' => -2,
+			'/<\?php/' => 0,
+		));
 
-		foreach ($config as $k => $line) {
+		$line = 1;
 
-			if (preg_match($pattern, $line)) {
+		foreach ($patterns as $pattern => $lines_to_add) {
 
-				return $k;
+			foreach ($config as $k => $line) {
 
-			} // end if;
+				if (preg_match($pattern, $line)) {
+
+					$line = $k + $lines_to_add;
+
+					break 2;
+
+				} // end if;
+
+			} // end foreach;
 
 		} // end foreach;
 
-		return false;
+		return $line;
 
 	} // end find_reference_hook_line;
 
@@ -204,7 +231,7 @@ class WP_Config {
 				unset($config[$line]);
 
 				// save it
-				return file_put_contents($config_path, implode(null, $config), LOCK_EX);
+				return file_put_contents($config_path, implode('', $config), LOCK_EX);
 
 			} // end if;
 

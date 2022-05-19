@@ -5,13 +5,19 @@
  * @since 2.0.0
  */
 ?>
-<p>
+<div class="<?php echo esc_attr(trim($field->wrapper_classes)); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
-  <label class="wu-block">
+  <?php
 
-    <?php echo $field->title; ?>
+  /**
+   * Adds the partial title template.
+   * @since 2.0.0
+   */
+  wu_get_template('checkout/fields/partials/field-title', array(
+    'field' => $field,
+  ));
 
-  </label>
+  ?>
 
   <?php foreach ($field->options as $option_value => $option_name) : ?>
 
@@ -25,7 +31,16 @@
 
   <?php endforeach; ?>
 
-  <span v-cloak class="wu-block wu-bg-red-100 wu-p-2 wu-mb-4" v-if="get_error('<?php echo esc_attr($field->id); ?>')" v-html="get_error('<?php echo esc_attr($field->id); ?>').message">
-  </span>
+  <?php
 
-</p>
+  /**
+   * Adds the partial error template.
+   * @since 2.0.0
+   */
+  wu_get_template('checkout/fields/partials/field-errors', array(
+    'field' => $field,
+  ));
+
+  ?>
+
+</div>

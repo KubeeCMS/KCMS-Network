@@ -12,6 +12,7 @@
 namespace WP_Ultimo\Gateways;
 
 use WP_Ultimo\Gateways\Base_Gateway;
+use \WP_Ultimo\Database\Memberships\Membership_Status;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -32,59 +33,98 @@ class Free_Gateway extends Base_Gateway {
 	protected $id = 'free';
 
 	/**
-	 * Checks if we should hide this option on the front-end.
+	 * Process a checkout.
+	 *
+	 * It takes the data concerning
+	 * a new checkout and process it.
+	 *
+	 * Here's where you will want to send
+	 * API calls to the gateway server,
+	 * set up recurring payment profiles, etc.
+	 *
+	 * This method is required and MUST
+	 * be implemented by gateways extending the
+	 * Base_Gateway class.
 	 *
 	 * @since 2.0.0
-	 * @var boolean
-	 */
-	protected $hidden = true;
-
-	/**
-	 * Initialize the gateway configuration
 	 *
-	 * This is used to populate the $supports property, setup any API keys, and set the API endpoint.
-	 *
-	 * @access public
+	 * @param \WP_Ultimo\Models\Payment    $payment The payment associated with the checkout.
+	 * @param \WP_Ultimo\Models\Membership $membership The membership.
+	 * @param \WP_Ultimo\Models\Customer   $customer The customer checking out.
+	 * @param \WP_Ultimo\Checkout\Cart     $cart The cart object.
+	 * @param string                       $type The checkout type. Can be 'new', 'retry', 'upgrade', 'downgrade', 'addon'.
 	 * @return void
 	 */
-	public function init() {
+	public function process_checkout($payment, $membership, $customer, $cart, $type) {
+		/*
+		 * Handles downgrades to free plans
+		 */
+		if ($type === 'downgrade') {
+			/*
+			 * When downgrading, we need to schedule a swap for the end of the
+			 * current expiration date.
+			 */
+			$membership->schedule_swap($cart);
 
-		parent::init();
+			/*
+			 * Mark the membership as active,
+			 * as this is a downgrade to free.
+			 */
+			$membership->set_status(Membership_Status::ACTIVE);
 
-	} // end init;
+			/*
+			 * Saves the membership with the changes.
+			 */
+			$status = $membership->save();
+
+		} // end if;
+
+	} // end process_checkout;
 
 	/**
-	 * Process registration
+	 * Process a cancellation.
 	 *
-	 * This is where you process the actual payment. If non-recurring, you'll want to use
-	 * the $this->initial_amount value. If recurring, you'll want to use $this->initial_amount
-	 * for the first payment and $this->amount for the recurring amount.
+	 * It takes the data concerning
+	 * a membership cancellation and process it.
 	 *
-	 * After a successful payment, redirect to $this->return_url.
+	 * Here's where you will want to send
+	 * API calls to the gateway server,
+	 * to cancel a recurring profile, etc.
 	 *
-	 * @access public
-	 * @return void
-	 */
-	public function process_signup() {
-
-		parent::process_signup();
-
-	} // end process_signup;
-
-	/**
-	 * Adds additional fields to the checkout form for a particular gateway.
-	 *
-	 * In this method, you can either return an array of fields (that we will display
-	 * using our form display methods) or you can return plain HTML in a string,
-	 * which will get outputted to the gateway section of the checkout.
+	 * This method is required and MUST
+	 * be implemented by gateways extending the
+	 * Base_Gateway class.
 	 *
 	 * @since 2.0.0
-	 * @return array|string
+	 *
+	 * @param \WP_Ultimo\Models\Membership $membership The membership.
+	 * @param \WP_Ultimo\Models\Customer   $customer The customer checking out.
+	 * @return void
 	 */
-	public function fields() {
+	public function process_cancellation($membership, $customer) {} // end process_cancellation;
 
-		return sprintf('<p class="wu-p-4 wu-bg-yellow-200">%s</p>', __('After you finish signing up, you will need to confirm your account at your email address.', 'wp-ultimo'));
-
-	} // end fields;
+	/**
+	 * Process a refund.
+	 *
+	 * It takes the data concerning
+	 * a refund and process it.
+	 *
+	 * Here's where you will want to send
+	 * API calls to the gateway server,
+	 * to issue a refund.
+	 *
+	 * This method is required and MUST
+	 * be implemented by gateways extending the
+	 * Base_Gateway class.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param float                        $amount The amount to refund.
+	 * @param \WP_Ultimo\Models\Payment    $payment The payment associated with the checkout.
+	 * @param \WP_Ultimo\Models\Membership $membership The membership.
+	 * @param \WP_Ultimo\Models\Customer   $customer The customer checking out.
+	 * @return void
+	 */
+	public function process_refund($amount, $payment, $membership, $customer) {} // end process_refund;
 
 } // end class Free_Gateway;

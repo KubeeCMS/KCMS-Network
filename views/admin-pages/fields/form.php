@@ -9,29 +9,33 @@
     
   <?php echo $form->before; ?>
 
-  <?php if ($form->wrap_in_form_tag) : ?>
+  <div class="wu-flex wu-flex-wrap">
 
-    <form 
-      id="<?php echo esc_attr($form_slug); ?>" 
-      action="<?php echo esc_attr($form->action); ?>"
-      method="<?php echo esc_attr($form->method); ?>"
-      <?php echo $form->get_html_attributes(); ?>
-    >
+    <?php if ($form->wrap_in_form_tag) : ?>
 
-  <?php endif; ?>
+      <form 
+        id="<?php echo esc_attr($form_slug); ?>" 
+        action="<?php echo esc_attr($form->action); ?>"
+        method="<?php echo esc_attr($form->method); ?>"
+        <?php echo $form->get_html_attributes(); ?>
+      >
 
-  <ul id="wp-ultimo-form-<?php echo esc_attr($form->id); ?>" class="<?php echo esc_attr($form->classes); ?>" <?php echo $form->get_html_attributes(); ?>>
+    <?php endif; ?>
 
-    <?php echo $rendered_fields; ?>
+    <ul id="wp-ultimo-form-<?php echo esc_attr($form->id); ?>" class="wu-flex-grow <?php echo esc_attr(trim($form->classes)); ?>" <?php echo $form->get_html_attributes(); ?>>
 
-  </ul>
+      <?php echo $rendered_fields; ?>
 
-  <?php if ($form->wrap_in_form_tag) : ?>
+    </ul>
 
-  </form>
+    <?php if ($form->wrap_in_form_tag) : ?>
 
-  <?php endif; ?>
+    </form>
 
-  <?php echo $form->after; ?>
+    <?php endif; ?>
+
+    <?php echo $form->after; ?>
+
+  </div>
 
 </div>

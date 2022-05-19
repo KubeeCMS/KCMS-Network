@@ -367,12 +367,14 @@
 }
 
 #wu_jumper_select_chosen {
+  /* stylelint-disable-line selector-id-pattern */
   margin: 0;
   width: 100% !important;
   padding: 0;
 }
 
 #wu_jumper_select_chosen input {
+  /* stylelint-disable-line selector-id-pattern */
   outline: none;
   width: 100%;
   padding: 20px !important;

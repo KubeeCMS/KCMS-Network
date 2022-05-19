@@ -28,6 +28,8 @@ trait TranslatorTrait
     }
     /**
      * {@inheritdoc}
+     *
+     * @return string
      */
     public function getLocale()
     {
@@ -101,8 +103,8 @@ EOF;
                 return \strtr($standardRules[0], $parameters);
             }
             $message = \sprintf('Unable to choose a translation for "%s" with locale "%s" for value "%d". Double check that this translation has the correct plural options (e.g. "There is one apple|There are %%count%% apples").', $id, $locale, $number);
-            if (\class_exists(\Symfony\Component\Translation\Exception\InvalidArgumentException::class)) {
-                throw new \Symfony\Component\Translation\Exception\InvalidArgumentException($message);
+            if (\class_exists(InvalidArgumentException::class)) {
+                throw new InvalidArgumentException($message);
             }
             throw new \InvalidArgumentException($message);
         }
@@ -115,9 +117,10 @@ EOF;
      * which is subject to the new BSD license (http://framework.zend.com/license/new-bsd).
      * Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
      */
-    private function getPluralizationRule(int $number, string $locale) : int
+    private function getPluralizationRule(float $number, string $locale) : int
     {
-        switch ('pt_BR' !== $locale && \strlen($locale) > 3 ? \substr($locale, 0, \strrpos($locale, '_')) : $locale) {
+        $number = \abs($number);
+        switch ('pt_BR' !== $locale && 'en_US_POSIX' !== $locale && \strlen($locale) > 3 ? \substr($locale, 0, \strrpos($locale, '_')) : $locale) {
             case 'af':
             case 'bn':
             case 'bg':
@@ -126,6 +129,7 @@ EOF;
             case 'de':
             case 'el':
             case 'en':
+            case 'en_US_POSIX':
             case 'eo':
             case 'es':
             case 'et':
@@ -183,7 +187,7 @@ EOF;
             case 'pt_BR':
             case 'ti':
             case 'wa':
-                return 0 == $number || 1 == $number ? 0 : 1;
+                return $number < 2 ? 0 : 1;
             case 'be':
             case 'bs':
             case 'hr':

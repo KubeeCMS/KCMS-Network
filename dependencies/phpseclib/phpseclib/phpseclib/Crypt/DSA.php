@@ -21,8 +21,6 @@
  * ?>
  * </code>
  *
- * @category  Crypt
- * @package   DSA
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2016 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -31,32 +29,28 @@
 namespace phpseclib3\Crypt;
 
 use phpseclib3\Crypt\Common\AsymmetricKey;
+use phpseclib3\Crypt\DSA\Parameters;
 use phpseclib3\Crypt\DSA\PrivateKey;
 use phpseclib3\Crypt\DSA\PublicKey;
-use phpseclib3\Crypt\DSA\Parameters;
-use phpseclib3\Math\BigInteger;
 use phpseclib3\Exception\InsufficientSetupException;
+use phpseclib3\Math\BigInteger;
 /**
  * Pure-PHP FIPS 186-4 compliant implementation of DSA.
  *
- * @package DSA
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
+abstract class DSA extends AsymmetricKey
 {
     /**
      * Algorithm Name
      *
      * @var string
-     * @access private
      */
     const ALGORITHM = 'DSA';
     /**
      * DSA Prime P
      *
      * @var \phpseclib3\Math\BigInteger
-     * @access private
      */
     protected $p;
     /**
@@ -65,41 +59,35 @@ abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
      * Prime divisor of p-1
      *
      * @var \phpseclib3\Math\BigInteger
-     * @access private
      */
     protected $q;
     /**
      * DSA Group Generator G
      *
      * @var \phpseclib3\Math\BigInteger
-     * @access private
      */
     protected $g;
     /**
      * DSA public key value y
      *
      * @var \phpseclib3\Math\BigInteger
-     * @access private
      */
     protected $y;
     /**
      * Signature Format
      *
      * @var string
-     * @access private
      */
     protected $sigFormat;
     /**
      * Signature Format (Short)
      *
      * @var string
-     * @access private
      */
     protected $shortFormat;
     /**
      * Create DSA parameters
      *
-     * @access public
      * @param int $L
      * @param int $N
      * @return \phpseclib3\Crypt\DSA|bool
@@ -118,7 +106,7 @@ abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
               SSH DSA implementations only support keys with an N of 160.
               puttygen let's you set the size of L (but not the size of N) and uses 2048 as the
               default L value. that's not really compliant with any of the FIPS standards, however,
-              for the purposes of maintaining compatibility with puttygen, we'll support it 
+              for the purposes of maintaining compatibility with puttygen, we'll support it
             */
             //case ($L >= 512 || $L <= 1024) && (($L & 0x3F) == 0) && $N == 160:
             // FIPS 186-3 changed this as follows:
@@ -130,11 +118,11 @@ abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
             default:
                 throw new \InvalidArgumentException('Invalid values for N and L');
         }
-        $two = new \phpseclib3\Math\BigInteger(2);
-        $q = \phpseclib3\Math\BigInteger::randomPrime($N);
+        $two = new BigInteger(2);
+        $q = BigInteger::randomPrime($N);
         $divisor = $q->multiply($two);
         do {
-            $x = \phpseclib3\Math\BigInteger::random($L);
+            $x = BigInteger::random($L);
             list(, $c) = $x->divide($divisor);
             $p = $x->subtract($c->subtract(self::$one));
         } while ($p->getLength() != $L || !$p->isPrime());
@@ -152,7 +140,7 @@ abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
             }
             $h = $h->add(self::$one);
         }
-        $dsa = new \phpseclib3\Crypt\DSA\Parameters();
+        $dsa = new Parameters();
         $dsa->p = $p;
         $dsa->q = $q;
         $dsa->g = $g;
@@ -167,7 +155,6 @@ abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
      * Returns the private key, from which the publickey can be extracted
      *
      * @param int[] ...$args
-     * @access public
      * @return DSA\PrivateKey
      */
     public static function createKey(...$args)
@@ -178,22 +165,18 @@ abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
         }
         if (\count($args) == 2 && \is_int($args[0]) && \is_int($args[1])) {
             $params = self::createParameters($args[0], $args[1]);
+        } elseif (\count($args) == 1 && $args[0] instanceof Parameters) {
+            $params = $args[0];
+        } elseif (!\count($args)) {
+            $params = self::createParameters();
         } else {
-            if (\count($args) == 1 && $args[0] instanceof \phpseclib3\Crypt\DSA\Parameters) {
-                $params = $args[0];
-            } else {
-                if (!\count($args)) {
-                    $params = self::createParameters();
-                } else {
-                    throw new \phpseclib3\Exception\InsufficientSetupException('Valid parameters are either two integers (L and N), a single DSA object or no parameters at all.');
-                }
-            }
+            throw new InsufficientSetupException('Valid parameters are either two integers (L and N), a single DSA object or no parameters at all.');
         }
-        $private = new \phpseclib3\Crypt\DSA\PrivateKey();
+        $private = new PrivateKey();
         $private->p = $params->p;
         $private->q = $params->q;
         $private->g = $params->g;
-        $private->x = \phpseclib3\Math\BigInteger::randomRange(self::$one, $private->q->subtract(self::$one));
+        $private->x = BigInteger::randomRange(self::$one, $private->q->subtract(self::$one));
         $private->y = $private->g->powMod($private->x, $private->p);
         //$public = clone $private;
         //unset($public->x);
@@ -203,7 +186,6 @@ abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
      * OnLoad Handler
      *
      * @return bool
-     * @access protected
      * @param array $components
      */
     protected static function onLoad($components)
@@ -212,14 +194,12 @@ abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
             self::useBestEngine();
         }
         if (!isset($components['x']) && !isset($components['y'])) {
-            $new = new \phpseclib3\Crypt\DSA\Parameters();
+            $new = new Parameters();
+        } elseif (isset($components['x'])) {
+            $new = new PrivateKey();
+            $new->x = $components['x'];
         } else {
-            if (isset($components['x'])) {
-                $new = new \phpseclib3\Crypt\DSA\PrivateKey();
-                $new->x = $components['x'];
-            } else {
-                $new = new \phpseclib3\Crypt\DSA\PublicKey();
-            }
+            $new = new PublicKey();
         }
         $new->p = $components['p'];
         $new->q = $components['q'];
@@ -245,7 +225,6 @@ abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
      *
      * More specifically, this L (the length of DSA Prime P) and N (the length of DSA Group Order q)
      *
-     * @access public
      * @return array
      */
     public function getLength()
@@ -257,11 +236,13 @@ abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
      *
      * @see self::useInternalEngine()
      * @see self::useBestEngine()
-     * @access public
      * @return string
      */
     public function getEngine()
     {
+        if (!isset(self::$engines['PHP'])) {
+            self::useBestEngine();
+        }
         return self::$engines['OpenSSL'] && \in_array($this->hash->getHash(), \openssl_get_md_methods()) ? 'OpenSSL' : 'PHP';
     }
     /**
@@ -271,7 +252,6 @@ abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
      * value.
      *
      * @see self::getPublicKey()
-     * @access public
      * @return mixed
      */
     public function getParameters()
@@ -285,7 +265,6 @@ abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
      *
      * Valid values are: ASN1, SSH2, Raw
      *
-     * @access public
      * @param string $format
      */
     public function withSignatureFormat($format)
@@ -298,7 +277,6 @@ abstract class DSA extends \phpseclib3\Crypt\Common\AsymmetricKey
     /**
      * Returns the signature format currently being used
      *
-     * @access public
      */
     public function getSignatureFormat()
     {

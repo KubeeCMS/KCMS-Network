@@ -45,7 +45,7 @@
         <?php _e('Go back to the <strong>Configuration</strong> step - if available - and make sure you entered all the necessary information correctly;', 'wp-ultimo'); ?>
       </li>
       <li>
-        <?php _e('If you have added the constants to your wp-config.php file manually, double check to make sure you\'ve added them to the right wp-config.php file and in the right place (just above the <code>/* That\'s all, stop editing! Happy publishing. */', 'wp-ultimo'); ?></code>);
+        <?php _e('If you have added the constants to your wp-config.php file manually, double check to make sure you\'ve added them to the right wp-config.php file and in the right place (just above the <code>/* That\'s all, stop editing! Happy publishing. */)', 'wp-ultimo'); ?></code>);
       </li>
       <li>
         <?php _e('If you are sure everything is right, take a screenshot of this screen and contact support.', 'wp-ultimo'); ?>
@@ -87,22 +87,30 @@
           results: '<?php echo esc_js(__('Waiting for results...', 'wp-ultimo')); ?>',
         },
         mounted: function() {
+
           var that = this;
+          
           this.loading = true;
-          $.ajax({
-            url: ajaxurl,
-            method: 'POST',
-            data: {
-              action: 'wu_test_hosting_integration',
-              integration: '<?php echo esc_js($integration->get_id()); ?>',
-            },
-            success: function(response) {
-              console.log(response);
-              that.loading = false;
-              that.success = response.success;
-              that.results = response.data;
-            }
-          })
+
+          setTimeout(() => {
+
+            $.ajax({
+              url: ajaxurl,
+              method: 'POST',
+              data: {
+                action: 'wu_test_hosting_integration',
+                integration: '<?php echo esc_js($integration->get_id()); ?>',
+              },
+              success: function(response) {
+                console.log(response);
+                that.loading = false;
+                that.success = response.success;
+                that.results = response.data;
+              }
+            });
+            
+          }, 1000);
+
         },
       });
 

@@ -3,8 +3,6 @@
 /**
  * RSA Private Key
  *
- * @category  Crypt
- * @package   RSA
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2015 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -12,52 +10,42 @@
  */
 namespace phpseclib3\Crypt\RSA;
 
-use phpseclib3\Crypt\RSA;
-use phpseclib3\Math\BigInteger;
-use phpseclib3\File\ASN1;
-use phpseclib3\Common\Functions\Strings;
-use phpseclib3\Crypt\Hash;
-use phpseclib3\Exceptions\NoKeyLoadedException;
-use phpseclib3\Exception\UnsupportedFormatException;
-use phpseclib3\Crypt\Random;
 use phpseclib3\Crypt\Common;
+use phpseclib3\Crypt\Random;
+use phpseclib3\Crypt\RSA;
 use phpseclib3\Crypt\RSA\Formats\Keys\PSS;
+use phpseclib3\Exception\UnsupportedFormatException;
+use phpseclib3\Math\BigInteger;
 /**
  * Raw RSA Key Handler
  *
- * @package RSA
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Common\PrivateKey
+class PrivateKey extends RSA implements Common\PrivateKey
 {
     use Common\Traits\PasswordProtected;
     /**
      * Primes for Chinese Remainder Theorem (ie. p and q)
      *
      * @var array
-     * @access private
      */
     protected $primes;
     /**
      * Exponents for Chinese Remainder Theorem (ie. dP and dQ)
      *
      * @var array
-     * @access private
      */
     protected $exponents;
     /**
      * Coefficients for Chinese Remainder Theorem (ie. qInv)
      *
      * @var array
-     * @access private
      */
     protected $coefficients;
     /**
      * Public Exponent
      *
      * @var mixed
-     * @access private
      */
     protected $publicExponent = \false;
     /**
@@ -65,7 +53,6 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
      *
      * See {@link http://tools.ietf.org/html/rfc3447#section-5.1.2 RFC3447#section-5.1.2}.
      *
-     * @access private
      * @param \phpseclib3\Math\BigInteger $c
      * @return bool|\phpseclib3\Math\BigInteger
      */
@@ -81,7 +68,6 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
      *
      * See {@link http://tools.ietf.org/html/rfc3447#section-5.2.1 RFC3447#section-5.2.1}.
      *
-     * @access private
      * @param \phpseclib3\Math\BigInteger $m
      * @return bool|\phpseclib3\Math\BigInteger
      */
@@ -98,7 +84,7 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
      * @param \phpseclib3\Math\BigInteger $x
      * @return \phpseclib3\Math\BigInteger
      */
-    protected function exponentiate(\phpseclib3\Math\BigInteger $x)
+    protected function exponentiate(BigInteger $x)
     {
         switch (\true) {
             case empty($this->primes):
@@ -132,7 +118,7 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
                     $smallest = $this->primes[$i];
                 }
             }
-            $r = \phpseclib3\Math\BigInteger::randomRange(self::$one, $smallest->subtract(self::$one));
+            $r = BigInteger::randomRange(self::$one, $smallest->subtract(self::$one));
             $m_i = [1 => $this->blind($x, $r, 1), 2 => $this->blind($x, $r, 2)];
             $h = $m_i[1]->subtract($m_i[2]);
             $h = $h->multiply($this->coefficients[2]);
@@ -156,7 +142,6 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
      * Protects against timing attacks by employing RSA Blinding.
      * Returns $x->modPow($this->exponents[$i], $this->primes[$i])
      *
-     * @access private
      * @param \phpseclib3\Math\BigInteger $x
      * @param \phpseclib3\Math\BigInteger $r
      * @param int $i
@@ -177,7 +162,6 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
      * See {@link http://tools.ietf.org/html/rfc3447#section-9.1.1 RFC3447#section-9.1.1}.
      *
      * @return string
-     * @access private
      * @param string $m
      * @throws \RuntimeException on encoding error
      * @param int $emBits
@@ -193,12 +177,13 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
         if ($emLen < $this->hLen + $sLen + 2) {
             throw new \LengthException('RSA modulus too short');
         }
-        $salt = \phpseclib3\Crypt\Random::string($sLen);
+        $salt = Random::string($sLen);
         $m2 = "\0\0\0\0\0\0\0\0" . $mHash . $salt;
         $h = $this->hash->hash($m2);
         $ps = \str_repeat(\chr(0), $emLen - $sLen - $this->hLen - 2);
         $db = $ps . \chr(1) . $salt;
         $dbMask = $this->mgf1($h, $emLen - $this->hLen - 1);
+        // ie. stlren($db)
         $maskedDB = $db ^ $dbMask;
         $maskedDB[0] = ~\chr(0xff << ($emBits & 7)) & $maskedDB[0];
         $em = $maskedDB . $h . \chr(0xbc);
@@ -209,7 +194,6 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
      *
      * See {@link http://tools.ietf.org/html/rfc3447#section-8.1.1 RFC3447#section-8.1.1}.
      *
-     * @access private
      * @param string $m
      * @return bool|string
      */
@@ -229,7 +213,6 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
      *
      * See {@link http://tools.ietf.org/html/rfc3447#section-8.2.1 RFC3447#section-8.2.1}.
      *
-     * @access private
      * @param string $m
      * @throws \LengthException if the RSA modulus is too short
      * @return bool|string
@@ -255,7 +238,6 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
      * Create a signature
      *
      * @see self::verify()
-     * @access public
      * @param string $message
      * @return string
      */
@@ -275,7 +257,6 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
      *
      * See {@link http://tools.ietf.org/html/rfc3447#section-7.2.2 RFC3447#section-7.2.2}.
      *
-     * @access private
      * @param string $c
      * @return bool|string
      */
@@ -316,7 +297,6 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
      *    ciphertext C, leading to a chosen-ciphertext attack such as the one
      *    observed by Manger [36].
      *
-     * @access private
      * @param string $c
      * @return bool|string
      */
@@ -352,9 +332,9 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
             $leadingZeros &= $m[$i] === "\0";
             $offset += $patternMatch ? 0 : 1;
         }
-        // we do & instead of && to avoid https://en.wikipedia.org/wiki/Short-circuit_evaluation
+        // we do | instead of || to avoid https://en.wikipedia.org/wiki/Short-circuit_evaluation
         // to protect against timing attacks
-        if (!$hashesMatch & !$patternMatch) {
+        if (!$hashesMatch | !$patternMatch) {
             throw new \RuntimeException('Decryption error');
         }
         // Output the message M
@@ -365,7 +345,6 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
      *
      * Doesn't use padding and is not recommended.
      *
-     * @access private
      * @param string $m
      * @return bool|string
      * @throws \LengthException if strlen($m) > $this->k
@@ -383,7 +362,6 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
      * Decryption
      *
      * @see self::encrypt()
-     * @access public
      * @param string $ciphertext
      * @return bool|string
      */
@@ -402,7 +380,6 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
     /**
      * Returns the public key
      *
-     * @access public
      * @return mixed
      */
     public function getPublicKey()
@@ -412,7 +389,7 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
             throw new \RuntimeException('Public key components not found');
         }
         $key = $type::savePublicKey($this->modulus, $this->publicExponent);
-        return \phpseclib3\Crypt\RSA::loadFormat('PKCS8', $key)->withHash($this->hash->getHash())->withMGFHash($this->mgfHash->getHash())->withSaltLength($this->sLen)->withLabel($this->label)->withPadding($this->signaturePadding | $this->encryptionPadding);
+        return RSA::loadFormat('PKCS8', $key)->withHash($this->hash->getHash())->withMGFHash($this->mgfHash->getHash())->withSaltLength($this->sLen)->withLabel($this->label)->withPadding($this->signaturePadding | $this->encryptionPadding);
     }
     /**
      * Returns the private key
@@ -424,11 +401,11 @@ class PrivateKey extends \phpseclib3\Crypt\RSA implements \phpseclib3\Crypt\Comm
     public function toString($type, array $options = [])
     {
         $type = self::validatePlugin('Keys', $type, empty($this->primes) ? 'savePublicKey' : 'savePrivateKey');
-        if ($type == \phpseclib3\Crypt\RSA\Formats\Keys\PSS::class) {
+        if ($type == PSS::class) {
             if ($this->signaturePadding == self::SIGNATURE_PSS) {
                 $options += ['hash' => $this->hash->getHash(), 'MGFHash' => $this->mgfHash->getHash(), 'saltLength' => $this->getSaltLength()];
             } else {
-                throw new \phpseclib3\Exception\UnsupportedFormatException('The PSS format can only be used when the signature method has been explicitly set to PSS');
+                throw new UnsupportedFormatException('The PSS format can only be used when the signature method has been explicitly set to PSS');
             }
         }
         if (empty($this->primes)) {

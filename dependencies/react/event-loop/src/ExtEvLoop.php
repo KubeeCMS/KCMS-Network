@@ -1,25 +1,26 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\EventLoop;
+namespace React\EventLoop;
 
 use Ev;
 use EvIo;
 use EvLoop;
-use WP_Ultimo\Dependencies\React\EventLoop\Tick\FutureTickQueue;
-use WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer;
+use React\EventLoop\Tick\FutureTickQueue;
+use React\EventLoop\Timer\Timer;
 use SplObjectStorage;
 /**
  * An `ext-ev` based event loop.
  *
  * This loop uses the [`ev` PECL extension](https://pecl.php.net/package/ev),
  * that provides an interface to `libev` library.
+ * `libev` itself supports a number of system-specific backends (epoll, kqueue).
  *
- * This loop is known to work with PHP 5.4 through PHP 7+.
+ * This loop is known to work with PHP 5.4 through PHP 8+.
  *
  * @see http://php.net/manual/en/book.ev.php
  * @see https://bitbucket.org/osmanov/pecl-ev/overview
  */
-class ExtEvLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInterface
+class ExtEvLoop implements \React\EventLoop\LoopInterface
 {
     /**
      * @var EvLoop
@@ -55,10 +56,10 @@ class ExtEvLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInterface
     private $signalEvents = array();
     public function __construct()
     {
-        $this->loop = new \EvLoop();
-        $this->futureTickQueue = new \WP_Ultimo\Dependencies\React\EventLoop\Tick\FutureTickQueue();
-        $this->timers = new \SplObjectStorage();
-        $this->signals = new \WP_Ultimo\Dependencies\React\EventLoop\SignalsHandler();
+        $this->loop = new EvLoop();
+        $this->futureTickQueue = new FutureTickQueue();
+        $this->timers = new SplObjectStorage();
+        $this->signals = new \React\EventLoop\SignalsHandler();
     }
     public function addReadStream($stream, $listener)
     {
@@ -67,7 +68,7 @@ class ExtEvLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInterface
             return;
         }
         $callback = $this->getStreamListenerClosure($stream, $listener);
-        $event = $this->loop->io($stream, \Ev::READ, $callback);
+        $event = $this->loop->io($stream, Ev::READ, $callback);
         $this->readStreams[$key] = $event;
     }
     /**
@@ -89,7 +90,7 @@ class ExtEvLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInterface
             return;
         }
         $callback = $this->getStreamListenerClosure($stream, $listener);
-        $event = $this->loop->io($stream, \Ev::WRITE, $callback);
+        $event = $this->loop->io($stream, Ev::WRITE, $callback);
         $this->writeStreams[$key] = $event;
     }
     public function removeReadStream($stream)
@@ -112,7 +113,7 @@ class ExtEvLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInterface
     }
     public function addTimer($interval, $callback)
     {
-        $timer = new \WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer($interval, $callback, \false);
+        $timer = new Timer($interval, $callback, \false);
         $that = $this;
         $timers = $this->timers;
         $callback = function () use($timer, $timers, $that) {
@@ -127,15 +128,15 @@ class ExtEvLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInterface
     }
     public function addPeriodicTimer($interval, $callback)
     {
-        $timer = new \WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer($interval, $callback, \true);
+        $timer = new Timer($interval, $callback, \true);
         $callback = function () use($timer) {
             \call_user_func($timer->getCallback(), $timer);
         };
-        $event = $this->loop->timer($interval, $interval, $callback);
+        $event = $this->loop->timer($timer->getInterval(), $timer->getInterval(), $callback);
         $this->timers->attach($timer, $event);
         return $timer;
     }
-    public function cancelTimer(\WP_Ultimo\Dependencies\React\EventLoop\TimerInterface $timer)
+    public function cancelTimer(\React\EventLoop\TimerInterface $timer)
     {
         if (!isset($this->timers[$timer])) {
             return;
@@ -156,9 +157,9 @@ class ExtEvLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInterface
             $hasPendingCallbacks = !$this->futureTickQueue->isEmpty();
             $wasJustStopped = !$this->running;
             $nothingLeftToDo = !$this->readStreams && !$this->writeStreams && !$this->timers->count() && $this->signals->isEmpty();
-            $flags = \Ev::RUN_ONCE;
+            $flags = Ev::RUN_ONCE;
             if ($wasJustStopped || $hasPendingCallbacks) {
-                $flags |= \Ev::RUN_NOWAIT;
+                $flags |= Ev::RUN_NOWAIT;
             } elseif ($nothingLeftToDo) {
                 break;
             }

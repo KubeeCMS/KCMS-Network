@@ -13,26 +13,22 @@
  *
  * PHP version 5 and 7
  *
- * @category  Math
- * @package   BigInteger
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
  */
 namespace phpseclib3\Math\BinaryField;
 
-use phpseclib3\Math\Common\FiniteField\Integer as Base;
+use WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Hex;
 use phpseclib3\Math\BigInteger;
 use phpseclib3\Math\BinaryField;
-use WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Hex;
+use phpseclib3\Math\Common\FiniteField\Integer as Base;
 /**
  * Binary Finite Fields
  *
- * @package Math
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-class Integer extends \phpseclib3\Math\Common\FiniteField\Integer
+class Integer extends Base
 {
     /**
      * Holds the BinaryField's value
@@ -49,7 +45,7 @@ class Integer extends \phpseclib3\Math\Common\FiniteField\Integer
     /**
      * Holds the PrimeField's modulo
      *
-     * @var string[]
+     * @var array<int, string>
      */
     protected static $modulo;
     /**
@@ -73,6 +69,8 @@ class Integer extends \phpseclib3\Math\Common\FiniteField\Integer
     }
     /**
      * Set the modulo for a given instance
+     * @param int $instanceID
+     * @param string $modulo
      */
     public static function setModulo($instanceID, $modulo)
     {
@@ -153,7 +151,7 @@ class Integer extends \phpseclib3\Math\Common\FiniteField\Integer
         $r = $x;
         while (($degr = static::deg($r)) >= $d) {
             $s = '1' . \str_repeat('0', $degr - $d);
-            $s = \phpseclib3\Math\BinaryField::base2ToBase256($s);
+            $s = BinaryField::base2ToBase256($s);
             $length = \max(\strlen($s), \strlen($q));
             $q = !isset($q) ? $s : \str_pad($q, $length, "\0", \STR_PAD_LEFT) ^ \str_pad($s, $length, "\0", \STR_PAD_LEFT);
             $s = static::polynomialMultiply($s, $y);
@@ -171,8 +169,8 @@ class Integer extends \phpseclib3\Math\Common\FiniteField\Integer
     private static function regularPolynomialMultiply($x, $y)
     {
         $precomputed = [\ltrim($x, "\0")];
-        $x = \strrev(\phpseclib3\Math\BinaryField::base256ToBase2($x));
-        $y = \strrev(\phpseclib3\Math\BinaryField::base256ToBase2($y));
+        $x = \strrev(BinaryField::base256ToBase2($x));
+        $y = \strrev(BinaryField::base256ToBase2($y));
         if (\strlen($x) == \strlen($y)) {
             $length = \strlen($x);
         } else {
@@ -181,12 +179,12 @@ class Integer extends \phpseclib3\Math\Common\FiniteField\Integer
             $y = \str_pad($y, $length, '0');
         }
         $result = \str_repeat('0', 2 * $length - 1);
-        $result = \phpseclib3\Math\BinaryField::base2ToBase256($result);
+        $result = BinaryField::base2ToBase256($result);
         $size = \strlen($result);
         $x = \strrev($x);
         // precompute left shift 1 through 7
         for ($i = 1; $i < 8; $i++) {
-            $precomputed[$i] = \phpseclib3\Math\BinaryField::base2ToBase256($x . \str_repeat('0', $i));
+            $precomputed[$i] = BinaryField::base2ToBase256($x . \str_repeat('0', $i));
         }
         for ($i = 0; $i < \strlen($y); $i++) {
             if ($y[$i] == '1') {
@@ -382,7 +380,7 @@ class Integer extends \phpseclib3\Math\Common\FiniteField\Integer
     /**
      * Returns the modulo
      *
-     * @return integer
+     * @return string
      */
     public static function getModulo($instanceID)
     {
@@ -404,7 +402,7 @@ class Integer extends \phpseclib3\Math\Common\FiniteField\Integer
      */
     public function toHex()
     {
-        return \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Hex::encode($this->toBytes());
+        return Hex::encode($this->toBytes());
     }
     /**
      * Converts an Integer to a bit string (eg. base-2).
@@ -414,7 +412,7 @@ class Integer extends \phpseclib3\Math\Common\FiniteField\Integer
     public function toBits()
     {
         //return str_pad(BinaryField::base256ToBase2($this->value), strlen(static::$modulo[$this->instanceID]), '0', STR_PAD_LEFT);
-        return \phpseclib3\Math\BinaryField::base256ToBase2($this->value);
+        return BinaryField::base256ToBase2($this->value);
     }
     /**
      * Converts an Integer to a BigInteger
@@ -423,12 +421,11 @@ class Integer extends \phpseclib3\Math\Common\FiniteField\Integer
      */
     public function toBigInteger()
     {
-        return new \phpseclib3\Math\BigInteger($this->value, 256);
+        return new BigInteger($this->value, 256);
     }
     /**
      *  __toString() magic method
      *
-     * @access public
      */
     public function __toString()
     {
@@ -437,7 +434,6 @@ class Integer extends \phpseclib3\Math\Common\FiniteField\Integer
     /**
      *  __debugInfo() magic method
      *
-     * @access public
      */
     public function __debugInfo()
     {

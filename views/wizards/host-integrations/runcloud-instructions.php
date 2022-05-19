@@ -43,7 +43,7 @@
   <h3 class="wu-m-0 wu-py-4 wu-text-lg" id="step-1-getting-the-api-key-and-secret">
   <?php _e('Getting the Server and App IDs', 'wp-ultimo'); ?>
 </h3>
-<p class="wu-text-sm"><?php _e('To find what are the server and app ids for your application, go to navigate to its manage page inside the RunCloud panel. Once you are there, you’ll be able to extract the values from the URL', 'wp-ultimo'); ?>.</p>
+<p class="wu-text-sm"><?php _e('To find what are the server and app ids for your application, navigate to its manage page inside the RunCloud panel. Once you are there, you’ll be able to extract the values from the URL', 'wp-ultimo'); ?>.</p>
 <div class=""><img class="wu-w-full" src="https://downloads.intercomcdn.com/i/o/96714775/8b97f2e047f86e449f663321/Screen-Shot-2018-05-07-at-09.35.30.png">
 </div>
 <div class=""><img class="wu-w-full" src="https://downloads.intercomcdn.com/i/o/96714784/2d25046a319547dd37da8490/Capto_Capture-2018-05-07_09-14-09_AM.png">

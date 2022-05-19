@@ -24,8 +24,7 @@ class MessageCatalogue implements \Symfony\Component\Translation\MessageCatalogu
     private $fallbackCatalogue;
     private $parent;
     /**
-     * @param string $locale   The locale
-     * @param array  $messages An array of messages classified by domain
+     * @param array $messages An array of messages classified by domain
      */
     public function __construct(string $locale, array $messages = [])
     {
@@ -45,10 +44,9 @@ class MessageCatalogue implements \Symfony\Component\Translation\MessageCatalogu
     public function getDomains()
     {
         $domains = [];
-        $suffixLength = \strlen(self::INTL_DOMAIN_SUFFIX);
         foreach ($this->messages as $domain => $messages) {
-            if (\strlen($domain) > $suffixLength && \false !== ($i = \strpos($domain, self::INTL_DOMAIN_SUFFIX, -$suffixLength))) {
-                $domain = \substr($domain, 0, $i);
+            if (\str_ends_with($domain, self::INTL_DOMAIN_SUFFIX)) {
+                $domain = \substr($domain, 0, -\strlen(self::INTL_DOMAIN_SUFFIX));
             }
             $domains[$domain] = $domain;
         }
@@ -61,16 +59,15 @@ class MessageCatalogue implements \Symfony\Component\Translation\MessageCatalogu
     {
         if (null !== $domain) {
             // skip messages merge if intl-icu requested explicitly
-            if (\false !== \strpos($domain, self::INTL_DOMAIN_SUFFIX)) {
+            if (\str_ends_with($domain, self::INTL_DOMAIN_SUFFIX)) {
                 return $this->messages[$domain] ?? [];
             }
             return ($this->messages[$domain . self::INTL_DOMAIN_SUFFIX] ?? []) + ($this->messages[$domain] ?? []);
         }
         $allMessages = [];
-        $suffixLength = \strlen(self::INTL_DOMAIN_SUFFIX);
         foreach ($this->messages as $domain => $messages) {
-            if (\strlen($domain) > $suffixLength && \false !== ($i = \strpos($domain, self::INTL_DOMAIN_SUFFIX, -$suffixLength))) {
-                $domain = \substr($domain, 0, $i);
+            if (\str_ends_with($domain, self::INTL_DOMAIN_SUFFIX)) {
+                $domain = \substr($domain, 0, -\strlen(self::INTL_DOMAIN_SUFFIX));
                 $allMessages[$domain] = $messages + ($allMessages[$domain] ?? []);
             } else {
                 $allMessages[$domain] = ($allMessages[$domain] ?? []) + $messages;
@@ -138,8 +135,7 @@ class MessageCatalogue implements \Symfony\Component\Translation\MessageCatalogu
             $this->messages[$domain] = [];
         }
         $intlDomain = $domain;
-        $suffixLength = \strlen(self::INTL_DOMAIN_SUFFIX);
-        if (\strlen($domain) > $suffixLength && \false !== \strpos($domain, self::INTL_DOMAIN_SUFFIX, -$suffixLength)) {
+        if (!\str_ends_with($domain, self::INTL_DOMAIN_SUFFIX)) {
             $intlDomain .= self::INTL_DOMAIN_SUFFIX;
         }
         foreach ($messages as $id => $message) {
@@ -156,7 +152,7 @@ class MessageCatalogue implements \Symfony\Component\Translation\MessageCatalogu
     public function addCatalogue(\Symfony\Component\Translation\MessageCatalogueInterface $catalogue)
     {
         if ($catalogue->getLocale() !== $this->locale) {
-            throw new \Symfony\Component\Translation\Exception\LogicException(\sprintf('Cannot add a catalogue for locale "%s" as the current locale for this catalogue is "%s".', $catalogue->getLocale(), $this->locale));
+            throw new LogicException(\sprintf('Cannot add a catalogue for locale "%s" as the current locale for this catalogue is "%s".', $catalogue->getLocale(), $this->locale));
         }
         foreach ($catalogue->all() as $domain => $messages) {
             if ($intlMessages = $catalogue->all($domain . self::INTL_DOMAIN_SUFFIX)) {
@@ -182,13 +178,13 @@ class MessageCatalogue implements \Symfony\Component\Translation\MessageCatalogu
         $c = $catalogue;
         while ($c = $c->getFallbackCatalogue()) {
             if ($c->getLocale() === $this->getLocale()) {
-                throw new \Symfony\Component\Translation\Exception\LogicException(\sprintf('Circular reference detected when adding a fallback catalogue for locale "%s".', $catalogue->getLocale()));
+                throw new LogicException(\sprintf('Circular reference detected when adding a fallback catalogue for locale "%s".', $catalogue->getLocale()));
             }
         }
         $c = $this;
         do {
             if ($c->getLocale() === $catalogue->getLocale()) {
-                throw new \Symfony\Component\Translation\Exception\LogicException(\sprintf('Circular reference detected when adding a fallback catalogue for locale "%s".', $catalogue->getLocale()));
+                throw new LogicException(\sprintf('Circular reference detected when adding a fallback catalogue for locale "%s".', $catalogue->getLocale()));
             }
             foreach ($catalogue->getResources() as $resource) {
                 $c->addResource($resource);
@@ -217,7 +213,7 @@ class MessageCatalogue implements \Symfony\Component\Translation\MessageCatalogu
     /**
      * {@inheritdoc}
      */
-    public function addResource(\WP_Ultimo\Dependencies\Symfony\Component\Config\Resource\ResourceInterface $resource)
+    public function addResource(ResourceInterface $resource)
     {
         $this->resources[$resource->__toString()] = $resource;
     }

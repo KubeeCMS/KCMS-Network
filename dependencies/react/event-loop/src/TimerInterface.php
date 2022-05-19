@@ -1,6 +1,6 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\EventLoop;
+namespace React\EventLoop;
 
 interface TimerInterface
 {

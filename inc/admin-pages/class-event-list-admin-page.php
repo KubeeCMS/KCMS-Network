@@ -90,19 +90,31 @@ class Event_List_Admin_Page extends List_Admin_Page {
 	 */
 	public function set_badge_count() {
 
-		$user = get_current_user_id();
+		global $wpdb;
 
-		$seen_events = get_user_meta( $user, 'wu_seen_events');
+		$user_id = get_current_user_id();
 
-		$all_events = Event::get_items_as_array(1000);
+		$cache = get_site_transient("wu_{$user_id}_unseen_events_count");
 
-		if (!isset($seen_events[0])) {
+		if ($cache) {
 
-			$seen_events[0] = 0;
+			$this->badge_count = $cache;
+
+			return;
 
 		} // end if;
 
-		$this->badge_count = count($all_events) - $seen_events[0];
+		$table_name = "{$wpdb->base_prefix}wu_events";
+
+		$last_seen = get_user_meta(get_current_user_id(), 'wu_seen_events', true);
+
+		$query = $wpdb->prepare("SELECT COUNT(id) FROM {$table_name} WHERE id > %d", $last_seen); // phpcs:ignore
+
+		$unseen = $wpdb->get_var($query); // phpcs:ignore
+
+		$this->badge_count = $unseen;
+
+		set_site_transient("wu_{$user_id}_unseen_events_count", $unseen, 5 * MINUTE_IN_SECONDS);
 
 	} // end set_badge_count;
 
@@ -114,11 +126,24 @@ class Event_List_Admin_Page extends List_Admin_Page {
 	 */
 	public function count_seen_events() {
 
-		$events = Event::get_items_as_array();
+		$user_id = get_current_user_id();
 
-		$user = get_current_user_id();
+		delete_site_transient("wu_{$user_id}_unseen_events_count");
 
-		update_user_meta($user, 'wu_seen_events', count($events));
+		$last_event = wu_get_events(array(
+			'orderby' => 'id',
+			'fields'  => 'ids',
+			'order'   => 'DESC',
+			'number'  => 1,
+		));
+
+		if (!empty($last_event)) {
+
+			$last_event_id = current($last_event);
+
+			update_user_meta($user_id, 'wu_seen_events', $last_event_id);
+
+		} // end if;
 
 		$this->badge_count = '';
 
@@ -131,6 +156,21 @@ class Event_List_Admin_Page extends List_Admin_Page {
 	 * @return void
 	 */
 	public function register_widgets() {} // end register_widgets;
+
+	/**
+	 * Returns an array with the labels for the edit page.
+	 *
+	 * @since 1.8.2
+	 * @return array
+	 */
+	public function get_labels() {
+
+		return array(
+			'deleted_message' => __('Event removed successfully.', 'wp-ultimo'),
+			'search_label'    => __('Search Event', 'wp-ultimo'),
+		);
+
+	} // end get_labels;
 
 	/**
 	 * Returns the title of the page.

@@ -1,7 +1,7 @@
-/* global wu_setup, wu_setup_settings, ajaxurl, wu_block_ui_polyfill */
+/* global wu_setup, wu_setup_settings, ajaxurl, wu_block_ui_polyfill, _wu_block_ui_polyfill  */
 (function($) {
 
-  const _wu_block_ui_polyfill = wu_block_ui_polyfill;
+  window._wu_block_ui_polyfill = wu_block_ui_polyfill;
 
   wu_block_ui_polyfill = function() { };
 
@@ -55,13 +55,25 @@
        */
       function process_queue_item(item) {
 
+        window.onbeforeunload = function() {
+
+          return '';
+
+        };
+
         if (item.length === 0) {
 
           if (queue.length === successes || install_id === 'migration') {
 
+            window.onbeforeunload = null;
+
             _wu_block_ui_polyfill($('#poststuff .inside'));
 
-            $form.get(0).submit();
+            setTimeout(() => {
+
+              $form.get(0).submit();
+
+            }, 100);
 
           } // end if;
 
@@ -74,6 +86,8 @@
         const $item = $(item);
 
         const content = $item.data('content');
+
+        $item.get(0).scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
 
         $item.find('td.status')
           .attr('class', '')
@@ -126,9 +140,13 @@
             $item.find('td.status')
               .attr('class', '')
               .addClass('status wu-text-red-400')
-              .find('span').html('Something wrong happened =(').end()
+              .find('span').html('').end()
               .find('.spinner').removeClass('is-active').end()
               .find('a.help').slideDown();
+
+            index++;
+
+            process_queue_item(queue.eq(index));
 
           },
         });
@@ -154,7 +172,7 @@ if (typeof wu_initialize_tooltip !== 'function') {
   // eslint-disable-next-line no-unused-vars
   const wu_block_ui = function(el) {
 
-    jQuery(el).block({
+    jQuery(el).wu_block({
       message: '<span>Please wait...</span>',
       overlayCSS: {
         backgroundColor: '#FFF',

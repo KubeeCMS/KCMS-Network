@@ -5,7 +5,7 @@
  * @since 2.0.0
  */
 ?>
-<div id="wp-ultimo-wrap" class="wrap">
+<div id="wp-ultimo-wrap" class="<?php wu_wrap_use_container() ?> wrap">
 
   <h1 class="wp-heading-inline">
 
@@ -21,9 +21,11 @@
 
       $action_classes = isset($action_link['classes']) ? $action_link['classes'] : '';
 
+      $attrs = isset($action_link['attrs']) ? $action_link['attrs'] : '';
+
     ?>
 
-      <a title="<?php echo esc_attr($action_link['label']); ?>" href="<?php echo esc_url($action_link['url']); ?>" class="page-title-action <?php echo esc_attr($action_classes); ?>">
+      <a title="<?php echo esc_attr($action_link['label']); ?>" href="<?php echo esc_url($action_link['url']); ?>" class="page-title-action <?php echo esc_attr($action_classes); ?>" <?php echo $attrs; ?>>
 
         <?php if ($action_link['icon']) : ?>
 
@@ -54,11 +56,30 @@
 
   <?php if (isset($_GET['updated'])) : ?>
 
-    <div id="message" class="updated notice notice-success is-dismissible below-h2">
+    <div id="message" class="updated notice wu-admin-notice notice-success is-dismissible below-h2">
       <p><?php echo $labels['updated_message']; ?></p>
     </div>
 
   <?php endif; ?>
+
+  <?php if (isset($_GET['notice'])) : ?>
+
+    <div id="message" class="updated notice wu-admin-notice notice-success is-dismissible below-h2">
+      <p><?php echo $labels['updated_message']; ?></p>
+    </div>
+
+  <?php endif; ?>
+
+  <?php
+  /**
+   * Allow plugin developers to add additional handlers to URL query redirects
+   *
+   * @since 2.0.0
+   *
+   * @param WP_Ultimo\Admin_Pages\Base_Admin_Page $page The page object.
+   */
+  do_action('wu_page_edit_redirect_handlers', $page);
+  ?>
 
   <hr class="wp-header-end">
 
@@ -107,7 +128,7 @@
             <div class="wu-mt-5">
 
               <?php remove_editor_styles(); ?>
-              
+
               <?php $content = method_exists($object, 'get_content') ? esc_attr($object->get_content()) : ''; ?>
               <?php wp_editor( html_entity_decode($content) , 'content', array(
                 'height' => 500,

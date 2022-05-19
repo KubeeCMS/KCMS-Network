@@ -18,7 +18,7 @@ use WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorTrait;
  *
  * @author Fabien Potencier <fabien@symfony.com>
  */
-class IdentityTranslator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface, \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\LocaleAwareInterface
+class IdentityTranslator implements TranslatorInterface, LocaleAwareInterface
 {
     use TranslatorTrait;
 }

@@ -18,8 +18,6 @@
  *
  * PHP version 5 and 7
  *
- * @category  Crypt
- * @package   EC
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -27,15 +25,13 @@
  */
 namespace phpseclib3\Crypt\EC\BaseCurves;
 
-use phpseclib3\Math\PrimeField;
 use phpseclib3\Math\BigInteger;
+use phpseclib3\Math\PrimeField;
 use phpseclib3\Math\PrimeField\Integer as PrimeInteger;
 /**
  * Curves over a*x^2 + y^2 = 1 + d*x^2*y^2
  *
- * @package Prime
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
 class TwistedEdwards extends \phpseclib3\Crypt\EC\BaseCurves\Base
 {
@@ -84,18 +80,18 @@ class TwistedEdwards extends \phpseclib3\Crypt\EC\BaseCurves\Base
     /**
      * Sets the modulo
      */
-    public function setModulo(\phpseclib3\Math\BigInteger $modulo)
+    public function setModulo(BigInteger $modulo)
     {
         $this->modulo = $modulo;
-        $this->factory = new \phpseclib3\Math\PrimeField($modulo);
-        $this->zero = $this->factory->newInteger(new \phpseclib3\Math\BigInteger(0));
-        $this->one = $this->factory->newInteger(new \phpseclib3\Math\BigInteger(1));
-        $this->two = $this->factory->newInteger(new \phpseclib3\Math\BigInteger(2));
+        $this->factory = new PrimeField($modulo);
+        $this->zero = $this->factory->newInteger(new BigInteger(0));
+        $this->one = $this->factory->newInteger(new BigInteger(1));
+        $this->two = $this->factory->newInteger(new BigInteger(2));
     }
     /**
      * Set coefficients a and b
      */
-    public function setCoefficients(\phpseclib3\Math\BigInteger $a, \phpseclib3\Math\BigInteger $d)
+    public function setCoefficients(BigInteger $a, BigInteger $d)
     {
         if (!isset($this->factory)) {
             throw new \RuntimeException('setModulo needs to be called before this method');
@@ -109,15 +105,15 @@ class TwistedEdwards extends \phpseclib3\Crypt\EC\BaseCurves\Base
     public function setBasePoint($x, $y)
     {
         switch (\true) {
-            case !$x instanceof \phpseclib3\Math\BigInteger && !$x instanceof \phpseclib3\Math\PrimeField\Integer:
+            case !$x instanceof BigInteger && !$x instanceof PrimeInteger:
                 throw new \UnexpectedValueException('WP_Ultimo\\Dependencies\\Argument 1 passed to Prime::setBasePoint() must be an instance of either BigInteger or PrimeField\\Integer');
-            case !$y instanceof \phpseclib3\Math\BigInteger && !$y instanceof \phpseclib3\Math\PrimeField\Integer:
+            case !$y instanceof BigInteger && !$y instanceof PrimeInteger:
                 throw new \UnexpectedValueException('WP_Ultimo\\Dependencies\\Argument 2 passed to Prime::setBasePoint() must be an instance of either BigInteger or PrimeField\\Integer');
         }
         if (!isset($this->factory)) {
             throw new \RuntimeException('setModulo needs to be called before this method');
         }
-        $this->p = [$x instanceof \phpseclib3\Math\BigInteger ? $this->factory->newInteger($x) : $x, $y instanceof \phpseclib3\Math\BigInteger ? $this->factory->newInteger($y) : $y];
+        $this->p = [$x instanceof BigInteger ? $this->factory->newInteger($x) : $x, $y instanceof BigInteger ? $this->factory->newInteger($y) : $y];
     }
     /**
      * Returns the a coefficient

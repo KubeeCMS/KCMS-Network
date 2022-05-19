@@ -16,8 +16,10 @@ use WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Formatter;
  * Expanded formatter
  *
  * @author Leaf Corcoran <leafot@gmail.com>
+ *
+ * @internal
  */
-class Expanded extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Formatter
+final class Expanded extends Formatter
 {
     /**
      * {@inheritdoc}
@@ -36,20 +38,22 @@ class Expanded extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Formatter
     /**
      * {@inheritdoc}
      */
-    protected function indentStr()
+    protected function indentStr() : string
     {
         return \str_repeat($this->indentChar, $this->indentLevel);
     }
     /**
      * {@inheritdoc}
      */
-    protected function blockLines(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Formatter\OutputBlock $block)
+    protected function blockLines(OutputBlock $block) : void
     {
         $inner = $this->indentStr();
         $glue = $this->break . $inner;
         foreach ($block->lines as $index => $line) {
             if (\substr($line, 0, 2) === '/*') {
-                $block->lines[$index] = \preg_replace('/\\r\\n?|\\n|\\f/', $this->break, $line);
+                $replacedLine = \preg_replace('/\\r\\n?|\\n|\\f/', $this->break, $line);
+                \assert($replacedLine !== null);
+                $block->lines[$index] = $replacedLine;
             }
         }
         $this->write($inner . \implode($glue, $block->lines));

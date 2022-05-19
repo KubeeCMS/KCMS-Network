@@ -103,21 +103,34 @@ class Email_List_Table extends Base_List_Table {
 
 		$url_atts = array(
 			'id'    => $item->get_id(),
-			'model' => 'email',
+			'model' => 'email'
 		);
 
 		$title = sprintf('<a href="%s">%s</a>', wu_network_admin_url('wp-ultimo-edit-email', $url_atts), $item->get_title());
 
-		$title = '<strong>' . $title . '</strong>';
+		$target = $item->get_target();
+
+		$title = '<div><strong class="wu-inline-block wu-pr-1">' . $title . '</strong> <span class="wu-bg-gray-200 wu-text-gray-700 wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono">' . $target . '</span></div>';
 
 		$content = wp_trim_words(wp_strip_all_tags($item->get_content()), 6);
 
 		$actions = array(
-			'edit'   => sprintf('<a href="%s">%s</a>', wu_network_admin_url('wp-ultimo-edit-email', $url_atts), __('Edit', 'wp-ultimo')),
-			'duplicate'   => sprintf('<a href="%s">%s</a>', wu_network_admin_url('wp-ultimo-edit-email', $url_atts), __('Duplicate', 'wp-ultimo')),
-			'send-test'   => sprintf('<a href="%s">%s</a>', wu_network_admin_url('wp-ultimo-edit-email', $url_atts), __('Send Test	', 'wp-ultimo')),
-			'delete' => sprintf('<a href="%s">%s</a>', '', __('Delete', 'wp-ultimo')),
+			'edit'      => sprintf('<a href="%s">%s</a>', wu_network_admin_url('wp-ultimo-edit-email', $url_atts), __('Edit', 'wp-ultimo')),
+			'duplicate' => sprintf('<a href="%s">%s</a>', wu_network_admin_url('wp-ultimo-edit-email', $url_atts), __('Duplicate', 'wp-ultimo')),
+			'send-test' => sprintf('<a title="%s" class="wubox" href="%s">%s</a>', __('Send Test Email', 'wp-ultimo'), wu_get_form_url('send_new_test', $url_atts), __('Send Test Email', 'wp-ultimo'))
 		);
+
+		$slug = $item->get_slug();
+
+		$default_system_emails = wu_get_default_system_emails();
+
+		if (isset($default_system_emails[$slug])) {
+
+			$actions['reset'] = sprintf('<a title="%s" class="wubox" href="%s">%s</a>', __('Reset', 'wp-ultimo'), wu_get_form_url('reset_confirmation', $url_atts), __('Reset', 'wp-ultimo'));
+
+		} // end if;
+
+		$actions['delete'] = sprintf('<a title="%s" class="wubox" href="%s">%s</a>', __('Delete', 'wp-ultimo'), wu_get_form_url('delete_modal', $url_atts), __('Delete', 'wp-ultimo'));
 
 		return $title . $content . $this->row_actions($actions);
 
@@ -154,22 +167,6 @@ class Email_List_Table extends Base_List_Table {
 		return "<span class='wu-bg-gray-200 wu-text-gray-700 wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono'>{$slug}</span>";
 
 	} // end column_slug;
-
-	/**
-	 * Displays the target of the email.
-	 *
-	 * @since 2.0.0
-	 *
-	 * @param \WP_Ultimo\Models\Email $item The email object.
-	 * @return string
-	 */
-	public function column_target($item) {
-
-		$event = $item->get_target();
-
-		return "<span class='wu-bg-gray-200 wu-text-gray-700 wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono'>{$event}</span>";
-
-	} // end column_target;
 
 	/**
 	 * Displays if the email is schedule for later send or not.
@@ -218,7 +215,6 @@ class Email_List_Table extends Base_List_Table {
 			'title'    => __('Content', 'wp-ultimo'),
 			'slug'     => __('Event', 'wp-ultimo'),
 			'event'    => __('slug', 'wp-ultimo'),
-			'target'   => __('Target', 'wp-ultimo'),
 			'schedule' => __('When', 'wp-ultimo'),
 			'id'       => __('ID', 'wp-ultimo'),
 		);
@@ -226,6 +222,97 @@ class Email_List_Table extends Base_List_Table {
 		return $columns;
 
 	} // end get_columns;
+
+    /**
+	 * Handles the bulk processing adding duplication.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function process_single_action() {
+
+		$bulk_action = $this->current_action();
+
+		if ($bulk_action === 'duplicate') {
+
+			$email_id = wu_request('id');
+
+			$email = wu_get_email($email_id);
+
+			if (!$email) {
+
+				WP_Ultimo()->notices->add(__('Email not found.', 'wp-ultimo'), 'error', 'network-admin');
+
+				return;
+
+			} // end if;
+
+			$new_email = $email->duplicate();
+
+			$new_name = sprintf(__('Copy of %s', 'wp-ultimo'), $email->get_name());
+
+			$new_email->set_name($new_name);
+
+			$new_email->set_slug(sanitize_title($new_name));
+
+			$new_email->set_target($email->get_target());
+
+			$new_email->set_style($email->get_style());
+
+			$new_email->set_event($email->get_event());
+
+			if ($email->has_schedule()) {
+
+				$new_email->set_schedule($email->has_schedule());
+
+				if ($email->get_schedule_type() === 'hours') {
+
+					$new_email->set_send_hours($email->get_send_hours());
+
+				} elseif ($email->get_schedule_type() === 'days') {
+
+					$new_email->set_send_days($email->get_send_days());
+
+				} // end if;
+
+			} // end if;
+
+			if ($email->get_custom_sender()) {
+
+				$new_email->set_custom_sender($email->get_custom_sender());
+
+				$new_email->set_custom_sender_name($email->get_custom_sender_name());
+
+				$new_email->set_custom_sender_email($email->get_custom_sender_email());
+
+			} // end if;
+
+			$new_email->set_send_copy_to_admin($email->get_send_copy_to_admin());
+
+			$new_email->set_date_created(wu_get_current_time('mysql', true));
+
+			$result = $new_email->save();
+
+			if (is_wp_error($result)) {
+
+				WP_Ultimo()->notices->add($result->get_error_message(), 'error', 'network-admin');
+
+				return;
+
+			} // end if;
+
+			$redirect_url = wu_network_admin_url('wp-ultimo-edit-email', array(
+				'id'      => $new_email->get_id(),
+				'updated' => 1,
+			));
+
+			wp_redirect($redirect_url);
+
+			exit;
+
+		} // end if;
+
+	} // end process_single_action;
 
 	/**
 	 * Returns the filters for this page.

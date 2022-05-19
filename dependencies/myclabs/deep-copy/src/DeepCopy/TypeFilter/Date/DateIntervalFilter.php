@@ -9,7 +9,7 @@ use WP_Ultimo\Dependencies\DeepCopy\TypeFilter\TypeFilter;
  *
  * @deprecated Will be removed in 2.0. This filter will no longer be necessary in PHP 7.1+.
  */
-class DateIntervalFilter implements \WP_Ultimo\Dependencies\DeepCopy\TypeFilter\TypeFilter
+class DateIntervalFilter implements TypeFilter
 {
     /**
      * {@inheritdoc}
@@ -20,7 +20,7 @@ class DateIntervalFilter implements \WP_Ultimo\Dependencies\DeepCopy\TypeFilter\
      */
     public function apply($element)
     {
-        $copy = new \DateInterval('P0D');
+        $copy = new DateInterval('P0D');
         foreach ($element as $propertyName => $propertyValue) {
             $copy->{$propertyName} = $propertyValue;
         }

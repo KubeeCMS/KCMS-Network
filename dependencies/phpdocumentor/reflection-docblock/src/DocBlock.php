@@ -1,52 +1,45 @@
 <?php
 
+declare (strict_types=1);
 /**
  * This file is part of phpDocumentor.
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @copyright 2010-2015 Mike van Riel<mike@phpdoc.org>
- * @license   http://www.opensource.org/licenses/mit-license.php MIT
  * @link      http://phpdoc.org
  */
 namespace WP_Ultimo\Dependencies\phpDocumentor\Reflection;
 
 use WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Tag;
+use WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Tags\TagWithType;
 use WP_Ultimo\Dependencies\Webmozart\Assert\Assert;
 final class DocBlock
 {
     /** @var string The opening line for this docblock. */
-    private $summary = '';
+    private $summary;
     /** @var DocBlock\Description The actual description for this docblock. */
-    private $description = null;
+    private $description;
     /** @var Tag[] An array containing all the tags in this docblock; except inline. */
     private $tags = [];
-    /** @var Types\Context Information about the context of this DocBlock. */
-    private $context = null;
-    /** @var Location Information about the location of this DocBlock. */
-    private $location = null;
+    /** @var Types\Context|null Information about the context of this DocBlock. */
+    private $context;
+    /** @var Location|null Information about the location of this DocBlock. */
+    private $location;
     /** @var bool Is this DocBlock (the start of) a template? */
-    private $isTemplateStart = \false;
+    private $isTemplateStart;
     /** @var bool Does this DocBlock signify the end of a DocBlock template? */
-    private $isTemplateEnd = \false;
+    private $isTemplateEnd;
     /**
-     * @param string $summary
-     * @param DocBlock\Description $description
      * @param DocBlock\Tag[] $tags
-     * @param Types\Context $context The context in which the DocBlock occurs.
-     * @param Location $location The location within the file that this DocBlock occurs in.
-     * @param bool $isTemplateStart
-     * @param bool $isTemplateEnd
+     * @param Types\Context  $context  The context in which the DocBlock occurs.
+     * @param Location       $location The location within the file that this DocBlock occurs in.
      */
-    public function __construct($summary = '', \WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Description $description = null, array $tags = [], \WP_Ultimo\Dependencies\phpDocumentor\Reflection\Types\Context $context = null, \WP_Ultimo\Dependencies\phpDocumentor\Reflection\Location $location = null, $isTemplateStart = \false, $isTemplateEnd = \false)
+    public function __construct(string $summary = '', ?DocBlock\Description $description = null, array $tags = [], ?Types\Context $context = null, ?Location $location = null, bool $isTemplateStart = \false, bool $isTemplateEnd = \false)
     {
-        \WP_Ultimo\Dependencies\Webmozart\Assert\Assert::string($summary);
-        \WP_Ultimo\Dependencies\Webmozart\Assert\Assert::boolean($isTemplateStart);
-        \WP_Ultimo\Dependencies\Webmozart\Assert\Assert::boolean($isTemplateEnd);
-        \WP_Ultimo\Dependencies\Webmozart\Assert\Assert::allIsInstanceOf($tags, \WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Tag::class);
+        Assert::allIsInstanceOf($tags, Tag::class);
         $this->summary = $summary;
-        $this->description = $description ?: new \WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Description('');
+        $this->description = $description ?: new DocBlock\Description('');
         foreach ($tags as $tag) {
             $this->addTag($tag);
         }
@@ -55,35 +48,25 @@ final class DocBlock
         $this->isTemplateEnd = $isTemplateEnd;
         $this->isTemplateStart = $isTemplateStart;
     }
-    /**
-     * @return string
-     */
-    public function getSummary()
+    public function getSummary() : string
     {
         return $this->summary;
     }
-    /**
-     * @return DocBlock\Description
-     */
-    public function getDescription()
+    public function getDescription() : DocBlock\Description
     {
         return $this->description;
     }
     /**
      * Returns the current context.
-     *
-     * @return Types\Context
      */
-    public function getContext()
+    public function getContext() : ?Types\Context
     {
         return $this->context;
     }
     /**
      * Returns the current location.
-     *
-     * @return Location
      */
-    public function getLocation()
+    public function getLocation() : ?Location
     {
         return $this->location;
     }
@@ -105,10 +88,8 @@ final class DocBlock
      * elements that follow until another DocBlock is found that contains the closing marker (`#@-`).
      *
      * @see self::isTemplateEnd() for the check whether a closing marker was provided.
-     *
-     * @return boolean
      */
-    public function isTemplateStart()
+    public function isTemplateStart() : bool
     {
         return $this->isTemplateStart;
     }
@@ -116,10 +97,8 @@ final class DocBlock
      * Returns whether this DocBlock is the end of a Template section.
      *
      * @see self::isTemplateStart() for a more complete description of the Docblock Template functionality.
-     *
-     * @return boolean
      */
-    public function isTemplateEnd()
+    public function isTemplateEnd() : bool
     {
         return $this->isTemplateEnd;
     }
@@ -128,7 +107,7 @@ final class DocBlock
      *
      * @return Tag[]
      */
-    public function getTags()
+    public function getTags() : array
     {
         return $this->tags;
     }
@@ -140,13 +119,30 @@ final class DocBlock
      *
      * @return Tag[]
      */
-    public function getTagsByName($name)
+    public function getTagsByName(string $name) : array
     {
-        \WP_Ultimo\Dependencies\Webmozart\Assert\Assert::string($name);
         $result = [];
-        /** @var Tag $tag */
         foreach ($this->getTags() as $tag) {
             if ($tag->getName() !== $name) {
+                continue;
+            }
+            $result[] = $tag;
+        }
+        return $result;
+    }
+    /**
+     * Returns an array of tags with type matching the given name. If no tags are found
+     * an empty array is returned.
+     *
+     * @param string $name String to search by.
+     *
+     * @return TagWithType[]
+     */
+    public function getTagsWithTypeByName(string $name) : array
+    {
+        $result = [];
+        foreach ($this->getTagsByName($name) as $tag) {
+            if (!$tag instanceof TagWithType) {
                 continue;
             }
             $result[] = $tag;
@@ -157,13 +153,9 @@ final class DocBlock
      * Checks if a tag of a certain type is present in this DocBlock.
      *
      * @param string $name Tag name to check for.
-     *
-     * @return bool
      */
-    public function hasTag($name)
+    public function hasTag(string $name) : bool
     {
-        \WP_Ultimo\Dependencies\Webmozart\Assert\Assert::string($name);
-        /** @var Tag $tag */
         foreach ($this->getTags() as $tag) {
             if ($tag->getName() === $name) {
                 return \true;
@@ -174,11 +166,9 @@ final class DocBlock
     /**
      * Remove a tag from this DocBlock.
      *
-     * @param Tag $tag The tag to remove.
-     *
-     * @return void
+     * @param Tag $tagToRemove The tag to remove.
      */
-    public function removeTag(\WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Tag $tagToRemove)
+    public function removeTag(Tag $tagToRemove) : void
     {
         foreach ($this->tags as $key => $tag) {
             if ($tag === $tagToRemove) {
@@ -191,10 +181,8 @@ final class DocBlock
      * Adds a tag to this DocBlock.
      *
      * @param Tag $tag The tag to add.
-     *
-     * @return void
      */
-    private function addTag(\WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Tag $tag)
+    private function addTag(Tag $tag) : void
     {
         $this->tags[] = $tag;
     }

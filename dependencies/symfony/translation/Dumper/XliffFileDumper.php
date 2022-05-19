@@ -22,7 +22,7 @@ class XliffFileDumper extends \Symfony\Component\Translation\Dumper\FileDumper
     /**
      * {@inheritdoc}
      */
-    public function formatCatalogue(\Symfony\Component\Translation\MessageCatalogue $messages, string $domain, array $options = [])
+    public function formatCatalogue(MessageCatalogue $messages, string $domain, array $options = [])
     {
         $xliffVersion = '1.2';
         if (\array_key_exists('xliff_version', $options)) {
@@ -39,7 +39,7 @@ class XliffFileDumper extends \Symfony\Component\Translation\Dumper\FileDumper
         if ('2.0' === $xliffVersion) {
             return $this->dumpXliff2($defaultLocale, $messages, $domain);
         }
-        throw new \Symfony\Component\Translation\Exception\InvalidArgumentException(\sprintf('No support implemented for dumping XLIFF version "%s".', $xliffVersion));
+        throw new InvalidArgumentException(\sprintf('No support implemented for dumping XLIFF version "%s".', $xliffVersion));
     }
     /**
      * {@inheritdoc}
@@ -48,7 +48,7 @@ class XliffFileDumper extends \Symfony\Component\Translation\Dumper\FileDumper
     {
         return 'xlf';
     }
-    private function dumpXliff1(string $defaultLocale, \Symfony\Component\Translation\MessageCatalogue $messages, ?string $domain, array $options = [])
+    private function dumpXliff1(string $defaultLocale, MessageCatalogue $messages, ?string $domain, array $options = [])
     {
         $toolInfo = ['tool-id' => 'symfony', 'tool-name' => 'Symfony'];
         if (\array_key_exists('tool_info', $options)) {
@@ -106,7 +106,7 @@ class XliffFileDumper extends \Symfony\Component\Translation\Dumper\FileDumper
         }
         return $dom->saveXML();
     }
-    private function dumpXliff2(string $defaultLocale, \Symfony\Component\Translation\MessageCatalogue $messages, ?string $domain)
+    private function dumpXliff2(string $defaultLocale, MessageCatalogue $messages, ?string $domain)
     {
         $dom = new \DOMDocument('1.0', 'utf-8');
         $dom->formatOutput = \true;
@@ -116,26 +116,24 @@ class XliffFileDumper extends \Symfony\Component\Translation\Dumper\FileDumper
         $xliff->setAttribute('srcLang', \str_replace('_', '-', $defaultLocale));
         $xliff->setAttribute('trgLang', \str_replace('_', '-', $messages->getLocale()));
         $xliffFile = $xliff->appendChild($dom->createElement('file'));
-        if (\Symfony\Component\Translation\MessageCatalogue::INTL_DOMAIN_SUFFIX === \substr($domain, -($suffixLength = \strlen(\Symfony\Component\Translation\MessageCatalogue::INTL_DOMAIN_SUFFIX)))) {
-            $xliffFile->setAttribute('id', \substr($domain, 0, -$suffixLength) . '.' . $messages->getLocale());
+        if (\str_ends_with($domain, MessageCatalogue::INTL_DOMAIN_SUFFIX)) {
+            $xliffFile->setAttribute('id', \substr($domain, 0, -\strlen(MessageCatalogue::INTL_DOMAIN_SUFFIX)) . '.' . $messages->getLocale());
         } else {
             $xliffFile->setAttribute('id', $domain . '.' . $messages->getLocale());
         }
         foreach ($messages->all($domain) as $source => $target) {
             $translation = $dom->createElement('unit');
             $translation->setAttribute('id', \strtr(\substr(\base64_encode(\hash('sha256', $source, \true)), 0, 7), '/+', '._'));
-            $name = $source;
-            if (\strlen($source) > 80) {
-                $name = \substr(\md5($source), -7);
+            if (\strlen($source) <= 80) {
+                $translation->setAttribute('name', $source);
             }
-            $translation->setAttribute('name', $name);
             $metadata = $messages->getMetadata($source, $domain);
             // Add notes section
             if ($this->hasMetadataArrayInfo('notes', $metadata)) {
                 $notesElement = $dom->createElement('notes');
                 foreach ($metadata['notes'] as $note) {
                     $n = $dom->createElement('note');
-                    $n->appendChild($dom->createTextNode(isset($note['content']) ? $note['content'] : ''));
+                    $n->appendChild($dom->createTextNode($note['content'] ?? ''));
                     unset($note['content']);
                     foreach ($note as $name => $value) {
                         $n->setAttribute($name, $value);
@@ -163,6 +161,6 @@ class XliffFileDumper extends \Symfony\Component\Translation\Dumper\FileDumper
     }
     private function hasMetadataArrayInfo(string $key, array $metadata = null) : bool
     {
-        return null !== $metadata && \array_key_exists($key, $metadata) && ($metadata[$key] instanceof \Traversable || \is_array($metadata[$key]));
+        return \is_iterable($metadata[$key] ?? null);
     }
 }

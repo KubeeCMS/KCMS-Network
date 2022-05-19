@@ -1,5 +1,5 @@
 /* eslint-disable no-lonely-if */
-/* global Vue, wu_block_ui, ajaxurl, wu_tax_ratesl10n */
+/* global _, vuedraggable, Vue, wu_block_ui, ajaxurl, wu_tax_ratesl10n */
 (function($) {
 
   $(document).ready(function() {
@@ -9,29 +9,121 @@
      */
     if ($('#wu-tax-rates').length) {
 
+      Vue.component('selectizer', {
+        props: [
+          'value',
+          'id',
+          'name',
+          'model',
+          'country',
+          'state',
+          'selected',
+          'options',
+          'placeholder',
+        ],
+        template: '<input v-bind="$props">',
+        updated() {
+
+          this.$nextTick(function() {
+
+            const options = jQuery(this.$el).data('__options');
+
+            if (options.data.country !== this.country) {
+
+              options.data.country = this.country;
+
+              jQuery(this.$el).data('__options', options);
+
+              this.$el.selectize.clear();
+
+              this.$el.selectize.clearOptions();
+
+            } // end if;
+
+            if (options.data.state !== this.state) {
+
+              options.data.state = this.state;
+
+              jQuery(this.$el).data('__options', options);
+
+            } // end if;
+
+          });
+
+        },
+        mounted() {
+
+          const that = this;
+
+          const item = this.$el;
+
+          window.wu_selector({
+            el: item,
+            maxItems: 1000,
+            options: this.options,
+            valueField: 'slug',
+            labelField: 'name',
+            searchField: ['slug', 'name'],
+            create: true,
+            templateName: 'checkout_form',
+            data: {
+              action: 'wu_search',
+              model: this.model,
+              country: this.country,
+              state: this.state,
+              number: 10,
+            },
+          });
+
+          this.$el.selectize.on('change', function(value) {
+
+            that.$emit('input', value);
+
+          });
+
+        },
+      });
+
       window.wu_tax_rates = new Vue({
         el: '#wu-tax-rates',
-        data: {
-          tax_category: 'default',
-          switching: false,
-          creating: false,
-          create_name: '',
-          toggle: false,
-          loading: true,
-          saving: false,
-          initialLoading: true,
-          error: false,
-          changed: false,
-          data: {
-            default: {
-              name: 'Default',
-              rates: [],
+        components: {
+          vuedraggable,
+        },
+        data() {
+
+          return {
+            dragging: false,
+            tax_category: 'default',
+            switching: false,
+            creating: false,
+            create_name: '',
+            toggle: false,
+            loading: true,
+            saving: false,
+            initialLoading: true,
+            error: false,
+            changed: false,
+            data: {
+              default: {
+                name: 'Default',
+                rates: [],
+              },
             },
-          },
-          delete: [],
-          saveMessage: '',
-          errorMessage: '',
-          rate_type: 'standard_rate',
+            delete: [],
+            saveMessage: '',
+            errorMessage: '',
+            rate_type: 'standard_rate',
+            editing: 0,
+            item: {
+              title: wu_tax_ratesl10n.name,
+              country: '',
+              state: '',
+              tax_rate: '',
+              type: 'regular',
+              compound: false,
+            },
+          };
+
         },
         watch: {
           loading(new_value) {
@@ -74,6 +166,8 @@
 
             vm.changed = true;
 
+          }, {
+            deep: true,
           });
 
         },
@@ -167,7 +261,6 @@
                 country: '',
                 state: '',
                 tax_rate: '',
-                priority: '',
                 type: 'regular',
                 compound: false,
               },
@@ -185,13 +278,18 @@
 
             if (are_you_sure) {
 
-              const cleaned_list = $(this.data).filter(function(index) {
+              const cleaned_list = _.filter(this.data, function(item, index) {
 
                 return index !== that.tax_category;
 
               });
 
-              that.data = cleaned_list.get();
+              that.data = cleaned_list.length ? cleaned_list : {
+                default: {
+                  name: 'Default',
+                  rates: [],
+                },
+              };
 
               that.tax_category = Object.keys(that.data).shift();
 
@@ -225,6 +323,18 @@
             const that = this;
 
             that.saving = true;
+
+            if (typeof that.data[that.tax_category].rates !== 'undefined') {
+
+              _.map(that.data[that.tax_category].rates, (item, index) => {
+
+                item.priority = index * 10;
+
+                return item;
+
+              });
+
+            }
 
             $.post({
               url: ajaxurl + '?action=wu_save_tax_rates&' + $('#nonce_form').serialize(),

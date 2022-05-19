@@ -12,7 +12,7 @@ use ReflectionException;
  *
  * @final
  */
-class PropertyTypeMatcher implements \WP_Ultimo\Dependencies\DeepCopy\Matcher\Matcher
+class PropertyTypeMatcher implements Matcher
 {
     /**
      * @var string
@@ -31,8 +31,8 @@ class PropertyTypeMatcher implements \WP_Ultimo\Dependencies\DeepCopy\Matcher\Ma
     public function matches($object, $property)
     {
         try {
-            $reflectionProperty = \WP_Ultimo\Dependencies\DeepCopy\Reflection\ReflectionHelper::getProperty($object, $property);
-        } catch (\ReflectionException $exception) {
+            $reflectionProperty = ReflectionHelper::getProperty($object, $property);
+        } catch (ReflectionException $exception) {
             return \false;
         }
         $reflectionProperty->setAccessible(\true);

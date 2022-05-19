@@ -36,23 +36,23 @@ trait Options
      *
      * @var int|string
      */
-    protected static $weekStartsAt = \WP_Ultimo\Dependencies\Carbon\CarbonInterface::MONDAY;
+    protected static $weekStartsAt = CarbonInterface::MONDAY;
     /**
      * Last day of week.
      *
      * @var int|string
      */
-    protected static $weekEndsAt = \WP_Ultimo\Dependencies\Carbon\CarbonInterface::SUNDAY;
+    protected static $weekEndsAt = CarbonInterface::SUNDAY;
     /**
      * Days of weekend.
      *
      * @var array
      */
-    protected static $weekendDays = [\WP_Ultimo\Dependencies\Carbon\CarbonInterface::SATURDAY, \WP_Ultimo\Dependencies\Carbon\CarbonInterface::SUNDAY];
+    protected static $weekendDays = [CarbonInterface::SATURDAY, CarbonInterface::SUNDAY];
     /**
      * Format regex patterns.
      *
-     * @var array
+     * @var array<string, string>
      */
     protected static $regexFormats = [
         'd' => '(3[01]|[12][0-9]|0[1-9])',
@@ -63,7 +63,7 @@ trait Options
         'S' => '(st|nd|rd|th)',
         'w' => '([0-6])',
         'z' => '(36[0-5]|3[0-5][0-9]|[12][0-9]{2}|[1-9]?[0-9])',
-        'W' => '(5[012]|[1-4][0-9]|[1-9])',
+        'W' => '(5[012]|[1-4][0-9]|0?[1-9])',
         'F' => '([a-zA-Z]{2,})',
         'm' => '(1[012]|0[1-9])',
         'M' => '([a-zA-Z]{3})',
@@ -88,6 +88,7 @@ trait Options
         'I' => '(0|1)',
         'O' => '([+-](1[012]|0[0-9])[0134][05])',
         'P' => '([+-](1[012]|0[0-9]):[0134][05])',
+        'p' => '(Z|[+-](1[012]|0[0-9]):[0134][05])',
         'T' => '([a-zA-Z]{1,5})',
         'Z' => '(-?[1-5]?[0-9]{1,4})',
         'U' => '([0-9]*)',
@@ -128,76 +129,76 @@ trait Options
      *
      * @var string|callable|null
      */
-    protected static $formatFunction = null;
+    protected static $formatFunction;
     /**
      * Function to call instead of createFromFormat.
      *
      * @var string|callable|null
      */
-    protected static $createFromFormatFunction = null;
+    protected static $createFromFormatFunction;
     /**
      * Function to call instead of parse.
      *
      * @var string|callable|null
      */
-    protected static $parseFunction = null;
+    protected static $parseFunction;
     /**
      * Indicates if months should be calculated with overflow.
      * Specific setting.
      *
      * @var bool|null
      */
-    protected $localMonthsOverflow = null;
+    protected $localMonthsOverflow;
     /**
      * Indicates if years should be calculated with overflow.
      * Specific setting.
      *
      * @var bool|null
      */
-    protected $localYearsOverflow = null;
+    protected $localYearsOverflow;
     /**
      * Indicates if the strict mode is in use.
      * Specific setting.
      *
      * @var bool|null
      */
-    protected $localStrictModeEnabled = null;
+    protected $localStrictModeEnabled;
     /**
      * Options for diffForHumans and forHumans methods.
      *
      * @var bool|null
      */
-    protected $localHumanDiffOptions = null;
+    protected $localHumanDiffOptions;
     /**
      * Format to use on string cast.
      *
      * @var string|null
      */
-    protected $localToStringFormat = null;
+    protected $localToStringFormat;
     /**
      * Format to use on JSON serialization.
      *
      * @var string|null
      */
-    protected $localSerializer = null;
+    protected $localSerializer;
     /**
      * Instance-specific macros.
      *
      * @var array|null
      */
-    protected $localMacros = null;
+    protected $localMacros;
     /**
      * Instance-specific generic macros.
      *
      * @var array|null
      */
-    protected $localGenericMacros = null;
+    protected $localGenericMacros;
     /**
      * Function to call instead of format.
      *
      * @var string|callable|null
      */
-    protected $localFormatFunction = null;
+    protected $localFormatFunction;
     /**
      * @deprecated To avoid conflict between different third-party libraries, static setters should not be used.
      *             You should rather use the ->settings() method.
@@ -338,6 +339,9 @@ trait Options
             }
             $this->locale(...$locales);
         }
+        if (isset($settings['innerTimezone'])) {
+            return $this->setTimezone($settings['innerTimezone']);
+        }
         if (isset($settings['timezone'])) {
             return $this->shiftTimezone($settings['timezone']);
         }
@@ -380,15 +384,15 @@ trait Options
     }
     protected function addExtraDebugInfos(&$infos) : void
     {
-        if ($this instanceof \WP_Ultimo\Dependencies\Carbon\CarbonInterface || $this instanceof \DateTimeInterface) {
+        if ($this instanceof DateTimeInterface) {
             try {
                 if (!isset($infos['date'])) {
-                    $infos['date'] = $this->format(\WP_Ultimo\Dependencies\Carbon\CarbonInterface::MOCK_DATETIME_FORMAT);
+                    $infos['date'] = $this->format(CarbonInterface::MOCK_DATETIME_FORMAT);
                 }
                 if (!isset($infos['timezone'])) {
                     $infos['timezone'] = $this->tzName;
                 }
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 // noop
             }
         }

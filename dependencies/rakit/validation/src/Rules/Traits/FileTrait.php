@@ -61,7 +61,7 @@ trait FileTrait
         // ['name.0' => string, 'name.1' => string, 'type.0' => string, 'type.1' => string, ...]
         // or for nested array:
         // ['name.foo.bar' => string, 'name.foo.baz' => string, 'type.foo.bar' => string, 'type.foo.baz' => string, ...]
-        $arrayDots = \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arrayDot($value);
+        $arrayDots = Helper::arrayDot($value);
         $results = [];
         foreach ($arrayDots as $key => $val) {
             // Move first key to last key
@@ -69,7 +69,7 @@ trait FileTrait
             $splits = \explode(".", $key);
             $firstKey = \array_shift($splits);
             $key = \count($splits) ? \implode(".", $splits) . ".{$firstKey}" : $firstKey;
-            \WP_Ultimo\Dependencies\Rakit\Validation\Helper::arraySet($results, $key, $val);
+            Helper::arraySet($results, $key, $val);
         }
         return $results;
     }

@@ -1,21 +1,22 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\EventLoop;
+namespace React\EventLoop;
 
-use WP_Ultimo\Dependencies\React\EventLoop\Tick\FutureTickQueue;
-use WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer;
+use React\EventLoop\Tick\FutureTickQueue;
+use React\EventLoop\Timer\Timer;
 use SplObjectStorage;
 /**
  * An `ext-uv` based event loop.
  *
  * This loop uses the [`uv` PECL extension](https://pecl.php.net/package/uv),
  * that provides an interface to `libuv` library.
+ * `libuv` itself supports a number of system-specific backends (epoll, kqueue).
  *
- * This loop is known to work with PHP 7+.
+ * This loop is known to work with PHP 7.x.
  *
  * @see https://github.com/bwoebi/php-uv
  */
-final class ExtUvLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInterface
+final class ExtUvLoop implements \React\EventLoop\LoopInterface
 {
     private $uv;
     private $futureTickQueue;
@@ -33,10 +34,10 @@ final class ExtUvLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInt
             throw new \BadMethodCallException('Cannot create LibUvLoop, ext-uv extension missing');
         }
         $this->uv = \uv_loop_new();
-        $this->futureTickQueue = new \WP_Ultimo\Dependencies\React\EventLoop\Tick\FutureTickQueue();
-        $this->timers = new \SplObjectStorage();
+        $this->futureTickQueue = new FutureTickQueue();
+        $this->timers = new SplObjectStorage();
         $this->streamListener = $this->createStreamListener();
-        $this->signals = new \WP_Ultimo\Dependencies\React\EventLoop\SignalsHandler();
+        $this->signals = new \React\EventLoop\SignalsHandler();
     }
     /**
      * Returns the underlying ext-uv event loop. (Internal ReactPHP use only.)
@@ -98,7 +99,7 @@ final class ExtUvLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInt
      */
     public function addTimer($interval, $callback)
     {
-        $timer = new \WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer($interval, $callback, \false);
+        $timer = new Timer($interval, $callback, \false);
         $that = $this;
         $timers = $this->timers;
         $callback = function () use($timer, $timers, $that) {
@@ -117,7 +118,7 @@ final class ExtUvLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInt
      */
     public function addPeriodicTimer($interval, $callback)
     {
-        $timer = new \WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer($interval, $callback, \true);
+        $timer = new Timer($interval, $callback, \true);
         $callback = function () use($timer) {
             \call_user_func($timer->getCallback(), $timer);
         };
@@ -130,7 +131,7 @@ final class ExtUvLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInt
     /**
      * {@inheritdoc}
      */
-    public function cancelTimer(\WP_Ultimo\Dependencies\React\EventLoop\TimerInterface $timer)
+    public function cancelTimer(\React\EventLoop\TimerInterface $timer)
     {
         if (isset($this->timers[$timer])) {
             @\uv_timer_stop($this->timers[$timer]);

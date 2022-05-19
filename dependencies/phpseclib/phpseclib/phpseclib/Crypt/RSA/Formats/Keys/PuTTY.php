@@ -5,8 +5,6 @@
  *
  * PHP version 5
  *
- * @category  Crypt
- * @package   RSA
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2015 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -14,36 +12,31 @@
  */
 namespace phpseclib3\Crypt\RSA\Formats\Keys;
 
-use phpseclib3\Math\BigInteger;
 use phpseclib3\Common\Functions\Strings;
 use phpseclib3\Crypt\Common\Formats\Keys\PuTTY as Progenitor;
+use phpseclib3\Math\BigInteger;
 /**
  * PuTTY Formatted RSA Key Handler
  *
- * @package RSA
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-abstract class PuTTY extends \phpseclib3\Crypt\Common\Formats\Keys\PuTTY
+abstract class PuTTY extends Progenitor
 {
     /**
      * Public Handler
      *
      * @var string
-     * @access private
      */
     const PUBLIC_HANDLER = 'phpseclib3\\Crypt\\RSA\\Formats\\Keys\\OpenSSH';
     /**
      * Algorithm Identifier
      *
      * @var array
-     * @access private
      */
     protected static $types = ['ssh-rsa'];
     /**
      * Break a public or private key down into its constituent components
      *
-     * @access public
      * @param string $key
      * @param string $password optional
      * @return array
@@ -52,7 +45,7 @@ abstract class PuTTY extends \phpseclib3\Crypt\Common\Formats\Keys\PuTTY
     {
         static $one;
         if (!isset($one)) {
-            $one = new \phpseclib3\Math\BigInteger(1);
+            $one = new BigInteger(1);
         }
         $components = parent::load($key, $password);
         if (!isset($components['private'])) {
@@ -61,12 +54,12 @@ abstract class PuTTY extends \phpseclib3\Crypt\Common\Formats\Keys\PuTTY
         \extract($components);
         unset($components['public'], $components['private']);
         $isPublicKey = \false;
-        $result = \phpseclib3\Common\Functions\Strings::unpackSSH2('ii', $public);
+        $result = Strings::unpackSSH2('ii', $public);
         if ($result === \false) {
             throw new \UnexpectedValueException('Key appears to be malformed');
         }
         list($publicExponent, $modulus) = $result;
-        $result = \phpseclib3\Common\Functions\Strings::unpackSSH2('iiii', $private);
+        $result = Strings::unpackSSH2('iiii', $private);
         if ($result === \false) {
             throw new \UnexpectedValueException('Key appears to be malformed');
         }
@@ -81,7 +74,6 @@ abstract class PuTTY extends \phpseclib3\Crypt\Common\Formats\Keys\PuTTY
     /**
      * Convert a private key to the appropriate format.
      *
-     * @access public
      * @param \phpseclib3\Math\BigInteger $n
      * @param \phpseclib3\Math\BigInteger $e
      * @param \phpseclib3\Math\BigInteger $d
@@ -92,25 +84,24 @@ abstract class PuTTY extends \phpseclib3\Crypt\Common\Formats\Keys\PuTTY
      * @param array $options optional
      * @return string
      */
-    public static function savePrivateKey(\phpseclib3\Math\BigInteger $n, \phpseclib3\Math\BigInteger $e, \phpseclib3\Math\BigInteger $d, array $primes, array $exponents, array $coefficients, $password = '', array $options = [])
+    public static function savePrivateKey(BigInteger $n, BigInteger $e, BigInteger $d, array $primes, array $exponents, array $coefficients, $password = '', array $options = [])
     {
         if (\count($primes) != 2) {
             throw new \InvalidArgumentException('PuTTY does not support multi-prime RSA keys');
         }
-        $public = \phpseclib3\Common\Functions\Strings::packSSH2('ii', $e, $n);
-        $private = \phpseclib3\Common\Functions\Strings::packSSH2('iiii', $d, $primes[1], $primes[2], $coefficients[2]);
+        $public = Strings::packSSH2('ii', $e, $n);
+        $private = Strings::packSSH2('iiii', $d, $primes[1], $primes[2], $coefficients[2]);
         return self::wrapPrivateKey($public, $private, 'ssh-rsa', $password, $options);
     }
     /**
      * Convert a public key to the appropriate format
      *
-     * @access public
      * @param \phpseclib3\Math\BigInteger $n
      * @param \phpseclib3\Math\BigInteger $e
      * @return string
      */
-    public static function savePublicKey(\phpseclib3\Math\BigInteger $n, \phpseclib3\Math\BigInteger $e)
+    public static function savePublicKey(BigInteger $n, BigInteger $e)
     {
-        return self::wrapPublicKey(\phpseclib3\Common\Functions\Strings::packSSH2('ii', $e, $n), 'ssh-rsa');
+        return self::wrapPublicKey(Strings::packSSH2('ii', $e, $n), 'ssh-rsa');
     }
 }

@@ -31,7 +31,7 @@ class Signup_Field_Email extends Base_Signup_Field {
 	 */
 	public function get_type() {
 
-		return 'email_address';
+		return 'email';
 
 	} // end get_type;
 
@@ -58,7 +58,7 @@ class Signup_Field_Email extends Base_Signup_Field {
 	 */
 	public function is_user_field() {
 
-		return true;
+		return false;
 
 	} // end is_user_field;
 
@@ -86,9 +86,23 @@ class Signup_Field_Email extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('Email Address Description', 'wp-ultimo');
+		return __('Adds a email address field. This email address will be used to create the WordPress user.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Adds a email address field. This email address will be used to create the WordPress user.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -100,7 +114,7 @@ class Signup_Field_Email extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-wu-email';
+		return 'dashicons-wu-at-sign';
 
 	} // end get_icon;
 
@@ -160,7 +174,18 @@ class Signup_Field_Email extends Base_Signup_Field {
 	 */
 	public function get_fields() {
 
-		return array();
+		return array(
+			'display_notices' => array(
+				'type'      => 'toggle',
+				'title'     => __('Display Notices', 'wp-ultimo'),
+				'desc'      => __('When the customer is already logged in, a box with the customer\'s username and a link to logout is displayed instead of the email field. Disable this option if you do not want that box to show up.', 'wp-ultimo'),
+				'tooltip'   => '',
+				'value'     => 1,
+				'html_attr' => array(
+					'v-model' => 'display_notices',
+				),
+			),
+		);
 
 	} // end get_fields;
 
@@ -178,31 +203,49 @@ class Signup_Field_Email extends Base_Signup_Field {
 
 		if (is_user_logged_in()) {
 
-			$checkout_fields['login_note'] = array(
-				'type'  => 'note',
-				'title' => __('Not you?', 'wp-ultimo'),
-				'desc'  => array($this, 'render_not_you_customer_message'),
-			);
+			if ($attributes['display_notices']) {
+
+				$checkout_fields['login_note'] = array(
+					'type'              => 'note',
+					'title'             => __('Not you?', 'wp-ultimo'),
+					'desc'              => array($this, 'render_not_you_customer_message'),
+					'wrapper_classes'   => wu_get_isset($attributes, 'wrapper_element_classes', ''),
+					'wrapper_html_attr' => array(
+						'style' => $this->calculate_style_attr(),
+					),
+				);
+
+			} // end if;
 
 		} else {
 
 			if ($attributes['display_notices']) {
 
 				$checkout_fields['login_note'] = array(
-					'type'  => 'note',
-					'title' => __('Existing customer?', 'wp-ultimo'),
-					'desc'  => array($this, 'render_existing_customer_message'),
+					'type'              => 'note',
+					'title'             => __('Existing customer?', 'wp-ultimo'),
+					'desc'              => array($this, 'render_existing_customer_message'),
+					'wrapper_classes'   => wu_get_isset($attributes, 'wrapper_element_classes', ''),
+					'wrapper_html_attr' => array(
+						'style' => $this->calculate_style_attr(),
+					),
 				);
 
 			} // end if;
 
 			$checkout_fields['email_address'] = array(
-				'type'        => 'text',
-				'id'          => 'email_address',
-				'name'        => $attributes['name'],
-				'placeholder' => $attributes['placeholder'],
-				'tooltip'     => $attributes['tooltip'],
-				'required'    => true,
+				'type'              => 'text',
+				'id'                => 'email_address',
+				'name'              => $attributes['name'],
+				'placeholder'       => $attributes['placeholder'],
+				'tooltip'           => $attributes['tooltip'],
+				'value'             => $this->get_value(),
+				'required'          => true,
+				'wrapper_classes'   => wu_get_isset($attributes, 'wrapper_element_classes', ''),
+				'classes'           => wu_get_isset($attributes, 'element_classes', ''),
+				'wrapper_html_attr' => array(
+					'style' => $this->calculate_style_attr(),
+				),
 			);
 
 		} // end if;
@@ -223,18 +266,18 @@ class Signup_Field_Email extends Base_Signup_Field {
 
 		ob_start(); ?>
 
-		<p class="wu-p-4 wu-bg-yellow-200">
-		<?php
+		<div class="wu-p-4 wu-bg-yellow-200">
+
+			<?php // phpcs:disable
 
 			// translators: %s is the login URL.
-		printf(__('<a href="%s">Log in</a> to renew or change an existing membership.', 'wp-ultimo'), $login_url);
+			printf(__('<a href="%s">Log in</a> to renew or change an existing membership.', 'wp-ultimo'), $login_url);
 
-		?>
-		</p>
+			?>
 
-		<div class="wu-h-4 wu-block">&nbsp;</div>
+		</div>
 
-		<?php
+		<?php // phpcs:enable
 
 		return ob_get_clean();
 

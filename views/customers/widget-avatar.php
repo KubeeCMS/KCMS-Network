@@ -42,11 +42,25 @@
 
       <div class="wu-block wu-pt-2">
 
-        <a href="<?php echo \WP_Ultimo\User_Switching::get_instance()->render($user->ID); ?>" class="button wu-w-full <?php echo \WP_Ultimo\User_Switching::get_instance()->check_user_switching_is_activated() ? '' : 'wubox' ?> wu-block wu-text-center">
+        <?php if ($user->ID !== get_current_user_id()) : ?>
 
-          <?php _e('Switch To &rarr;', 'wp-ultimo'); ?>
+          <a 
+            href="<?php echo \WP_Ultimo\User_Switching::get_instance()->render($user->ID); ?>" 
+            class="button wu-w-full <?php echo \WP_Ultimo\User_Switching::get_instance()->check_user_switching_is_activated() ? '' : 'wubox' ?> wu-block wu-text-center"
+            title="<?php echo \WP_Ultimo\User_Switching::get_instance()->check_user_switching_is_activated() ? '' : __('Install User Switching', 'wp-ultimo'); ?>"
+          >
+            <?php _e('Switch To &rarr;', 'wp-ultimo'); ?>
+          </a>
 
-        </a>
+        <?php else : ?>
+
+          <button class="button wu-w-full" disabled="disabled">
+            <span <?php echo wu_tooltip_text(__('Switching to your own account is not possible.', 'wp-ultimo')); ?>>
+              <?php _e('Switch To &rarr;', 'wp-ultimo'); ?>
+            </span>
+          </button>
+
+        <?php endif; ?>
 
         <a href="<?php echo get_edit_user_link($user->ID); ?>" target="_blank" class="wu-w-full wu-block wu-text-center wu-no-underline wu-mt-4">
 

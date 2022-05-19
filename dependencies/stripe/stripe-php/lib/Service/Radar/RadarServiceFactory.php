@@ -15,7 +15,7 @@ class RadarServiceFactory extends \WP_Ultimo\Dependencies\Stripe\Service\Abstrac
     /**
      * @var array<string, string>
      */
-    private static $classMap = ['earlyFraudWarnings' => \WP_Ultimo\Dependencies\Stripe\Service\Radar\EarlyFraudWarningService::class, 'valueListItems' => \WP_Ultimo\Dependencies\Stripe\Service\Radar\ValueListItemService::class, 'valueLists' => \WP_Ultimo\Dependencies\Stripe\Service\Radar\ValueListService::class];
+    private static $classMap = ['earlyFraudWarnings' => EarlyFraudWarningService::class, 'valueListItems' => ValueListItemService::class, 'valueLists' => ValueListService::class];
     protected function getServiceClass($name)
     {
         return \array_key_exists($name, self::$classMap) ? self::$classMap[$name] : null;

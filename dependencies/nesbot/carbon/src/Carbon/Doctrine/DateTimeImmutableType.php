@@ -8,11 +8,15 @@ namespace WP_Ultimo\Dependencies\Carbon\Doctrine;
 
 use WP_Ultimo\Dependencies\Carbon\CarbonImmutable;
 use WP_Ultimo\Dependencies\Doctrine\DBAL\Types\VarDateTimeImmutableType;
-class DateTimeImmutableType extends \WP_Ultimo\Dependencies\Doctrine\DBAL\Types\VarDateTimeImmutableType implements \WP_Ultimo\Dependencies\Carbon\Doctrine\CarbonDoctrineType
+class DateTimeImmutableType extends VarDateTimeImmutableType implements CarbonDoctrineType
 {
+    /** @use CarbonTypeConverter<CarbonImmutable> */
     use CarbonTypeConverter;
+    /**
+     * @return class-string<CarbonImmutable>
+     */
     protected function getCarbonClassName() : string
     {
-        return \WP_Ultimo\Dependencies\Carbon\CarbonImmutable::class;
+        return CarbonImmutable::class;
     }
 }

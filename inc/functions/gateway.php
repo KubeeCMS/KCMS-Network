@@ -2,13 +2,12 @@
 /**
  * Gateway Functions
  *
- * Public APIs to load and deal with WP Ultimo gateways.
- *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Gateway
- * @version     2.0.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
+
+// Exit if accessed directly
+defined('ABSPATH') || exit;
 
 use WP_Ultimo\Managers\Gateway_Manager;
 
@@ -159,29 +158,3 @@ function wu_get_active_gateway_as_options() {
 	return $options;
 
 } // end wu_get_active_gateway_as_options;
-
-/**
- * Checks if the current post is a registration page.
- *
- * @since 2.0.0
- * @return boolean
- */
-function wu_is_registration_page() {
-
-	global $post;
-
-	if (!is_main_site()) {
-
-		return false;
-
-	} // end if;
-
-	if (!is_a($post, '\WP_Post')) {
-
-		return false;
-
-	} // end if;
-
-	return abs(wu_get_setting('default_registration_page', 0)) === $post->ID;
-
-} // end wu_is_registration_page;

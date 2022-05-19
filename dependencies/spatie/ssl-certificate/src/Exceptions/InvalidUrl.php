@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions;
 
 use Exception;
-class InvalidUrl extends \Exception
+class InvalidUrl extends Exception
 {
     public static function couldNotValidate(string $url) : self
     {

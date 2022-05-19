@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class Min extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class Min extends Rule
 {
     use Traits\SizeTrait;
     /** @var string */

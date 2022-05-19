@@ -11,6 +11,8 @@
 namespace Symfony\Component\Translation\Loader;
 
 use WP_Ultimo\Dependencies\Symfony\Component\Config\Resource\FileResource;
+use WP_Ultimo\Dependencies\Symfony\Component\Config\Util\Exception\InvalidXmlException;
+use WP_Ultimo\Dependencies\Symfony\Component\Config\Util\Exception\XmlParsingException;
 use WP_Ultimo\Dependencies\Symfony\Component\Config\Util\XmlUtils;
 use Symfony\Component\Translation\Exception\InvalidResourceException;
 use Symfony\Component\Translation\Exception\NotFoundResourceException;
@@ -29,33 +31,42 @@ class XliffFileLoader implements \Symfony\Component\Translation\Loader\LoaderInt
      */
     public function load($resource, string $locale, string $domain = 'messages')
     {
-        if (!\class_exists(\WP_Ultimo\Dependencies\Symfony\Component\Config\Util\XmlUtils::class)) {
-            throw new \Symfony\Component\Translation\Exception\RuntimeException('Loading translations from the Xliff format requires the Symfony Config component.');
+        if (!\class_exists(XmlUtils::class)) {
+            throw new RuntimeException('Loading translations from the Xliff format requires the Symfony Config component.');
         }
-        if (!\stream_is_local($resource)) {
-            throw new \Symfony\Component\Translation\Exception\InvalidResourceException(\sprintf('This is not a local file "%s".', $resource));
+        if (!$this->isXmlString($resource)) {
+            if (!\stream_is_local($resource)) {
+                throw new InvalidResourceException(\sprintf('This is not a local file "%s".', $resource));
+            }
+            if (!\file_exists($resource)) {
+                throw new NotFoundResourceException(\sprintf('File "%s" not found.', $resource));
+            }
+            if (!\is_file($resource)) {
+                throw new InvalidResourceException(\sprintf('This is neither a file nor an XLIFF string "%s".', $resource));
+            }
         }
-        if (!\file_exists($resource)) {
-            throw new \Symfony\Component\Translation\Exception\NotFoundResourceException(\sprintf('File "%s" not found.', $resource));
+        try {
+            if ($this->isXmlString($resource)) {
+                $dom = XmlUtils::parse($resource);
+            } else {
+                $dom = XmlUtils::loadFile($resource);
+            }
+        } catch (\InvalidArgumentException|XmlParsingException|InvalidXmlException $e) {
+            throw new InvalidResourceException(\sprintf('Unable to load "%s": ', $resource) . $e->getMessage(), $e->getCode(), $e);
         }
-        $catalogue = new \Symfony\Component\Translation\MessageCatalogue($locale);
-        $this->extract($resource, $catalogue, $domain);
-        if (\class_exists('WP_Ultimo\\Dependencies\\Symfony\\Component\\Config\\Resource\\FileResource')) {
-            $catalogue->addResource(new \WP_Ultimo\Dependencies\Symfony\Component\Config\Resource\FileResource($resource));
+        if ($errors = XliffUtils::validateSchema($dom)) {
+            throw new InvalidResourceException(\sprintf('Invalid resource provided: "%s"; Errors: ', $resource) . XliffUtils::getErrorsAsString($errors));
+        }
+        $catalogue = new MessageCatalogue($locale);
+        $this->extract($dom, $catalogue, $domain);
+        if (\is_file($resource) && \class_exists(FileResource::class)) {
+            $catalogue->addResource(new FileResource($resource));
         }
         return $catalogue;
     }
-    private function extract($resource, \Symfony\Component\Translation\MessageCatalogue $catalogue, string $domain)
+    private function extract(\DOMDocument $dom, MessageCatalogue $catalogue, string $domain)
     {
-        try {
-            $dom = \WP_Ultimo\Dependencies\Symfony\Component\Config\Util\XmlUtils::loadFile($resource);
-        } catch (\InvalidArgumentException $e) {
-            throw new \Symfony\Component\Translation\Exception\InvalidResourceException(\sprintf('Unable to load "%s": ', $resource) . $e->getMessage(), $e->getCode(), $e);
-        }
-        $xliffVersion = \Symfony\Component\Translation\Util\XliffUtils::getVersionNumber($dom);
-        if ($errors = \Symfony\Component\Translation\Util\XliffUtils::validateSchema($dom)) {
-            throw new \Symfony\Component\Translation\Exception\InvalidResourceException(\sprintf('Invalid resource provided: "%s"; Errors: ', $resource) . \Symfony\Component\Translation\Util\XliffUtils::getErrorsAsString($errors));
-        }
+        $xliffVersion = XliffUtils::getVersionNumber($dom);
         if ('1.2' === $xliffVersion) {
             $this->extractXliff1($dom, $catalogue, $domain);
         }
@@ -66,10 +77,10 @@ class XliffFileLoader implements \Symfony\Component\Translation\Loader\LoaderInt
     /**
      * Extract messages and metadata from DOMDocument into a MessageCatalogue.
      */
-    private function extractXliff1(\DOMDocument $dom, \Symfony\Component\Translation\MessageCatalogue $catalogue, string $domain)
+    private function extractXliff1(\DOMDocument $dom, MessageCatalogue $catalogue, string $domain)
     {
         $xml = \simplexml_import_dom($dom);
-        $encoding = \strtoupper($dom->encoding);
+        $encoding = $dom->encoding ? \strtoupper($dom->encoding) : null;
         $namespace = 'urn:oasis:names:tc:xliff:document:1.2';
         $xml->registerXPathNamespace('xliff', $namespace);
         foreach ($xml->xpath('//xliff:file') as $file) {
@@ -102,10 +113,10 @@ class XliffFileLoader implements \Symfony\Component\Translation\Loader\LoaderInt
             }
         }
     }
-    private function extractXliff2(\DOMDocument $dom, \Symfony\Component\Translation\MessageCatalogue $catalogue, string $domain)
+    private function extractXliff2(\DOMDocument $dom, MessageCatalogue $catalogue, string $domain)
     {
         $xml = \simplexml_import_dom($dom);
-        $encoding = \strtoupper($dom->encoding);
+        $encoding = $dom->encoding ? \strtoupper($dom->encoding) : null;
         $xml->registerXPathNamespace('xliff', 'urn:oasis:names:tc:xliff:document:2.0');
         foreach ($xml->xpath('//xliff:unit') as $unit) {
             foreach ($unit->segment as $segment) {
@@ -166,5 +177,9 @@ class XliffFileLoader implements \Symfony\Component\Translation\Loader\LoaderInt
             $notes[] = $note;
         }
         return $notes;
+    }
+    private function isXmlString(string $resource) : bool
+    {
+        return 0 === \strpos($resource, '<?xml');
     }
 }

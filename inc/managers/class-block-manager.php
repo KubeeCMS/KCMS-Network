@@ -12,7 +12,6 @@
 namespace WP_Ultimo\Managers;
 
 use WP_Ultimo\Managers\Base_Manager;
-use WP_Ultimo\Logger;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -34,7 +33,11 @@ class Block_Manager extends Base_Manager {
 	 */
 	public function init() {
 
-		add_filter('block_categories', array($this, 'add_wp_ultimo_block_category'), 1, 2);
+		global $wp_version;
+
+		$hook = version_compare($wp_version, '5.8', '<') ? 'block_categories' : 'block_categories_all';
+
+		add_filter($hook, array($this, 'add_wp_ultimo_block_category'), 1, 2);
 
 	} // end init;
 

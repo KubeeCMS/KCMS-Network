@@ -91,7 +91,7 @@ class Invoice {
 	private function pdf_setup() {
 
 		$this->printer = new \Mpdf\Mpdf(array(
-			'tempDir' => self::get_folder(),
+			'tempDir' => get_temp_dir(),
 		));
 
 		$this->printer->setDefaultFont($this->font);
@@ -168,7 +168,7 @@ class Invoice {
 
 		$atts['membership'] = $this->payment->get_membership();
 
-		$atts['billing_address'] = $atts['membership'] ? $atts['membership']->get_billing_address()->to_array() : '';
+		$atts['billing_address'] = $atts['membership'] ? $atts['membership']->get_billing_address()->to_array() : array();
 
 		return wu_get_template_contents('invoice/template', $atts);
 
@@ -183,6 +183,10 @@ class Invoice {
 	 * @return void
 	 */
 	protected function pdf($file_name = false) {
+
+		wu_setup_memory_limit_trap();
+
+		wu_try_unlimited_server_limits();
 
 		$this->pdf_setup();
 
@@ -270,7 +274,7 @@ class Invoice {
 	 */
 	public static function get_folder() {
 
-		return WP_Ultimo()->helper->maybe_create_folder('wu-invoices');
+		return wu_maybe_create_folder('wu-invoices');
 
 	} // end get_folder;
 
@@ -282,7 +286,7 @@ class Invoice {
 	 */
 	public static function get_settings() {
 
-		return WP_Ultimo()->helper->get_option(Invoice::KEY, array());
+		return wu_get_option(Invoice::KEY, array());
 
 	} // end get_settings;
 
@@ -310,7 +314,7 @@ class Invoice {
 
 		} // end foreach;
 
-		return WP_Ultimo()->helper->save_option(Invoice::KEY, $settings_to_save);
+		return wu_save_option(Invoice::KEY, $settings_to_save);
 
 	} // end save_settings;
 

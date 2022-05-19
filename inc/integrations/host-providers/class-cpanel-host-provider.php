@@ -42,7 +42,7 @@ class CPanel_Host_Provider extends Base_Host_Provider {
 	 * @var string
 	 * @since 2.0.0
 	 */
-	protected $tutorial_link = 'https://help.wpultimo.com/en/articles/2636828-configuring-automatic-domain-syncing-with-cpanel';
+	protected $tutorial_link = 'https://help.wpultimo.com/article/295-configuring-automatic-domain-syncing-with-cpanel';
 
 	/**
 	 * Array containing the features this integration supports.
@@ -196,11 +196,15 @@ class CPanel_Host_Provider extends Base_Host_Provider {
 		// Root Directory
 		$root_dir = defined('WU_CPANEL_ROOT_DIR') && WU_CPANEL_ROOT_DIR ? WU_CPANEL_ROOT_DIR : '/public_html';
 
+		$subdomain = $this->get_subdomain($subdomain, false);
+
+		$rootdomain = str_replace($subdomain . '.', '', $this->get_site_url($site_id));
+
 		// Send Request
 		$results = $this->load_api()->api2('SubDomain', 'addsubdomain', array(
 			'dir'        => $root_dir,
-			'domain'     => $this->get_subdomain($domain, false),
-			'rootdomain' => $this->get_site_url(),
+			'domain'     => $subdomain,
+			'rootdomain' => $rootdomain,
 		));
 
 		// Check the results
@@ -233,7 +237,7 @@ class CPanel_Host_Provider extends Base_Host_Provider {
 			$username = defined('WU_CPANEL_USERNAME') ? WU_CPANEL_USERNAME : '';
 			$password = defined('WU_CPANEL_PASSWORD') ? WU_CPANEL_PASSWORD : '';
 			$host     = defined('WU_CPANEL_HOST') ? WU_CPANEL_HOST : '';
-			$port     = defined('WU_CPANEL_PORT') ? WU_CPANEL_PORT : 2083;
+			$port     = defined('WU_CPANEL_PORT') && WU_CPANEL_PORT ? WU_CPANEL_PORT : 2083;
 
 			/*
 			 * Set up the API.
@@ -250,16 +254,17 @@ class CPanel_Host_Provider extends Base_Host_Provider {
 	 * Returns the Site URL.
 	 *
 	 * @since  1.6.2
+	 * @param null|int $site_id The site id.
 	 * @return string
 	 */
-	public function get_site_url() {
+	public function get_site_url($site_id = null) {
 
-		return trim(preg_replace('#^https?://#', '', get_site_url()), '/');
+		return trim(preg_replace('#^https?://#', '', get_site_url($site_id)), '/');
 
 	} // end get_site_url;
 
 	/**
-	 * Returns the subdomain version of the domain
+	 * Returns the sub-domain version of the domain.
 	 *
 	 * @since 1.6.2
 	 * @param string $domain The domain to be used.
@@ -328,5 +333,54 @@ class CPanel_Host_Provider extends Base_Host_Provider {
 		return wu_get_asset('cpanel.svg', 'img/hosts');
 
 	} // end get_logo;
+
+	/**
+	 * Tests the connection with the Cloudflare API.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function test_connection() {
+
+		$results = $this->load_api()->api2('Cron', 'fetchcron', array());
+
+		$this->log_calls($results);
+
+		if (isset($results->cpanelresult->data) && !isset($results->cpanelresult->error)) {
+
+			wp_send_json_success($results);
+
+			exit;
+
+		} // end if;
+
+		wp_send_json_error($results);
+
+	} // end test_connection;
+
+	/**
+	 * Returns the explainer lines for the integration.
+	 *
+	 * @since 2.0.0
+	 * @return array
+	 */
+	public function get_explainer_lines() {
+
+		$explainer_lines = array(
+			'will'     => array(
+				'send_domains' => __('Add a new Addon Domain on cPanel whenever a new domain mapping gets created on your network', 'wp-ultimo'),
+			),
+			'will_not' => array(),
+		);
+
+		if (is_subdomain_install()) {
+
+			$explainer_lines['will']['send_sub_domains'] = __('Add a new SubDomain on cPanel whenever a new site gets created on your network', 'wp-ultimo');
+
+		} // end if;
+
+		return $explainer_lines;
+
+	} // end get_explainer_lines;
 
 } // end class CPanel_Host_Provider;

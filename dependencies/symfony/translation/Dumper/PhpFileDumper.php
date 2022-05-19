@@ -21,7 +21,7 @@ class PhpFileDumper extends \Symfony\Component\Translation\Dumper\FileDumper
     /**
      * {@inheritdoc}
      */
-    public function formatCatalogue(\Symfony\Component\Translation\MessageCatalogue $messages, string $domain, array $options = [])
+    public function formatCatalogue(MessageCatalogue $messages, string $domain, array $options = [])
     {
         return "<?php\n\nreturn " . \var_export($messages->all($domain), \true) . ";\n";
     }

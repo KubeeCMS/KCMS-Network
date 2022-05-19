@@ -22,16 +22,20 @@
   <?php endif; ?>
 
 	<?php if (isset($_GET['deleted'])) : ?>
-    <div id="message" class="updated notice notice-success is-dismissible below-h2">
+
+    <div id="message" class="updated notice wu-admin-notice notice-success is-dismissible below-h2">
+
       <p><?php echo $page->labels['deleted_message']; ?></p>
+
     </div>
+
 	<?php endif; ?>
 
   <hr class="wp-header-end">
 
-  <div id="poststuff" class="wu-flex">
+  <div id="poststuff" class="md:wu-flex wu-mr-4 md:wu-mr-0">
 
-    <div class="wu-w-2/12 wu-pt-10">
+    <div class="md:wu-w-2/12 wu-pt-10">
 
       <span class="wu-uppercase wu-block wu-px-4 wu-text-gray-700 wu-font-bold">
 
@@ -77,6 +81,13 @@
 
 			?>
 
+        <?php if (wu_get_isset($section, 'separator')) : ?>
+
+          <!-- Separator Item -->
+          <li class="wu-sticky wu-py-2 wu-px-4">&nbsp;</li>
+
+        <?php else : ?>
+
           <!-- Menu Item -->
           <li class="wu-sticky">
 
@@ -109,6 +120,8 @@
           </li>
           <!-- End Menu Item -->
 
+        <?php endif; ?>
+
         <?php endforeach; ?>
 
       </ul>
@@ -116,11 +129,12 @@
 
     </div>
 
-    <div class="wu-w-8/12 wu-px-4 metabox-holder">
+    <div class="md:wu-w-8/12 wu-px-4 metabox-holder">
 
       <form method="post" id="<?php echo esc_attr($form_id); ?>">
 
         <?php
+
         /**
          * Print Side Metaboxes
          *
@@ -130,6 +144,7 @@
          * @param object Object being edited right now
          */
         do_meta_boxes($screen->id, 'normal', false);
+
         ?>
 
         <?php wp_nonce_field(sprintf('saving_%s', $current_section), sprintf('saving_%s', $current_section), false); ?>

@@ -10,7 +10,7 @@
  */
 namespace WP_Ultimo\Dependencies\Hashids\Math;
 
-class Bc implements \WP_Ultimo\Dependencies\Hashids\Math\MathInterface
+class Bc implements MathInterface
 {
     /**
      * Add two arbitrary-length integers.

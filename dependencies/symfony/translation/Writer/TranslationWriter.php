@@ -21,13 +21,14 @@ use Symfony\Component\Translation\MessageCatalogue;
  */
 class TranslationWriter implements \Symfony\Component\Translation\Writer\TranslationWriterInterface
 {
+    /**
+     * @var array<string, DumperInterface>
+     */
     private $dumpers = [];
     /**
      * Adds a dumper to the writer.
-     *
-     * @param string $format The format of the dumper
      */
-    public function addDumper($format, \Symfony\Component\Translation\Dumper\DumperInterface $dumper)
+    public function addDumper(string $format, DumperInterface $dumper)
     {
         $this->dumpers[$format] = $dumper;
     }
@@ -48,15 +49,15 @@ class TranslationWriter implements \Symfony\Component\Translation\Writer\Transla
      *
      * @throws InvalidArgumentException
      */
-    public function write(\Symfony\Component\Translation\MessageCatalogue $catalogue, string $format, array $options = [])
+    public function write(MessageCatalogue $catalogue, string $format, array $options = [])
     {
         if (!isset($this->dumpers[$format])) {
-            throw new \Symfony\Component\Translation\Exception\InvalidArgumentException(\sprintf('There is no dumper associated with format "%s".', $format));
+            throw new InvalidArgumentException(\sprintf('There is no dumper associated with format "%s".', $format));
         }
         // get the right dumper
         $dumper = $this->dumpers[$format];
         if (isset($options['path']) && !\is_dir($options['path']) && !@\mkdir($options['path'], 0777, \true) && !\is_dir($options['path'])) {
-            throw new \Symfony\Component\Translation\Exception\RuntimeException(\sprintf('Translation Writer was not able to create directory "%s".', $options['path']));
+            throw new RuntimeException(\sprintf('Translation Writer was not able to create directory "%s".', $options['path']));
         }
         // save
         $dumper->dump($catalogue, $options);

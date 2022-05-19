@@ -11,7 +11,7 @@
 namespace WP_Ultimo\Dependencies\Hashids;
 
 use InvalidArgumentException;
-class HashidsException extends \InvalidArgumentException
+class HashidsException extends InvalidArgumentException
 {
     //
 }

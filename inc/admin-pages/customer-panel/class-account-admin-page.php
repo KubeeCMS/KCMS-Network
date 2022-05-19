@@ -51,6 +51,14 @@ class Account_Admin_Page extends Base_Customer_Facing_Admin_Page {
 	protected $badge_count = 0;
 
 	/**
+	 * Should we hide admin notices on this page?
+	 *
+	 * @since 2.0.0
+	 * @var boolean
+	 */
+	protected $hide_admin_notices = true;
+
+	/**
 	 * Holds the admin panels where this page should be displayed, as well as which capability to require.
 	 *
 	 * To add a page to the regular admin (wp-admin/), use: 'admin_menu' => 'capability_here'
@@ -92,6 +100,8 @@ class Account_Admin_Page extends Base_Customer_Facing_Admin_Page {
 
 		$this->current_membership = $this->current_site->get_membership();
 
+		$this->register_page_settings();
+
 		if ($this->current_site->get_type() === 'customer_owned') {
 
 			parent::__construct();
@@ -114,6 +124,18 @@ class Account_Admin_Page extends Base_Customer_Facing_Admin_Page {
 			'capability' => 'read',
 		));
 
+		wu_register_form('delete_site', array(
+			'render'     => array($this, 'render_delete_site'),
+			'handler'    => array($this, 'handle_delete_site'),
+			'capability' => 'read',
+		));
+
+		wu_register_form('delete_account', array(
+			'render'     => array($this, 'render_delete_account'),
+			'handler'    => array($this, 'handle_delete_account'),
+			'capability' => 'read',
+		));
+
 		wu_register_form('change_default_site', array(
 			'render'     => array($this, 'render_change_default_site'),
 			'handler'    => array($this, 'handle_change_default_site'),
@@ -121,6 +143,224 @@ class Account_Admin_Page extends Base_Customer_Facing_Admin_Page {
 		));
 
 	} // end register_forms;
+
+	/**
+	 * Renders the delete site modal.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function render_delete_site() {
+
+		$fields = array(
+			'confirm'               => array(
+				'type'      => 'toggle',
+				'title'     => __('Confirm Site Deletion', 'wp-ultimo'),
+				'desc'      => __('This action can not be undone.', 'wp-ultimo'),
+				'html_attr' => array(
+					'v-model' => 'confirmed',
+				),
+			),
+			'submit_button'         => array(
+				'type'            => 'submit',
+				'title'           => __('Delete Site', 'wp-ultimo'),
+				'placeholder'     => __('Delete Site', 'wp-ultimo'),
+				'value'           => 'save',
+				'classes'         => 'button button-primary wu-w-full',
+				'wrapper_classes' => 'wu-items-end',
+				'html_attr'       => array(
+					'v-bind:disabled' => '!confirmed',
+				),
+			),
+		);
+
+		$form = new \WP_Ultimo\UI\Form('change_password', $fields, array(
+			'views'                 => 'admin-pages/fields',
+			'classes'               => 'wu-modal-form wu-widget-list wu-striped wu-m-0 wu-mt-0',
+			'field_wrapper_classes' => 'wu-w-full wu-box-border wu-items-center wu-flex wu-justify-between wu-p-4 wu-m-0 wu-border-t wu-border-l-0 wu-border-r-0 wu-border-b-0 wu-border-gray-300 wu-border-solid',
+			'html_attr'             => array(
+				'data-wu-app' => 'change_password',
+				'data-state'  => wu_convert_to_state(array(
+					'confirmed' => false,
+				)),
+			),
+		));
+
+		$form->render();
+
+	} // end render_delete_site;
+
+	/**
+	 * Handles the delete site modal.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return void|WP_Error Void or WP_Error.
+	 */
+	public function handle_delete_site() {
+
+		global $wpdb;
+
+		if (!$this->current_site) {
+
+			return new \WP_Error('error', __('An unexpected error happened.', 'wp-ultimo'));
+
+		} // end if;
+
+		$wpdb->query('START TRANSACTION');
+
+		try {
+
+			$saved = $this->current_site->delete();
+
+			if (is_wp_error($saved)) {
+
+				$wpdb->query('ROLLBACK');
+
+				return $saved;
+
+			} // end if;
+
+		} catch (\Throwable $e) {
+
+			$wpdb->query('ROLLBACK');
+
+			return new \WP_Error('exception', $e->getMessage());
+
+		} // end try;
+
+		$wpdb->query('COMMIT');
+
+		wp_send_json_success(array(
+			'redirect_url' => user_admin_url(),
+		));
+
+	} // end handle_delete_site;
+
+	/**
+	 * Renders the delete account form.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function render_delete_account() {
+
+		$fields = array(
+			'confirm'               => array(
+				'type'      => 'toggle',
+				'title'     => __('Confirm Account Deletion', 'wp-ultimo'),
+				'desc'      => __('This action can not be undone.', 'wp-ultimo'),
+				'html_attr' => array(
+					'v-model' => 'confirmed',
+				),
+			),
+			'submit_button'         => array(
+				'type'            => 'submit',
+				'title'           => __('Delete Account', 'wp-ultimo'),
+				'placeholder'     => __('Delete Account', 'wp-ultimo'),
+				'value'           => 'save',
+				'classes'         => 'button button-primary wu-w-full',
+				'wrapper_classes' => 'wu-items-end',
+				'html_attr'       => array(
+					'v-bind:disabled' => '!confirmed',
+				),
+			),
+		);
+
+		$form = new \WP_Ultimo\UI\Form('change_password', $fields, array(
+			'views'                 => 'admin-pages/fields',
+			'classes'               => 'wu-modal-form wu-widget-list wu-striped wu-m-0 wu-mt-0',
+			'field_wrapper_classes' => 'wu-w-full wu-box-border wu-items-center wu-flex wu-justify-between wu-p-4 wu-m-0 wu-border-t wu-border-l-0 wu-border-r-0 wu-border-b-0 wu-border-gray-300 wu-border-solid',
+			'html_attr'             => array(
+				'data-wu-app' => 'change_password',
+				'data-state'  => wu_convert_to_state(array(
+					'confirmed' => false,
+				)),
+			),
+		));
+
+		$form->render();
+
+	} // end render_delete_account;
+
+	/**
+	 * Handles the delete account form.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return void|WP_Error Void or WP_Error.
+	 */
+	public function handle_delete_account() {
+
+		global $wpdb;
+
+		$membership = $this->current_site->get_membership();
+
+		if (!$membership) {
+
+			return new \WP_Error('error', __('An unexpected error happened.', 'wp-ultimo'));
+
+		} // end if;
+
+		$wpdb->query('START TRANSACTION');
+
+		try {
+			/*
+			 * Get Sites and delete them.
+			 */
+			$sites = wu_get_sites(array(
+				'meta_query' => array(
+					'membership_id' => array(
+						'key'   => 'wu_membership_id',
+						'value' => $membership->get_id(),
+					),
+				),
+			));
+
+			foreach ($sites as $site) {
+
+				$saved = $site->delete();
+
+				if (is_wp_error($saved)) {
+
+					$wpdb->query('ROLLBACK');
+
+					return $saved;
+
+				} // end if;
+
+			} // end foreach;
+
+			/*
+			 * Delete the membership
+			 */
+			$saved = $membership->delete();
+
+			if (is_wp_error($saved)) {
+
+				$wpdb->query('ROLLBACK');
+
+				return $saved;
+
+			} // end if;
+
+		} catch (\Throwable $e) {
+
+			$wpdb->query('ROLLBACK');
+
+			return new \WP_Error('exception', $e->getMessage());
+
+		} // end try;
+
+		$wpdb->query('COMMIT');
+
+		wp_logout();
+
+		wp_send_json_success(array(
+			'redirect_url' => get_home_url(wu_get_main_site_id()),
+		));
+
+	} // end handle_delete_account;
 
 	/**
 	 * Renders the change password modal.
@@ -325,7 +565,33 @@ class Account_Admin_Page extends Base_Customer_Facing_Admin_Page {
 
 		$this->current_membership = $this->current_site->get_membership();
 
+		$this->add_notices();
+
 	} // end page_loaded;
+
+	/**
+	 * Adds notices after a membership is changed.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	protected function add_notices() {
+
+		$nonce = wu_request('nonce');
+
+		$update_type = wu_request('updated');
+
+		if (empty($update_type)) {
+
+			return;
+
+		} // end if;
+
+		$update_message = apply_filters('wu_account_update_message', __('Your account was successfully updated.', 'wp-ultimo'), $update_type);
+
+		WP_Ultimo()->notices->add($update_message);
+
+	} // end add_notices;
 
 	/**
 	 * Allow child classes to add hooks to be run once the page is loaded.

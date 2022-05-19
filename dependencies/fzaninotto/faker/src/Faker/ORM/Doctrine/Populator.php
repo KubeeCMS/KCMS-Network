@@ -28,7 +28,7 @@ class Populator
      * @param ObjectManager|null $manager
      * @param int $batchSize
      */
-    public function __construct(\Faker\Generator $generator, \WP_Ultimo\Dependencies\Doctrine\Common\Persistence\ObjectManager $manager = null, $batchSize = 1000)
+    public function __construct(Generator $generator, ObjectManager $manager = null, $batchSize = 1000)
     {
         $this->generator = $generator;
         $this->manager = $manager;

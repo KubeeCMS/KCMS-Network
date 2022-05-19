@@ -83,6 +83,23 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 	);
 
 	/**
+	 * Initializes the class
+	 *
+	 * @since 1.8.2
+	 * @return void
+	 */
+	public function init() {
+
+		/**
+		 * Runs the parent init functions
+		 */
+		parent::init();
+
+		add_action('wu_page_edit_redirect_handlers', array($this, 'handle_page_redirect'), 10);
+
+	} // end init;
+
+	/**
 	 * Registers the necessary scripts.
 	 *
 	 * @since 2.0.0
@@ -92,7 +109,7 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 
 		parent::register_scripts();
 
-		wp_enqueue_script('wu-email-edit-page', wu_get_asset('email-edit-page.js', 'js'), array('jquery', 'wu-clipboard'));
+		wp_enqueue_script('wu-email-edit-page', wu_get_asset('email-edit-page.js', 'js'), array('jquery', 'clipboard'));
 
 	} // end register_scripts;
 
@@ -133,7 +150,7 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 				'slug'               => array(
 					'type'      => 'text',
 					'title'     => __('Slug', 'wp-ultimo'),
-					'tooltip'   => __('An unique identifier for this system email.', 'wp-ultimo'),
+					'desc'      => __('An unique identifier for this system email.', 'wp-ultimo'),
 					'value'     => $this->edit ? $object->get_slug() : '',
 					'html_attr' => array(
 						'required'     => 'required',
@@ -144,7 +161,7 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 				'event'              => array(
 					'type'        => 'select',
 					'title'       => __('Event', 'wp-ultimo'),
-					'tooltip'     => __('The event that will trigger the send of this email.', 'wp-ultimo'),
+					'desc'        => __('The event that will trigger the sending of this email.', 'wp-ultimo'),
 					'placeholder' => __('Event', 'wp-ultimo'),
 					'options'     => 'wu_get_event_types_as_options',
 					'value'       => $this->edit ? $object->get_event() : 0,
@@ -155,7 +172,7 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 				'target'             => array(
 					'type'        => 'select',
 					'title'       => __('Target', 'wp-ultimo'),
-					'tooltip'     => __('To whom this email should be sent.', 'wp-ultimo'),
+					'desc'        => __('To whom this email should be sent.', 'wp-ultimo'),
 					'placeholder' => __('Network Administrators', 'wp-ultimo'),
 					'value'       => $this->edit ? $object->get_target() : 'admin',
 					'options'     => array(
@@ -213,7 +230,7 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 							'type'              => 'number',
 							'value'             => $this->edit && $object->get_send_days() ? $object->get_send_days() : 1,
 							'placeholder'       => 1,
-							'min'               => 1,
+							'min'               => 0,
 							'wrapper_classes'   => 'wu-ml-2 wu-w-1/3',
 							'wrapper_html_attr' => array(
 								'v-show'  => "schedule_type == 'days'",
@@ -247,15 +264,15 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 			),
 		));
 
-		add_meta_box('wp-ultimo-placeholders', __('Event Payload', 'wp-ultimo'), array($this, 'output_default_widget_placeholders'), get_current_screen()->id, 'normal', null, array());
+		add_meta_box('wp-ultimo-placeholders', __('Placeholders', 'wp-ultimo'), array($this, 'output_default_widget_placeholders'), get_current_screen()->id, 'normal', null, array());
 
 		$this->add_fields_widget('active', array(
-			'title'  => __('Is Active?', 'wp-ultimo'),
+			'title'  => __('Active', 'wp-ultimo'),
 			'fields' => array(
 				'active' => array(
 					'type'  => 'toggle',
-					'title' => __('Is Active?', 'wp-ultimo'),
-					'desc'  => __('Deactivate this email.', 'wp-ultimo'),
+					'title' => __('Active', 'wp-ultimo'),
+					'desc'  => __('Use this option to manually enable or disable this email.', 'wp-ultimo'),
 					'value' => $this->get_object()->is_active(),
 				),
 			),
@@ -276,16 +293,14 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 						'style' => array(
 							'type'        => 'select',
 							'title'       => __('Email Style', 'wp-ultimo'),
-							'tooltip'     => __('The email body will use HTML or plain text.', 'wp-ultimo'),
+							'desc'        => __('Choose if email body will be sent using the HTML template or in plain text.', 'wp-ultimo'),
 							'placeholder' => __('Style', 'wp-ultimo'),
 							'options'     => array(
-								'html'       => __('HTML', 'wp-ultimo'),
-								'plain_text' => __('Plain Text', 'wp-ultimo'),
+								'default' => __('Use Default', 'wp-ultimo'),
+								'html'    => __('HTML Emails', 'wp-ultimo'),
+								'plain'   => __('Plain Emails', 'wp-ultimo'),
 							),
-							'value'       => $this->edit ? $object->get_style() : '',
-							'html_attr'   => array(
-								'name' => ''
-							)
+							'value'       => $this->edit ? $object->get_style() : 'html',
 						),
 					),
 				),
@@ -306,7 +321,7 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 						'custom_sender_name'  => array(
 							'type'              => 'text',
 							'title'             => __('From "Name"', 'wp-ultimo'),
-							'tooltip'           => __('How the sender name will appear in emails sent by WP Ultimo.', 'wp-ultimo'),
+							'desc'              => __('Override the global from name for this particular email.', 'wp-ultimo'),
 							'wrapper_classes'   => 'wu-full',
 							'value'             => $this->edit ? $object->get_custom_sender_name() : '',
 							'wrapper_html_attr' => array(
@@ -317,7 +332,7 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 						'custom_sender_email' => array(
 							'type'              => 'email',
 							'title'             => __('From "Email"', 'wp-ultimo'),
-							'tooltip'           => __('How the sender email will appear in emails sent by WP Ultimo.', 'wp-ultimo'),
+							'desc'              => __('Override the global from email for this particular email.', 'wp-ultimo'),
 							'wrapper_classes'   => 'wu-full',
 							'value'             => $this->edit ? $object->get_custom_sender_email() : '',
 							'wrapper_html_attr' => array(
@@ -382,11 +397,25 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 	 */
 	public function action_links() {
 
+		$url_atts = array(
+			'id'    => $this->get_object()->get_id(),
+			'model' => 'email',
+			'page'  => 'edit'
+		);
+
+		$send_test_link = wu_get_form_url('send_new_test', $url_atts);
+
 		return array(
 			array(
 				'url'   => wu_network_admin_url('wp-ultimo-emails'),
 				'label' => __('Go Back', 'wp-ultimo'),
 				'icon'  => 'wu-reply',
+			),
+			array(
+				'url'     => $send_test_link,
+				'label'   => __('Send Test Email', 'wp-ultimo'),
+				'icon'    => 'wu-mail',
+				'classes' => 'wubox'
 			),
 		);
 
@@ -426,7 +455,7 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 
 		$extra_args = array(
 			'object_type' => 'system_email',
-			'object_id'   => abs($this->get_object()->get_id()),
+			'object_id'   => absint($this->get_object()->get_id()),
 		);
 
 		return array_merge($args, $extra_args);
@@ -450,6 +479,36 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 		parent::handle_save();
 
 	} // end handle_save;
+
+	/**
+	 * Handles the redirect notice from sent new test modal.
+	 *
+	 * @param WP_Ultimo\Admin_Pages\Base_Admin_Page $page The page object.
+	 * @return void
+	 */
+	public function handle_page_redirect($page) {
+
+		if ($page->get_id() === 'wp-ultimo-edit-email') {
+
+			if (wu_request('test_notice')) {
+
+				$test_notice = wu_request('test_notice');
+
+				?>
+
+				<div id="message" class="updated notice notice-success is-dismissible below-h2">
+
+					<p><?php echo esc_html($test_notice); ?></p>
+
+				</div>
+
+				<?php
+
+			} // end if;
+
+		} // end if;
+
+	} // end handle_page_redirect;
 
 	/**
 	 * Returns the object being edit at the moment.
@@ -517,7 +576,7 @@ class Email_Edit_Admin_Page extends Edit_Admin_Page {
 
 		$extra_args = array(
 			'object_type' => 'email',
-			'object_id'   => abs($this->get_object()->get_id()),
+			'object_id'   => absint($this->get_object()->get_id()),
 		);
 
 		return array_merge($args, $extra_args);

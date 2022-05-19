@@ -24,7 +24,7 @@
     <div class="wu-w-4/12 wu-text-right wu-hidden sm:wu-inline-block">
 
       <span class="wu-inline-block wu-bg-green-100 wu-text-center wu-align-middle wu-p-2 wu-font-mono wu-px-3 wu-border wu-border-green-300 wu-text-green-700 wu-border-solid wu-rounded">
-        <?php printf(__('%s%% done', 'wp-ultimo'), $percentage); ?>
+        <?php echo $percentage.'% '.__('done', 'wp-ultimo'); ?>
       </span>
 
     </div>

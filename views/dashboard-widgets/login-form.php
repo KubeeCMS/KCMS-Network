@@ -39,19 +39,23 @@
 
       <?php endif; ?>
 
-      <div class="wu-ml-auto">
+      <?php if (wu_get_setting('enable_registration', true)) : ?>
 
-        <a
-          title="<?php esc_attr_e('Update Billing Address', 'wp-ultimo'); ?>"
-          class="wu-text-sm wu-no-underline button"
-          href="<?php echo wu_get_registration_url(); ?>"
-        >
+        <div class="wu-ml-auto">
 
-          <?php _e('Create an Account', 'wp-ultimo'); ?>
+          <a
+            title="<?php esc_attr_e('Update Billing Address', 'wp-ultimo'); ?>"
+            class="wu-text-sm wu-no-underline button"
+            href="<?php echo wu_get_registration_url(); ?>"
+          >
 
-        </a>
+            <?php _e('Create an Account', 'wp-ultimo'); ?>
 
-      </div>
+          </a>
+
+        </div>
+
+      <?php endif; ?>
 
     </div>
     <!-- Title Element - End -->

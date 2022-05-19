@@ -14,7 +14,7 @@ class ReportingServiceFactory extends \WP_Ultimo\Dependencies\Stripe\Service\Abs
     /**
      * @var array<string, string>
      */
-    private static $classMap = ['reportRuns' => \WP_Ultimo\Dependencies\Stripe\Service\Reporting\ReportRunService::class, 'reportTypes' => \WP_Ultimo\Dependencies\Stripe\Service\Reporting\ReportTypeService::class];
+    private static $classMap = ['reportRuns' => ReportRunService::class, 'reportTypes' => ReportTypeService::class];
     protected function getServiceClass($name)
     {
         return \array_key_exists($name, self::$classMap) ? self::$classMap[$name] : null;

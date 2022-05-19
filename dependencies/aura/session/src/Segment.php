@@ -16,7 +16,7 @@ namespace WP_Ultimo\Dependencies\Aura\Session;
  * @package Aura.Session
  *
  */
-class Segment implements \WP_Ultimo\Dependencies\Aura\Session\SegmentInterface
+class Segment implements SegmentInterface
 {
     /**
      *
@@ -43,7 +43,7 @@ class Segment implements \WP_Ultimo\Dependencies\Aura\Session\SegmentInterface
      * @param string $name The segment name.
      *
      */
-    public function __construct(\WP_Ultimo\Dependencies\Aura\Session\Session $session, $name)
+    public function __construct(Session $session, $name)
     {
         $this->session = $session;
         $this->name = $name;
@@ -132,7 +132,7 @@ class Segment implements \WP_Ultimo\Dependencies\Aura\Session\SegmentInterface
     public function setFlash($key, $val)
     {
         $this->resumeOrStartSession();
-        $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT][$this->name][$key] = $val;
+        $_SESSION[Session::FLASH_NEXT][$this->name][$key] = $val;
     }
     /**
      *
@@ -148,7 +148,7 @@ class Segment implements \WP_Ultimo\Dependencies\Aura\Session\SegmentInterface
     public function getFlash($key, $alt = null)
     {
         $this->resumeSession();
-        return isset($_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NOW][$this->name][$key]) ? $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NOW][$this->name][$key] : $alt;
+        return isset($_SESSION[Session::FLASH_NOW][$this->name][$key]) ? $_SESSION[Session::FLASH_NOW][$this->name][$key] : $alt;
     }
     /**
      *
@@ -160,7 +160,7 @@ class Segment implements \WP_Ultimo\Dependencies\Aura\Session\SegmentInterface
     public function clearFlash()
     {
         if ($this->resumeSession()) {
-            $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT][$this->name] = array();
+            $_SESSION[Session::FLASH_NEXT][$this->name] = array();
         }
     }
     /**
@@ -177,7 +177,7 @@ class Segment implements \WP_Ultimo\Dependencies\Aura\Session\SegmentInterface
     public function getFlashNext($key, $alt = null)
     {
         $this->resumeSession();
-        return isset($_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT][$this->name][$key]) ? $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT][$this->name][$key] : $alt;
+        return isset($_SESSION[Session::FLASH_NEXT][$this->name][$key]) ? $_SESSION[Session::FLASH_NEXT][$this->name][$key] : $alt;
     }
     /**
      *
@@ -191,8 +191,8 @@ class Segment implements \WP_Ultimo\Dependencies\Aura\Session\SegmentInterface
     public function setFlashNow($key, $val)
     {
         $this->resumeOrStartSession();
-        $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NOW][$this->name][$key] = $val;
-        $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT][$this->name][$key] = $val;
+        $_SESSION[Session::FLASH_NOW][$this->name][$key] = $val;
+        $_SESSION[Session::FLASH_NEXT][$this->name][$key] = $val;
     }
     /**
      *
@@ -204,8 +204,8 @@ class Segment implements \WP_Ultimo\Dependencies\Aura\Session\SegmentInterface
     public function clearFlashNow()
     {
         if ($this->resumeSession()) {
-            $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NOW][$this->name] = array();
-            $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT][$this->name] = array();
+            $_SESSION[Session::FLASH_NOW][$this->name] = array();
+            $_SESSION[Session::FLASH_NEXT][$this->name] = array();
         }
     }
     /**
@@ -219,7 +219,7 @@ class Segment implements \WP_Ultimo\Dependencies\Aura\Session\SegmentInterface
     public function keepFlash()
     {
         if ($this->resumeSession()) {
-            $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT][$this->name] = \array_merge($_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT][$this->name], $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NOW][$this->name]);
+            $_SESSION[Session::FLASH_NEXT][$this->name] = \array_merge($_SESSION[Session::FLASH_NEXT][$this->name], $_SESSION[Session::FLASH_NOW][$this->name]);
         }
     }
     /**
@@ -250,11 +250,11 @@ class Segment implements \WP_Ultimo\Dependencies\Aura\Session\SegmentInterface
         if (!isset($_SESSION[$this->name])) {
             $_SESSION[$this->name] = array();
         }
-        if (!isset($_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NOW][$this->name])) {
-            $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NOW][$this->name] = array();
+        if (!isset($_SESSION[Session::FLASH_NOW][$this->name])) {
+            $_SESSION[Session::FLASH_NOW][$this->name] = array();
         }
-        if (!isset($_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT][$this->name])) {
-            $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT][$this->name] = array();
+        if (!isset($_SESSION[Session::FLASH_NEXT][$this->name])) {
+            $_SESSION[Session::FLASH_NEXT][$this->name] = array();
         }
     }
     /**

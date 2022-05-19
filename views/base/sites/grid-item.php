@@ -45,18 +45,23 @@
 
         <?php if ($item->get_type() !== 'main') : ?>
 
-          <label>
-            <input class="wu-rounded-none" type="checkbox" name="bulk-delete[]" value="<?php echo $item->get_id(); ?>" />
-            <?php _e( 'Select Site', 'wp-ultimo' ); ?>
-          </label>
-
           <?php if ($item->get_type() === 'pending') : ?>
+
+            <label>
+              <input class="wu-rounded-none" type="checkbox" name="bulk-delete[]" value="<?php echo $item->get_membership_id(); ?>" />
+              <?php _e( 'Select Site', 'wp-ultimo' ); ?>
+            </label>
 
             <a title="<?php echo esc_attr(__('Publish pending site', 'wp-ultimo')); ?>" href="<?php echo wu_get_form_url('publish_pending_site', array('membership_id' => $item->get_membership_id())); ?>" class="wubox button button-primary">
               <?php _e('Publish Site', 'wp-ultimo'); ?>
             </a>
 
           <?php else : ?>
+
+            <label>
+              <input class="wu-rounded-none" type="checkbox" name="bulk-delete[]" value="<?php echo $item->get_id(); ?>" />
+              <?php _e( 'Select Site', 'wp-ultimo' ); ?>
+            </label>
 
             <a href="<?php echo wu_network_admin_url('wp-ultimo-edit-site', array('id' => $item->get_id())); ?>" class="button button-primary">
               <?php _e('Manage', 'wp-ultimo'); ?>

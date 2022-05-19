@@ -81,8 +81,8 @@ final class Discount_Codes_Table extends Table {
 			active tinyint(4) default 1,
 			date_start datetime NULL,
 			date_expiration datetime NULL,
-			date_created datetime NOT NULL default '0000-00-00 00:00:00',
-			date_modified datetime NOT NULL default '0000-00-00 00:00:00',
+			date_created datetime NULL,
+			date_modified datetime NULL,
 			PRIMARY KEY (id)";
 
 	} // end set_schema;

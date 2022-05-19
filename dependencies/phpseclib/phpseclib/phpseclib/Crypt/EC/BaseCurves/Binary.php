@@ -13,8 +13,6 @@
  *
  * PHP version 5 and 7
  *
- * @category  Crypt
- * @package   EC
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -22,16 +20,13 @@
  */
 namespace phpseclib3\Crypt\EC\BaseCurves;
 
-use phpseclib3\Common\Functions\Strings;
-use phpseclib3\Math\BinaryField;
 use phpseclib3\Math\BigInteger;
+use phpseclib3\Math\BinaryField;
 use phpseclib3\Math\BinaryField\Integer as BinaryInteger;
 /**
  * Curves over y^2 + x*y = x^3 + a*x^2 + b
  *
- * @package Binary
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
 class Binary extends \phpseclib3\Crypt\EC\BaseCurves\Base
 {
@@ -83,7 +78,7 @@ class Binary extends \phpseclib3\Crypt\EC\BaseCurves\Base
     public function setModulo(...$modulo)
     {
         $this->modulo = $modulo;
-        $this->factory = new \phpseclib3\Math\BinaryField(...$modulo);
+        $this->factory = new BinaryField(...$modulo);
         $this->one = $this->factory->newInteger("\1");
     }
     /**
@@ -109,9 +104,9 @@ class Binary extends \phpseclib3\Crypt\EC\BaseCurves\Base
     public function setBasePoint($x, $y)
     {
         switch (\true) {
-            case !\is_string($x) && !$x instanceof \phpseclib3\Math\BinaryField\Integer:
+            case !\is_string($x) && !$x instanceof BinaryInteger:
                 throw new \UnexpectedValueException('WP_Ultimo\\Dependencies\\Argument 1 passed to Binary::setBasePoint() must be a string or an instance of BinaryField\\Integer');
-            case !\is_string($y) && !$y instanceof \phpseclib3\Math\BinaryField\Integer:
+            case !\is_string($y) && !$y instanceof BinaryInteger:
                 throw new \UnexpectedValueException('WP_Ultimo\\Dependencies\\Argument 2 passed to Binary::setBasePoint() must be a string or an instance of BinaryField\\Integer');
         }
         if (!isset($this->factory)) {
@@ -240,7 +235,7 @@ class Binary extends \phpseclib3\Crypt\EC\BaseCurves\Base
      *
      * Not supported because it is covered by patents.
      * Quoting https://www.openssl.org/docs/man1.1.0/apps/ecparam.html ,
-     * 
+     *
      * "Due to patent issues the compressed option is disabled by default for binary curves
      *  and can be enabled by defining the preprocessor macro OPENSSL_EC_BIN_PT_COMP at
      *  compile time."

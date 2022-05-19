@@ -5,8 +5,6 @@
  *
  * PHP version 5 and 7
  *
- * @category  Crypt
- * @package   EC
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2019 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -14,19 +12,18 @@
  */
 namespace phpseclib3\Crypt\EC\Curves;
 
-use phpseclib3\Math\Common\FiniteField\Integer;
 use phpseclib3\Crypt\EC\BaseCurves\Montgomery;
 use phpseclib3\Math\BigInteger;
-class Curve448 extends \phpseclib3\Crypt\EC\BaseCurves\Montgomery
+class Curve448 extends Montgomery
 {
     public function __construct()
     {
         // 2^448 - 2^224 - 1
-        $this->setModulo(new \phpseclib3\Math\BigInteger('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE' . 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', 16));
-        $this->a24 = $this->factory->newInteger(new \phpseclib3\Math\BigInteger('39081'));
-        $this->p = [$this->factory->newInteger(new \phpseclib3\Math\BigInteger(5))];
+        $this->setModulo(new BigInteger('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE' . 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', 16));
+        $this->a24 = $this->factory->newInteger(new BigInteger('39081'));
+        $this->p = [$this->factory->newInteger(new BigInteger(5))];
         // 2^446 - 0x8335dc163bb124b65129c96fde933d8d723a70aadc873d6d54a7bb0d
-        $this->setOrder(new \phpseclib3\Math\BigInteger('3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' . '7CCA23E9C44EDB49AED63690216CC2728DC58F552378C292AB5844F3', 16));
+        $this->setOrder(new BigInteger('3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' . '7CCA23E9C44EDB49AED63690216CC2728DC58F552378C292AB5844F3', 16));
         /*
         $this->setCoefficients(
             new BigInteger('156326'), // a
@@ -47,7 +44,7 @@ class Curve448 extends \phpseclib3\Crypt\EC\BaseCurves\Montgomery
      *
      * @return array
      */
-    public function multiplyPoint(array $p, \phpseclib3\Math\Common\FiniteField\Integer $d)
+    public function multiplyPoint(array $p, BigInteger $d)
     {
         //$r = strrev(sodium_crypto_scalarmult($d->toBytes(), strrev($p[0]->toBytes())));
         //return [$this->factory->newInteger(new BigInteger($r, 256))];
@@ -55,7 +52,25 @@ class Curve448 extends \phpseclib3\Crypt\EC\BaseCurves\Montgomery
         $d[0] = $d[0] & "ü";
         $d = \strrev($d);
         $d |= "€";
-        $d = $this->factory->newInteger(new \phpseclib3\Math\BigInteger($d, 256));
+        $d = new BigInteger($d, 256);
         return parent::multiplyPoint($p, $d);
+    }
+    /**
+     * Creates a random scalar multiplier
+     *
+     * @return BigInteger
+     */
+    public function createRandomMultiplier()
+    {
+        return BigInteger::random(446);
+    }
+    /**
+     * Performs range check
+     */
+    public function rangeCheck(BigInteger $x)
+    {
+        if ($x->getLength() > 448 || $x->isNegative()) {
+            throw new \RangeException('x must be a positive integer less than 446 bytes in length');
+        }
     }
 }

@@ -19,8 +19,6 @@
  * The DSA private key format seems to have been adapted from the RSA private key format so
  * we're just re-using that as the name.
  *
- * @category  Crypt
- * @package   DSA
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2015 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -28,24 +26,21 @@
  */
 namespace phpseclib3\Crypt\DSA\Formats\Keys;
 
-use phpseclib3\Math\BigInteger;
+use WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Base64;
 use phpseclib3\Crypt\Common\Formats\Keys\PKCS1 as Progenitor;
 use phpseclib3\File\ASN1;
 use phpseclib3\File\ASN1\Maps;
-use WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Base64;
+use phpseclib3\Math\BigInteger;
 /**
  * PKCS#1 Formatted DSA Key Handler
  *
- * @package RSA
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-abstract class PKCS1 extends \phpseclib3\Crypt\Common\Formats\Keys\PKCS1
+abstract class PKCS1 extends Progenitor
 {
     /**
      * Break a public or private key down into its constituent components
      *
-     * @access public
      * @param string $key
      * @param string $password optional
      * @return array
@@ -53,19 +48,19 @@ abstract class PKCS1 extends \phpseclib3\Crypt\Common\Formats\Keys\PKCS1
     public static function load($key, $password = '')
     {
         $key = parent::load($key, $password);
-        $decoded = \phpseclib3\File\ASN1::decodeBER($key);
+        $decoded = ASN1::decodeBER($key);
         if (empty($decoded)) {
             throw new \RuntimeException('Unable to decode BER');
         }
-        $key = \phpseclib3\File\ASN1::asn1map($decoded[0], \phpseclib3\File\ASN1\Maps\DSAParams::MAP);
+        $key = ASN1::asn1map($decoded[0], Maps\DSAParams::MAP);
         if (\is_array($key)) {
             return $key;
         }
-        $key = \phpseclib3\File\ASN1::asn1map($decoded[0], \phpseclib3\File\ASN1\Maps\DSAPrivateKey::MAP);
+        $key = ASN1::asn1map($decoded[0], Maps\DSAPrivateKey::MAP);
         if (\is_array($key)) {
             return $key;
         }
-        $key = \phpseclib3\File\ASN1::asn1map($decoded[0], \phpseclib3\File\ASN1\Maps\DSAPublicKey::MAP);
+        $key = ASN1::asn1map($decoded[0], Maps\DSAPublicKey::MAP);
         if (\is_array($key)) {
             return $key;
         }
@@ -74,22 +69,20 @@ abstract class PKCS1 extends \phpseclib3\Crypt\Common\Formats\Keys\PKCS1
     /**
      * Convert DSA parameters to the appropriate format
      *
-     * @access public
      * @param \phpseclib3\Math\BigInteger $p
      * @param \phpseclib3\Math\BigInteger $q
      * @param \phpseclib3\Math\BigInteger $g
      * @return string
      */
-    public static function saveParameters(\phpseclib3\Math\BigInteger $p, \phpseclib3\Math\BigInteger $q, \phpseclib3\Math\BigInteger $g)
+    public static function saveParameters(BigInteger $p, BigInteger $q, BigInteger $g)
     {
         $key = ['p' => $p, 'q' => $q, 'g' => $g];
-        $key = \phpseclib3\File\ASN1::encodeDER($key, \phpseclib3\File\ASN1\Maps\DSAParams::MAP);
-        return "-----BEGIN DSA PARAMETERS-----\r\n" . \chunk_split(\WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Base64::encode($key), 64) . "-----END DSA PARAMETERS-----\r\n";
+        $key = ASN1::encodeDER($key, Maps\DSAParams::MAP);
+        return "-----BEGIN DSA PARAMETERS-----\r\n" . \chunk_split(Base64::encode($key), 64) . "-----END DSA PARAMETERS-----\r\n";
     }
     /**
      * Convert a private key to the appropriate format.
      *
-     * @access public
      * @param \phpseclib3\Math\BigInteger $p
      * @param \phpseclib3\Math\BigInteger $q
      * @param \phpseclib3\Math\BigInteger $g
@@ -99,25 +92,24 @@ abstract class PKCS1 extends \phpseclib3\Crypt\Common\Formats\Keys\PKCS1
      * @param array $options optional
      * @return string
      */
-    public static function savePrivateKey(\phpseclib3\Math\BigInteger $p, \phpseclib3\Math\BigInteger $q, \phpseclib3\Math\BigInteger $g, \phpseclib3\Math\BigInteger $y, \phpseclib3\Math\BigInteger $x, $password = '', array $options = [])
+    public static function savePrivateKey(BigInteger $p, BigInteger $q, BigInteger $g, BigInteger $y, BigInteger $x, $password = '', array $options = [])
     {
         $key = ['version' => 0, 'p' => $p, 'q' => $q, 'g' => $g, 'y' => $y, 'x' => $x];
-        $key = \phpseclib3\File\ASN1::encodeDER($key, \phpseclib3\File\ASN1\Maps\DSAPrivateKey::MAP);
+        $key = ASN1::encodeDER($key, Maps\DSAPrivateKey::MAP);
         return self::wrapPrivateKey($key, 'DSA', $password, $options);
     }
     /**
      * Convert a public key to the appropriate format
      *
-     * @access public
      * @param \phpseclib3\Math\BigInteger $p
      * @param \phpseclib3\Math\BigInteger $q
      * @param \phpseclib3\Math\BigInteger $g
      * @param \phpseclib3\Math\BigInteger $y
      * @return string
      */
-    public static function savePublicKey(\phpseclib3\Math\BigInteger $p, \phpseclib3\Math\BigInteger $q, \phpseclib3\Math\BigInteger $g, \phpseclib3\Math\BigInteger $y)
+    public static function savePublicKey(BigInteger $p, BigInteger $q, BigInteger $g, BigInteger $y)
     {
-        $key = \phpseclib3\File\ASN1::encodeDER($y, \phpseclib3\File\ASN1\Maps\DSAPublicKey::MAP);
+        $key = ASN1::encodeDER($y, Maps\DSAPublicKey::MAP);
         return self::wrapPublicKey($key, 'DSA');
     }
 }

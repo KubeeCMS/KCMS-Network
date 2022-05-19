@@ -35,16 +35,6 @@ class Signup_Fields_Manager extends Base_Manager {
 	protected $instantiated_field_types;
 
 	/**
-	 * Instantiate the necessary hooks.
-	 *
-	 * @since 2.0.0
-	 * @return void
-	 */
-	public function init() {
-
-	} // end init;
-
-	/**
 	 * Returns the list of registered signup field types.
 	 *
 	 * Developers looking for add new types of fields to the signup
@@ -59,6 +49,7 @@ class Signup_Fields_Manager extends Base_Manager {
 
 		$field_types = array(
 			'pricing_table'      => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Pricing_Table',
+			'period_selection'   => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Period_Selection',
 			'products'           => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Products',
 			'template_selection' => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Template_Selection',
 			'username'           => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Username',
@@ -71,23 +62,34 @@ class Signup_Fields_Manager extends Base_Manager {
 			'payment'            => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Payment',
 			'order_bump'         => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Order_Bump',
 			'billing_address'    => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Billing_Address',
-			'terms_of_use'       => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Terms_Of_Use',
-			'submit_button'      => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Submit_Button',
+			'steps'              => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Steps',
 			'text'               => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Text',
 			'checkbox'           => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Checkbox',
 			'color_picker'       => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Color',
 			'select'             => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Select',
+			'hidden'             => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Hidden',
 			'shortcode'          => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Shortcode',
+			'terms_of_use'       => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Terms_Of_Use',
+			'submit_button'      => '\\WP_Ultimo\\Checkout\\Signup_Fields\\Signup_Field_Submit_Button',
 		);
 
+		/*
+		 * Allow developers to add new field types
+		 */
+		do_action('wu_register_field_types');
+
 		/**
-		 * Allow third-party developers to add new field types.
+		 * Our APIs to add new field types hook into here.
+		 * Do not use this filter directly. Use the wu_register_field_type()
+		 * function instead.
+		 *
+		 * @see wu_register_field_type()
 		 *
 		 * @since 2.0.0
 		 * @param array $field_types
 		 * @return array
 		 */
-		return apply_filters('wu_checkout_forms_field_types', $field_types);
+		return apply_filters('wu_checkout_field_types', $field_types);
 
 	} // end get_field_types;
 

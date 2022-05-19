@@ -35,7 +35,7 @@ class Price_Variations extends Rule {
 	 * @since 2.0.0
 	 * @var array
 	 */
-	protected $fillableParams = array(); // phpcs:ignore
+	protected $fillableParams = array('duration', 'duration_unit'); // phpcs:ignore
 
 	/**
 	 * Performs the actual check.
@@ -85,6 +85,17 @@ class Price_Variations extends Rule {
       );
 
       if (!in_array($unit, $allowed_units, true)) {
+
+        return false;
+
+      } // end if;
+
+      /**
+       * Check if it is the same as the main duration
+       */
+      if ($this->parameter('duration') == $duration && $this->parameter('duration_unit') === $unit) {
+
+        $this->message = 'This product cannot have a price variation for the same duration and duration unit values as the product itself.';
 
         return false;
 

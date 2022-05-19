@@ -6,7 +6,7 @@ use WP_Ultimo\Dependencies\DeepCopy\Reflection\ReflectionHelper;
 /**
  * @final
  */
-class ReplaceFilter implements \WP_Ultimo\Dependencies\DeepCopy\Filter\Filter
+class ReplaceFilter implements Filter
 {
     /**
      * @var callable
@@ -26,7 +26,7 @@ class ReplaceFilter implements \WP_Ultimo\Dependencies\DeepCopy\Filter\Filter
      */
     public function apply($object, $property, $objectCopier)
     {
-        $reflectionProperty = \WP_Ultimo\Dependencies\DeepCopy\Reflection\ReflectionHelper::getProperty($object, $property);
+        $reflectionProperty = ReflectionHelper::getProperty($object, $property);
         $reflectionProperty->setAccessible(\true);
         $value = \call_user_func($this->callback, $reflectionProperty->getValue($object));
         $reflectionProperty->setValue($object, $value);

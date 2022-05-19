@@ -1,27 +1,27 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Dns\Query;
+namespace React\Dns\Query;
 
-use WP_Ultimo\Dependencies\React\Promise\CancellablePromiseInterface;
-use WP_Ultimo\Dependencies\React\Promise\Deferred;
-use WP_Ultimo\Dependencies\React\Promise\PromiseInterface;
-final class RetryExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\ExecutorInterface
+use React\Promise\CancellablePromiseInterface;
+use React\Promise\Deferred;
+use React\Promise\PromiseInterface;
+final class RetryExecutor implements \React\Dns\Query\ExecutorInterface
 {
     private $executor;
     private $retries;
-    public function __construct(\WP_Ultimo\Dependencies\React\Dns\Query\ExecutorInterface $executor, $retries = 2)
+    public function __construct(\React\Dns\Query\ExecutorInterface $executor, $retries = 2)
     {
         $this->executor = $executor;
         $this->retries = $retries;
     }
-    public function query(\WP_Ultimo\Dependencies\React\Dns\Query\Query $query)
+    public function query(\React\Dns\Query\Query $query)
     {
         return $this->tryQuery($query, $this->retries);
     }
-    public function tryQuery(\WP_Ultimo\Dependencies\React\Dns\Query\Query $query, $retries)
+    public function tryQuery(\React\Dns\Query\Query $query, $retries)
     {
-        $deferred = new \WP_Ultimo\Dependencies\React\Promise\Deferred(function () use(&$promise) {
-            if ($promise instanceof \WP_Ultimo\Dependencies\React\Promise\CancellablePromiseInterface || !\interface_exists('WP_Ultimo\\Dependencies\\React\\Promise\\CancellablePromiseInterface') && \method_exists($promise, 'cancel')) {
+        $deferred = new Deferred(function () use(&$promise) {
+            if ($promise instanceof CancellablePromiseInterface || !\interface_exists('React\\Promise\\CancellablePromiseInterface') && \method_exists($promise, 'cancel')) {
                 $promise->cancel();
             }
         });
@@ -31,12 +31,12 @@ final class RetryExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\Exe
         };
         $executor = $this->executor;
         $errorback = function ($e) use($deferred, &$promise, $query, $success, &$errorback, &$retries, $executor) {
-            if (!$e instanceof \WP_Ultimo\Dependencies\React\Dns\Query\TimeoutException) {
+            if (!$e instanceof \React\Dns\Query\TimeoutException) {
                 $errorback = null;
                 $deferred->reject($e);
             } elseif ($retries <= 0) {
                 $errorback = null;
-                $deferred->reject($e = new \RuntimeException('DNS query for ' . $query->name . ' failed: too many retries', 0, $e));
+                $deferred->reject($e = new \RuntimeException('DNS query for ' . $query->describe() . ' failed: too many retries', 0, $e));
                 // avoid garbage references by replacing all closures in call stack.
                 // what a lovely piece of code!
                 $r = new \ReflectionProperty('Exception', 'trace');

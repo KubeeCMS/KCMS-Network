@@ -12,7 +12,7 @@ namespace WP_Ultimo\Admin_Pages;
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
-use \WP_Ultimo\Models\Customer;
+use \WP_Ultimo\Database\Memberships\Membership_Status;
 
 /**
  * WP Ultimo Customer Edit/Add New Admin Page.
@@ -79,6 +79,39 @@ class Customer_Edit_Admin_Page extends Edit_Admin_Page {
 	protected $supported_panels = array(
 		'network_admin_menu' => 'wu_edit_customers',
 	);
+
+	/**
+	 * Allow child classes to add hooks to be run once the page is loaded.
+	 *
+	 * @see https://codex.wordpress.org/Plugin_API/Action_Reference/load-(page)
+	 * @since 1.8.2
+	 * @return void
+	 */
+	public function hooks() {
+
+		parent::hooks();
+
+		add_action('wu_page_edit_redirect_handlers', array($this, 'handle_send_verification_notice'));
+
+		add_filter('removable_query_args', array($this, 'remove_query_args'));
+
+	} // end hooks;
+
+	/**
+	 * Allow child classes to register scripts and styles that can be loaded on the output function, for example.
+	 *
+	 * @since 1.8.2
+	 * @return void
+	 */
+	public function register_scripts() {
+
+		parent::register_scripts();
+
+		wp_enqueue_style('wu-flags');
+
+		wp_enqueue_editor();
+
+	} // end register_scripts;
 
 	/**
 	 * Register ajax forms that we use for membership.
@@ -348,6 +381,118 @@ class Customer_Edit_Admin_Page extends Edit_Admin_Page {
 	} // end customer_after_delete_actions;
 
 	/**
+	 * Generates the list of meta fields.
+	 *
+	 * @since 2.0.11
+	 * @return array
+	 */
+	public function generate_customer_meta_fields() {
+
+		$custom_meta_keys = wu_get_all_customer_meta($this->get_object()->get_id(), true);
+
+		$meta_fields_set = array();
+
+		$meta_fields_unset = array();
+
+		foreach ($custom_meta_keys as $key => $value) {
+
+			$field_location_breadcrumbs = array(__('orphan field - the original form no longer exists', 'wp-ultimo'));
+
+			$form = wu_get_isset($value, 'form');
+
+			if ($form) {
+
+				$field_location_breadcrumbs = array(
+					$form,
+					wu_get_isset($value, 'step'),
+					wu_get_isset($value, 'id'),
+				);
+
+			} // end if;
+
+			$location = sprintf(
+				'<small><strong>%s</strong> %s</small>',
+				__('Location:', 'wp-ultimo'),
+				implode(' &rarr; ', array_filter($field_location_breadcrumbs))
+			);
+
+			$options = wu_get_isset($value, 'options', array());
+
+			if ($options) {
+
+				$options = array_combine(
+					array_column($options, 'key'),
+					array_column($options, 'label')
+				);
+
+			} // end if;
+
+			$options = array_merge(array('' => '--'), $options);
+
+			$field_data = array(
+				'title'   => wu_get_isset($value, 'title', wu_slug_to_name($key)),
+				'type'    => wu_get_isset($value, 'type', 'text'),
+				'desc'    => wu_get_isset($value, 'description', '') . $location,
+				'options' => $options,
+				'tooltip' => wu_get_isset($value, 'tooltip', ''),
+				'value'   => wu_get_customer_meta($this->get_object()->get_id(), $key),
+			);
+
+			if ($field_data['type'] === 'hidden') {
+
+				$field_data['type'] = 'text';
+
+			} // end if;
+
+			if (wu_get_isset($value, 'exists')) {
+
+				$meta_fields_set[$key] = $field_data;
+
+			} else {
+
+				$field_data['wrapper_html_attr'] = array(
+					'v-show' => 'display_unset_fields',
+				);
+
+				$meta_fields_unset[$key] = $field_data;
+
+			} // end if;
+
+		} // end foreach;
+
+		$collapsible_header = array();
+
+		if ($meta_fields_unset) {
+
+			$collapsible_header['display_unset_fields'] = array(
+				'title'           => __('Display unset fields', 'wp-ultimo'),
+				'desc'            => __('If fields were added after the customer creation or onto a different form, they will not have a set value for this customer. You can manually set those here.', 'wp-ultimo'),
+				'type'            => 'toggle',
+				'wrapper_classes' => 'wu-bg-gray-100',
+				'html_attr'       => array(
+					'v-model' => 'display_unset_fields',
+				)
+			);
+
+		} // end if;
+
+		$final_fields = array_merge($meta_fields_set, $collapsible_header, $meta_fields_unset);
+
+		if (empty($final_fields)) {
+
+			$final_fields['empty'] = array(
+				'type'    => 'note',
+				'desc'    => __('No custom meta data collected and no custom fields found.', 'wp-ultimo'),
+				'classes' => 'wu-text-center',
+			);
+
+		} // end if;
+
+		return $final_fields;
+
+	} // end generate_customer_meta_fields;
+
+	/**
 	 * Allow child classes to register widgets, if they need them.
 	 *
 	 * @since 1.8.2
@@ -400,8 +545,8 @@ class Customer_Edit_Admin_Page extends Edit_Admin_Page {
 		$this->add_tabs_widget('options', array(
 			'title'    => __('Customer Options', 'wp-ultimo'),
 			'position' => 'normal',
-			'sections' => array(
-				'general'         => array(
+			'sections' => apply_filters('wu_customer_options_sections', array(
+				'general'      => array(
 					'title'  => __('General', 'wp-ultimo'),
 					'desc'   => __('General options for the customer.', 'wp-ultimo'),
 					'icon'   => 'dashicons-wu-globe',
@@ -415,11 +560,20 @@ class Customer_Edit_Admin_Page extends Edit_Admin_Page {
 						),
 					),
 				),
-				'billing_info'    => array(
+				'billing_info' => array(
 					'title'  => __('Billing Info', 'wp-ultimo'),
 					'desc'   => __('Billing information for this particular customer', 'wp-ultimo'),
 					'icon'   => 'dashicons-wu-address',
 					'fields' => $this->get_object()->get_billing_address()->get_fields(),
+				),
+				'custom_meta'  => array(
+					'title'  => __('Custom Meta', 'wp-ultimo'),
+					'desc'   => __('Custom data collected via WP Ultimo forms.', 'wp-ultimo'),
+					'icon'   => 'dashicons-wu-database wu-pt-px',
+					'fields' => $this->generate_customer_meta_fields(),
+					'state'  => array(
+						'display_unset_fields' => false,
+					),
 				),
 				// @todo: bring these back
 				// phpcs:disable
@@ -455,7 +609,7 @@ class Customer_Edit_Admin_Page extends Edit_Admin_Page {
 				// 	),
 				// ),
 				// phpcs:enable
-			),
+			), $this->get_object()),
 		));
 
 		$this->add_list_table_widget('payments', array(
@@ -480,8 +634,10 @@ class Customer_Edit_Admin_Page extends Edit_Admin_Page {
 			'html_attr' => array(
 				'data-wu-app' => 'customer_save',
 				'data-state'  => json_encode(array(
-					'original_user_id' => $this->get_object()->get_user_id(),
-					'user_id'          => $this->get_object()->get_user_id(),
+					'original_user_id'            => $this->get_object()->get_user_id(),
+					'user_id'                     => $this->get_object()->get_user_id(),
+					'original_email_verification' => $this->get_object()->get_email_verification(),
+					'email_verification'          => $this->get_object()->get_email_verification(),
 				)),
 			),
 			'before'    => wu_get_template_contents('customers/widget-avatar', array(
@@ -493,6 +649,7 @@ class Customer_Edit_Admin_Page extends Edit_Admin_Page {
 					'type'              => 'model',
 					'title'             => __('User', 'wp-ultimo'),
 					'placeholder'       => __('Search WordPress user...', 'wp-ultimo'),
+					'desc'              => __('The WordPress user associated to this customer.', 'wp-ultimo'),
 					'value'             => $this->get_object()->get_user_id(),
 					'tooltip'           => '',
 					'min'               => 1,
@@ -522,6 +679,7 @@ class Customer_Edit_Admin_Page extends Edit_Admin_Page {
 					'type'              => 'select',
 					'title'             => __('Email Verification', 'wp-ultimo'),
 					'placeholder'       => __('Select Status', 'wp-ultimo'),
+					'desc'              => __('The email verification status. This gets automatically switched to Verified when the customer verifies their email address.', 'wp-ultimo'),
 					'options'           => array(
 						'none'     => __('None', 'wp-ultimo'),
 						'pending'  => __('Pending', 'wp-ultimo'),
@@ -530,6 +688,29 @@ class Customer_Edit_Admin_Page extends Edit_Admin_Page {
 					'value'             => $this->get_object()->get_email_verification(),
 					'tooltip'           => '',
 					'wrapper_html_attr' => array(
+						'v-cloak' => '1',
+					),
+					'html_attr'         => array(
+						'v-model' => 'email_verification',
+					),
+				),
+				'confirm_membership' => array(
+					'type'              => 'toggle',
+					'title'             => __('Activate Memberships', 'wp-ultimo'),
+					'desc'              => __('If you toggle this option, this change in status will also activate the related pending memberships. If any sites are pending, they are also going to be published automatically.', 'wp-ultimo'),
+					'value'             => 0,
+					'wrapper_html_attr' => array(
+						'v-if'    => 'email_verification !== original_email_verification && email_verification === "verified" && original_email_verification === "pending"',
+						'v-cloak' => '1',
+					),
+				),
+				'send_verification'  => array(
+					'type'              => 'submit',
+					'title'             => __('Re-send Verification Email &rarr;', 'wp-ultimo'),
+					'value'             => 'send_verification',
+					'classes'           => 'button wu-w-full',
+					'wrapper_html_attr' => array(
+						'v-if'    => 'email_verification === "pending" && original_email_verification == "pending"',
 						'v-cloak' => '1',
 					),
 				),
@@ -610,9 +791,9 @@ class Customer_Edit_Admin_Page extends Edit_Admin_Page {
 
 		if ($country_code) {
 
-			$html = sprintf('<span>%s</span><img src="%s" class="wu-w-5 wu-ml-1 wu-align-top wu-rounded-lg" %s />',
+			$html = sprintf('<span>%s</span><span class="wu-flag-icon wu-flag-icon-%s wu-w-5 wu-ml-1" %s></span>',
 				$country_name,
-				"https://www.countryflags.io/{$country_code}/flat/64.png",
+				strtolower($country_code),
 				wu_tooltip_text($country_name)
 			);
 
@@ -733,7 +914,7 @@ class Customer_Edit_Admin_Page extends Edit_Admin_Page {
 
 		$extra_args = array(
 			'object_type' => 'customer',
-			'object_id'   => abs($this->get_object()->get_id()),
+			'object_id'   => absint($this->get_object()->get_id()),
 		);
 
 		return array_merge($args, $extra_args);
@@ -792,7 +973,26 @@ class Customer_Edit_Admin_Page extends Edit_Admin_Page {
 	 */
 	public function handle_save() {
 
+		if ($_POST['submit_button'] === 'send_verification') {
+
+			$customer = $this->get_object();
+
+			$customer->send_verification_email();
+
+			$redirect_url = wu_network_admin_url('wp-ultimo-edit-customer', array(
+				'id'                       => $customer->get_id(),
+				'notice_verification_sent' => 1
+			));
+
+			wp_redirect($redirect_url);
+
+		 	exit;
+
+		} // end if;
+
 		$object = $this->get_object();
+
+		$_POST['vip'] = wu_request('vip');
 
 		$billing_address = $object->get_billing_address();
 
@@ -812,8 +1012,94 @@ class Customer_Edit_Admin_Page extends Edit_Admin_Page {
 
 		$object->set_billing_address($billing_address);
 
+		/**
+		 * Deal with publishing sites and memberships
+		 */
+		$should_confirm_membership = wu_request('confirm_membership', false);
+
+		if ($should_confirm_membership) {
+
+			$this->confirm_memberships();
+
+		} // end if;
+
+		/**
+		 * Deal with custom metadata
+		 */
+		$custom_meta_keys = wu_get_all_customer_meta($this->get_object()->get_id(), true);
+
+		foreach ($custom_meta_keys as $key => $value) {
+
+			wu_update_customer_meta($object->get_id(), $key, wu_request($key), $value['type'], $value['title']);
+
+		} // end foreach;
+
 		parent::handle_save();
 
 	} // end handle_save;
+
+	/**
+	 * Handles the email verification sent notice
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function handle_send_verification_notice() {
+
+		if (isset($_GET['notice_verification_sent'])) : ?>
+
+			<div id="message" class="updated notice wu-admin-notice notice-success is-dismissible below-h2">
+				<p><?php _e('Verification email sent!', 'wp-ultimo'); ?></p>
+			</div>
+
+			<?php
+
+		endif;
+
+	} // end handle_send_verification_notice;
+
+	/**
+	 * Adds removable query args to the WP database.
+	 *
+	 * @param array $removable_query_args Contains the removable args.
+	 * @return array
+	 */
+	public function remove_query_args($removable_query_args) {
+
+		if (!is_array($removable_query_args)) {
+
+			return $removable_query_args;
+
+		} // end if;
+
+		$removable_query_args[] = 'notice_verification_sent';
+
+		return $removable_query_args;
+
+	} // end remove_query_args;
+
+	/**
+	 * Confirms the memberships related to a customer.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	protected function confirm_memberships() {
+
+		$memberships = $this->get_object()->get_memberships();
+
+		foreach ($memberships as $membership) {
+
+			if ($membership->get_status() === Membership_Status::PENDING) {
+
+				$membership->set_status(Membership_Status::ACTIVE);
+
+				$membership->save();
+
+			} // end if;
+
+		} // end foreach;
+
+	} // end confirm_memberships;
 
 } // end class Customer_Edit_Admin_Page;

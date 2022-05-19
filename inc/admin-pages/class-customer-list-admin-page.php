@@ -12,9 +12,6 @@ namespace WP_Ultimo\Admin_Pages;
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
-use \WP_Ultimo\Managers\Membership_Manager;
-use \WP_Ultimo\Managers\Payment_Manager;
-
 /**
  * WP Ultimo Dashboard Admin Page.
  */
@@ -114,7 +111,7 @@ class Customer_List_Admin_Page extends List_Admin_Page {
 			'username'      => array(
 				'type'              => 'text',
 				'title'             => __('Username', 'wp-ultimo'),
-				'placeholder'       => __('johnsmith', 'wp-ultimo'),
+				'placeholder'       => __('E.g. johnsmith', 'wp-ultimo'),
 				'wrapper_html_attr' => array(
 					'v-show' => "require('type', 'new')",
 				),
@@ -122,7 +119,7 @@ class Customer_List_Admin_Page extends List_Admin_Page {
 			'email_address' => array(
 				'type'              => 'email',
 				'title'             => __('Email Address', 'wp-ultimo'),
-				'placeholder'       => __('customer@wpultimo.dev', 'wp-ultimo'),
+				'placeholder'       => __('E.g. customer@wpultimo.dev', 'wp-ultimo'),
 				'wrapper_html_attr' => array(
 					'v-show' => "require('type', 'new')",
 				),
@@ -141,7 +138,7 @@ class Customer_List_Admin_Page extends List_Admin_Page {
 			'password'      => array(
 				'type'              => 'password',
 				'title'             => __('Password', 'wp-ultimo'),
-				'placeholder'       => __('p@$$w0rd', 'wp-ultimo'),
+				'placeholder'       => __('E.g. p@$$w0rd', 'wp-ultimo'),
 				'wrapper_html_attr' => array(
 					'v-show' => "require('type', 'new') && require('set_password', true)",
 				),
@@ -226,6 +223,21 @@ class Customer_List_Admin_Page extends List_Admin_Page {
 	 * @return void
 	 */
 	public function register_widgets() {} // end register_widgets;
+
+	/**
+	 * Returns an array with the labels for the edit page.
+	 *
+	 * @since 1.8.2
+	 * @return array
+	 */
+	public function get_labels() {
+
+		return array(
+			'deleted_message' => __('Customer removed successfully.', 'wp-ultimo'),
+			'search_label'    => __('Search Customer', 'wp-ultimo'),
+		);
+
+	} // end get_labels;
 
 	/**
 	 * Returns the title of the page.

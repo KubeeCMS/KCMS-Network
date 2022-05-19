@@ -15,7 +15,7 @@ use WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface;
 /**
  * @author Nate Wiebe <nate@northern.co>
  */
-class TranslatableMessage implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatableInterface
+class TranslatableMessage implements TranslatableInterface
 {
     private $message;
     private $parameters;
@@ -42,8 +42,10 @@ class TranslatableMessage implements \WP_Ultimo\Dependencies\Symfony\Contracts\T
     {
         return $this->domain;
     }
-    public function trans(\WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface $translator, string $locale = null) : string
+    public function trans(TranslatorInterface $translator, string $locale = null) : string
     {
-        return $translator->trans($this->getMessage(), $this->getParameters(), $this->getDomain(), $locale);
+        return $translator->trans($this->getMessage(), \array_map(static function ($parameter) use($translator, $locale) {
+            return $parameter instanceof TranslatableInterface ? $parameter->trans($translator, $locale) : $parameter;
+        }, $this->getParameters()), $this->getDomain(), $locale);
     }
 }

@@ -25,13 +25,13 @@ abstract class Webhook
      */
     public static function constructEvent($payload, $sigHeader, $secret, $tolerance = self::DEFAULT_TOLERANCE)
     {
-        \WP_Ultimo\Dependencies\Stripe\WebhookSignature::verifyHeader($payload, $sigHeader, $secret, $tolerance);
+        WebhookSignature::verifyHeader($payload, $sigHeader, $secret, $tolerance);
         $data = \json_decode($payload, \true);
         $jsonError = \json_last_error();
         if (null === $data && \JSON_ERROR_NONE !== $jsonError) {
             $msg = "Invalid payload: {$payload} " . "(json_last_error() was {$jsonError})";
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException($msg);
+            throw new Exception\UnexpectedValueException($msg);
         }
-        return \WP_Ultimo\Dependencies\Stripe\Event::constructFrom($data);
+        return Event::constructFrom($data);
     }
 }

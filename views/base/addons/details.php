@@ -671,25 +671,29 @@
 
         <?php else : ?>
 
-			<?php if ($license->allowed('wpultimo') || $addon->free) : ?>
+            <?php if ($addon->available) : ?>
 
-            <button
-              type="submit"
-              name="install"
-              data-slug="<?php echo $addon_slug; ?>"
-              class="button button-primary right"
-            >
-                <?php _e('Install Now', 'wp-ultimo'); ?>
-            </button>
+                <?php if ($license->allowed('wpultimo') || $addon->free) : ?>
 
-          <?php else : ?>
+                <button
+                type="submit"
+                name="install"
+                data-slug="<?php echo $addon_slug; ?>"
+                class="button button-primary right"
+                >
+                    <?php _e('Install Now', 'wp-ultimo'); ?>
+                </button>
 
-            <a
-              href="<?php echo $upgrade_url; ?>"
-              class="button button-primary right"
-            >
-			  <?php _e('Upgrade your License', 'wp-ultimo'); ?>
-            </a>
+            <?php else : ?>
+
+                <a
+                href="<?php echo $upgrade_url; ?>"
+                class="button button-primary right"
+                >
+                <?php _e('Upgrade your License', 'wp-ultimo'); ?>
+                </a>
+
+            <?php endif; ?>
 
           <?php endif; ?>
 
@@ -697,11 +701,11 @@
 
           <input type="hidden" name="addon" value="<?php echo $addon_slug; ?>">
 
+          <input type="hidden" name="wu-when" value="<?php echo base64_encode('after_setup_theme'); ?>">
+
 			<?php wp_nonce_field('wu_form_addon_more_info'); ?>
 
         <?php endif; ?>
-
-      </form>
 
     </div>
 

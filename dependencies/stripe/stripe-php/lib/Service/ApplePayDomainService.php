@@ -13,7 +13,7 @@ class ApplePayDomainService extends \WP_Ultimo\Dependencies\Stripe\Service\Abstr
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\ApplePayDomain>
      */
     public function all($params = null, $opts = null)
     {

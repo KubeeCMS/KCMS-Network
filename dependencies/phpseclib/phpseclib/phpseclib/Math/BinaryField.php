@@ -7,26 +7,21 @@
  *
  * PHP version 5 and 7
  *
- * @category  Math
- * @package   BigInteger
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
  */
 namespace phpseclib3\Math;
 
-use WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Hex;
-use phpseclib3\Math\Common\FiniteField;
-use phpseclib3\Math\BinaryField\Integer;
 use phpseclib3\Common\Functions\Strings;
+use phpseclib3\Math\BinaryField\Integer;
+use phpseclib3\Math\Common\FiniteField;
 /**
  * Binary Finite Fields
  *
- * @package Math
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-class BinaryField extends \phpseclib3\Math\Common\FiniteField
+class BinaryField extends FiniteField
 {
     /**
      * Instance Counter
@@ -40,6 +35,8 @@ class BinaryField extends \phpseclib3\Math\Common\FiniteField
      * @var int
      */
     protected $instanceID;
+    /** @var BigInteger */
+    private $randomMax;
     /**
      * Default constructor
      */
@@ -96,24 +93,24 @@ class BinaryField extends \phpseclib3\Math\Common\FiniteField
             return \ltrim($c, "\0");
         };
         $this->instanceID = self::$instanceCounter++;
-        \phpseclib3\Math\BinaryField\Integer::setModulo($this->instanceID, $modulo);
-        \phpseclib3\Math\BinaryField\Integer::setRecurringModuloFunction($this->instanceID, $reduce);
+        Integer::setModulo($this->instanceID, $modulo);
+        Integer::setRecurringModuloFunction($this->instanceID, $reduce);
         $this->randomMax = new \phpseclib3\Math\BigInteger($modulo, 2);
     }
     /**
      * Returns an instance of a dynamically generated PrimeFieldInteger class
      *
      * @param string $num
-     * @return object
+     * @return Integer
      */
     public function newInteger($num)
     {
-        return new \phpseclib3\Math\BinaryField\Integer($this->instanceID, $num instanceof \phpseclib3\Math\BigInteger ? $num->toBytes() : $num);
+        return new Integer($this->instanceID, $num instanceof \phpseclib3\Math\BigInteger ? $num->toBytes() : $num);
     }
     /**
      * Returns an integer on the finite field between one and the prime modulo
      *
-     * @return object
+     * @return Integer
      */
     public function randomInteger()
     {
@@ -121,36 +118,36 @@ class BinaryField extends \phpseclib3\Math\Common\FiniteField
         if (!isset($one)) {
             $one = new \phpseclib3\Math\BigInteger(1);
         }
-        return new \phpseclib3\Math\BinaryField\Integer($this->instanceID, \phpseclib3\Math\BigInteger::randomRange($one, $this->randomMax)->toBytes());
+        return new Integer($this->instanceID, \phpseclib3\Math\BigInteger::randomRange($one, $this->randomMax)->toBytes());
     }
     /**
      * Returns the length of the modulo in bytes
      *
-     * @return integer
+     * @return int
      */
     public function getLengthInBytes()
     {
-        return \strlen(\phpseclib3\Math\BinaryField\Integer::getModulo($this->instanceID));
+        return \strlen(Integer::getModulo($this->instanceID));
     }
     /**
      * Returns the length of the modulo in bits
      *
-     * @return integer
+     * @return int
      */
     public function getLength()
     {
-        return \strlen(\phpseclib3\Math\BinaryField\Integer::getModulo($this->instanceID)) << 3;
+        return \strlen(Integer::getModulo($this->instanceID)) << 3;
     }
     /**
      * Converts a base-2 string to a base-256 string
      *
      * @param string $x
-     * @param integer $size 
+     * @param int|null $size
      * @return string
      */
     public static function base2ToBase256($x, $size = null)
     {
-        $str = \phpseclib3\Common\Functions\Strings::bits2bin($x);
+        $str = Strings::bits2bin($x);
         $pad = \strlen($x) >> 3;
         if (\strlen($x) & 3) {
             $pad++;
@@ -172,6 +169,6 @@ class BinaryField extends \phpseclib3\Math\Common\FiniteField
         if (\function_exists('gmp_import')) {
             return \gmp_strval(\gmp_import($x), 2);
         }
-        return \phpseclib3\Common\Functions\Strings::bin2bits($x);
+        return Strings::bin2bits($x);
     }
 }

@@ -132,33 +132,6 @@
 
     </div>
 
+    <?php echo $after; ?>
+
 </div>
-
-<script>
-    (function($) {
-
-        $(document).ready(function() {
-
-            wu_<?php echo esc_attr($html_attr['data-wu-app']); ?>.$watch('section', function(new_value, old_value) {
-
-                try {
-
-                    let url = new URL(window.location.href);
-
-                    url.searchParams.set("<?php echo esc_attr($html_attr['data-wu-app']); ?>", new_value); // setting your param
-
-                    history.pushState({}, null, url);
-
-                } catch (err) {
-
-                    // eslint-disable-next-line no-console
-                    console.warn('Browser does not support pushState.', err);
-
-                } // end try;
-
-            });
-
-        });
-
-    })(jQuery);
-</script>

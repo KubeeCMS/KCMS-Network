@@ -23,9 +23,9 @@ trait WP_Ultimo_Deprecated {
 	 */
 	public function slugfy($term) {
 
-		_deprecated_function(__METHOD__, '2.0.0', 'WP_Ultimo()->helper->slugfy($term)');
+		_deprecated_function(__METHOD__, '2.0.0', 'wu_slugify($term)');
 
-		WP_Ultimo()->helper->slugfy($term);
+		wu_slugify($term);
 
 	} // end slugfy;
 
@@ -70,9 +70,9 @@ trait WP_Ultimo_Deprecated {
 	 */
 	public function path($dir) {
 
-		_deprecated_function(__METHOD__, '2.0.0', 'WP_Ultimo()->helper->path()');
+		_deprecated_function(__METHOD__, '2.0.0', 'wu_path()');
 
-		return WP_Ultimo()->helper->path($dir);
+		return wu_path($dir);
 
 	} // end path;
 
@@ -92,7 +92,13 @@ trait WP_Ultimo_Deprecated {
 
 		$panel = $network ? 'network-admin' : 'admin';
 
-		WP_Ultimo()->notices->add($message, $type, $panel);
+		$ultimo = WP_Ultimo();
+
+		if (isset($ultimo->notices) && $ultimo->notices) {
+
+			$ultimo->notices->add($message, $type, $panel);
+
+		} // end if;
 
 	} // end add_message;
 

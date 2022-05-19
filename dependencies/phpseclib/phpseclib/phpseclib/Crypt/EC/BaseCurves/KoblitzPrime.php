@@ -20,8 +20,6 @@
  *
  * PHP version 5 and 7
  *
- * @category  Crypt
- * @package   EC
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -29,16 +27,12 @@
  */
 namespace phpseclib3\Crypt\EC\BaseCurves;
 
-use phpseclib3\Common\Functions\Strings;
-use phpseclib3\Math\PrimeField;
 use phpseclib3\Math\BigInteger;
-use phpseclib3\Math\PrimeField\Integer as PrimeInteger;
+use phpseclib3\Math\PrimeField;
 /**
  * Curves over y^2 = x^3 + b
  *
- * @package KoblitzPrime
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
 class KoblitzPrime extends \phpseclib3\Crypt\EC\BaseCurves\Prime
 {
@@ -58,8 +52,8 @@ class KoblitzPrime extends \phpseclib3\Crypt\EC\BaseCurves\Prime
     {
         static $zero, $one, $two;
         if (!isset($two)) {
-            $two = new \phpseclib3\Math\BigInteger(2);
-            $one = new \phpseclib3\Math\BigInteger(1);
+            $two = new BigInteger(2);
+            $one = new BigInteger(1);
         }
         if (!isset($this->beta)) {
             // get roots
@@ -70,10 +64,10 @@ class KoblitzPrime extends \phpseclib3\Crypt\EC\BaseCurves\Prime
             //echo strtoupper($this->beta->toHex(true)) . "\n"; exit;
         }
         if (!isset($this->basis)) {
-            $factory = new \phpseclib3\Math\PrimeField($this->order);
+            $factory = new PrimeField($this->order);
             $tempOne = $factory->newInteger($one);
             $tempTwo = $factory->newInteger($two);
-            $tempThree = $factory->newInteger(new \phpseclib3\Math\BigInteger(3));
+            $tempThree = $factory->newInteger(new BigInteger(3));
             $inv = $tempOne->divide($tempTwo)->negate();
             $s = $tempThree->negate()->squareRoot()->multiply($inv);
             $lambdas = [$inv->add($s), $inv->subtract($s)];
@@ -213,10 +207,10 @@ class KoblitzPrime extends \phpseclib3\Crypt\EC\BaseCurves\Prime
      * @param BigInteger $v
      * @return BigInteger[]
      */
-    protected static function extendedGCD(\phpseclib3\Math\BigInteger $u, \phpseclib3\Math\BigInteger $v)
+    protected static function extendedGCD(BigInteger $u, BigInteger $v)
     {
-        $one = new \phpseclib3\Math\BigInteger(1);
-        $zero = new \phpseclib3\Math\BigInteger();
+        $one = new BigInteger(1);
+        $zero = new BigInteger();
         $a = clone $one;
         $b = clone $zero;
         $c = clone $zero;

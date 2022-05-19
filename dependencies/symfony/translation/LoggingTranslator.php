@@ -17,20 +17,17 @@ use WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface;
 /**
  * @author Abdellatif Ait boudad <a.aitboudad@gmail.com>
  */
-class LoggingTranslator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface, \Symfony\Component\Translation\TranslatorBagInterface, \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\LocaleAwareInterface
+class LoggingTranslator implements TranslatorInterface, \Symfony\Component\Translation\TranslatorBagInterface, LocaleAwareInterface
 {
-    /**
-     * @var TranslatorInterface|TranslatorBagInterface
-     */
     private $translator;
     private $logger;
     /**
-     * @param TranslatorInterface $translator The translator must implement TranslatorBagInterface
+     * @param TranslatorInterface&TranslatorBagInterface&LocaleAwareInterface $translator The translator must implement TranslatorBagInterface
      */
-    public function __construct(\WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface $translator, \Psr\Log\LoggerInterface $logger)
+    public function __construct(TranslatorInterface $translator, LoggerInterface $logger)
     {
-        if (!$translator instanceof \Symfony\Component\Translation\TranslatorBagInterface || !$translator instanceof \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\LocaleAwareInterface) {
-            throw new \Symfony\Component\Translation\Exception\InvalidArgumentException(\sprintf('The Translator "%s" must implement TranslatorInterface, TranslatorBagInterface and LocaleAwareInterface.', get_debug_type($translator)));
+        if (!$translator instanceof \Symfony\Component\Translation\TranslatorBagInterface || !$translator instanceof LocaleAwareInterface) {
+            throw new InvalidArgumentException(\sprintf('The Translator "%s" must implement TranslatorInterface, TranslatorBagInterface and LocaleAwareInterface.', \get_debug_type($translator)));
         }
         $this->translator = $translator;
         $this->logger = $logger;
@@ -71,9 +68,16 @@ class LoggingTranslator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Tra
         return $this->translator->getCatalogue($locale);
     }
     /**
+     * {@inheritdoc}
+     */
+    public function getCatalogues() : array
+    {
+        return $this->translator->getCatalogues();
+    }
+    /**
      * Gets the fallback locales.
      *
-     * @return array The fallback locales
+     * @return array
      */
     public function getFallbackLocales()
     {

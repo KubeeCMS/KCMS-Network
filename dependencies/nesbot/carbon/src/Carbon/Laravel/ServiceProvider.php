@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * This file is part of the Carbon package.
+ *
+ * (c) Brian Nesbitt <brian@nesbot.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
 namespace WP_Ultimo\Dependencies\Carbon\Laravel;
 
 use WP_Ultimo\Dependencies\Carbon\Carbon;
@@ -32,18 +40,18 @@ class ServiceProvider extends \WP_Ultimo\Dependencies\Illuminate\Support\Service
     {
         $app = $this->app && \method_exists($this->app, 'getLocale') ? $this->app : app('translator');
         $locale = $app->getLocale();
-        \WP_Ultimo\Dependencies\Carbon\Carbon::setLocale($locale);
-        \WP_Ultimo\Dependencies\Carbon\CarbonImmutable::setLocale($locale);
-        \WP_Ultimo\Dependencies\Carbon\CarbonPeriod::setLocale($locale);
-        \WP_Ultimo\Dependencies\Carbon\CarbonInterval::setLocale($locale);
-        if (\class_exists(\WP_Ultimo\Dependencies\Illuminate\Support\Carbon::class)) {
-            \WP_Ultimo\Dependencies\Illuminate\Support\Carbon::setLocale($locale);
+        Carbon::setLocale($locale);
+        CarbonImmutable::setLocale($locale);
+        CarbonPeriod::setLocale($locale);
+        CarbonInterval::setLocale($locale);
+        if (\class_exists(IlluminateCarbon::class)) {
+            IlluminateCarbon::setLocale($locale);
         }
-        if (\class_exists(\WP_Ultimo\Dependencies\Illuminate\Support\Facades\Date::class)) {
+        if (\class_exists(Date::class)) {
             try {
-                $root = \WP_Ultimo\Dependencies\Illuminate\Support\Facades\Date::getFacadeRoot();
+                $root = Date::getFacadeRoot();
                 $root->setLocale($locale);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 // Non Carbon class in use in Date facade
             }
         }
@@ -54,6 +62,6 @@ class ServiceProvider extends \WP_Ultimo\Dependencies\Illuminate\Support\Service
     }
     protected function isEventDispatcher($instance)
     {
-        return $instance instanceof \WP_Ultimo\Dependencies\Illuminate\Events\EventDispatcher || $instance instanceof \WP_Ultimo\Dependencies\Illuminate\Events\Dispatcher || $instance instanceof \WP_Ultimo\Dependencies\Illuminate\Contracts\Events\Dispatcher;
+        return $instance instanceof EventDispatcher || $instance instanceof Dispatcher || $instance instanceof DispatcherContract;
     }
 }

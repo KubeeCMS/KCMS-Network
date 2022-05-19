@@ -4,7 +4,7 @@ namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
 use WP_Ultimo\Dependencies\Rakit\Validation\Rules\Interfaces\ModifyValue;
-class Defaults extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule implements \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Interfaces\ModifyValue
+class Defaults extends Rule implements ModifyValue
 {
     /** @var string */
     protected $message = "The :attribute default is :default";
@@ -37,7 +37,7 @@ class Defaults extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule implements 
      */
     protected function isEmptyValue($value) : bool
     {
-        $requiredValidator = new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Required();
+        $requiredValidator = new Required();
         return \false === $requiredValidator->check($value, []);
     }
 }

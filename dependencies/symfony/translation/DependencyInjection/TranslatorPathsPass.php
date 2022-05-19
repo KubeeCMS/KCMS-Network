@@ -18,24 +18,36 @@ use WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\ServiceLocator;
 /**
  * @author Yonel Ceruto <yonelceruto@gmail.com>
  */
-class TranslatorPathsPass extends \WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\Compiler\AbstractRecursivePass
+class TranslatorPathsPass extends AbstractRecursivePass
 {
     private $translatorServiceId;
     private $debugCommandServiceId;
     private $updateCommandServiceId;
     private $resolverServiceId;
     private $level = 0;
+    /**
+     * @var array<string, bool>
+     */
     private $paths = [];
+    /**
+     * @var array<int, Definition>
+     */
     private $definitions = [];
+    /**
+     * @var array<string, array<string, bool>>
+     */
     private $controllers = [];
-    public function __construct(string $translatorServiceId = 'translator', string $debugCommandServiceId = 'console.command.translation_debug', string $updateCommandServiceId = 'console.command.translation_update', string $resolverServiceId = 'argument_resolver.service')
+    public function __construct(string $translatorServiceId = 'translator', string $debugCommandServiceId = 'console.command.translation_debug', string $updateCommandServiceId = 'console.command.translation_extract', string $resolverServiceId = 'argument_resolver.service')
     {
+        if (0 < \func_num_args()) {
+            trigger_deprecation('symfony/translation', '5.3', 'Configuring "%s" is deprecated.', __CLASS__);
+        }
         $this->translatorServiceId = $translatorServiceId;
         $this->debugCommandServiceId = $debugCommandServiceId;
         $this->updateCommandServiceId = $updateCommandServiceId;
         $this->resolverServiceId = $resolverServiceId;
     }
-    public function process(\WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\ContainerBuilder $container)
+    public function process(ContainerBuilder $container)
     {
         if (!$container->hasDefinition($this->translatorServiceId)) {
             return;
@@ -53,6 +65,9 @@ class TranslatorPathsPass extends \WP_Ultimo\Dependencies\Symfony\Component\Depe
             foreach ($this->paths as $class => $_) {
                 if (($r = $container->getReflectionClass($class)) && !$r->isInterface()) {
                     $paths[] = $r->getFileName();
+                    foreach ($r->getTraits() as $trait) {
+                        $paths[] = $trait->getFileName();
+                    }
                 }
             }
             if ($paths) {
@@ -73,11 +88,11 @@ class TranslatorPathsPass extends \WP_Ultimo\Dependencies\Symfony\Component\Depe
     }
     protected function processValue($value, bool $isRoot = \false)
     {
-        if ($value instanceof \WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\Reference) {
+        if ($value instanceof Reference) {
             if ((string) $value === $this->translatorServiceId) {
                 for ($i = $this->level - 1; $i >= 0; --$i) {
                     $class = $this->definitions[$i]->getClass();
-                    if (\WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\ServiceLocator::class === $class) {
+                    if (ServiceLocator::class === $class) {
                         if (!isset($this->controllers[$this->currentId])) {
                             continue;
                         }
@@ -92,7 +107,7 @@ class TranslatorPathsPass extends \WP_Ultimo\Dependencies\Symfony\Component\Depe
             }
             return $value;
         }
-        if ($value instanceof \WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\Definition) {
+        if ($value instanceof Definition) {
             $this->definitions[$this->level++] = $value;
             $value = parent::processValue($value, $isRoot);
             unset($this->definitions[--$this->level]);
@@ -100,22 +115,22 @@ class TranslatorPathsPass extends \WP_Ultimo\Dependencies\Symfony\Component\Depe
         }
         return parent::processValue($value, $isRoot);
     }
-    private function findControllerArguments(\WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\ContainerBuilder $container) : array
+    private function findControllerArguments(ContainerBuilder $container) : array
     {
         if ($container->hasDefinition($this->resolverServiceId)) {
             $argument = $container->getDefinition($this->resolverServiceId)->getArgument(0);
-            if ($argument instanceof \WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\Reference) {
+            if ($argument instanceof Reference) {
                 $argument = $container->getDefinition($argument);
             }
             return $argument->getArgument(0);
         }
         if ($container->hasDefinition('debug.' . $this->resolverServiceId)) {
             $argument = $container->getDefinition('debug.' . $this->resolverServiceId)->getArgument(0);
-            if ($argument instanceof \WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\Reference) {
+            if ($argument instanceof Reference) {
                 $argument = $container->getDefinition($argument);
             }
             $argument = $argument->getArgument(0);
-            if ($argument instanceof \WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\Reference) {
+            if ($argument instanceof Reference) {
                 $argument = $container->getDefinition($argument);
             }
             return $argument->getArgument(0);

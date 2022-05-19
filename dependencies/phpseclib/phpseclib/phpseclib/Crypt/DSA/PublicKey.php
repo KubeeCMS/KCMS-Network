@@ -3,8 +3,6 @@
 /**
  * DSA Public Key
  *
- * @category  Crypt
- * @package   DSA
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2015 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -12,24 +10,21 @@
  */
 namespace phpseclib3\Crypt\DSA;
 
+use phpseclib3\Crypt\Common;
 use phpseclib3\Crypt\DSA;
 use phpseclib3\Crypt\DSA\Formats\Signature\ASN1 as ASN1Signature;
-use phpseclib3\Crypt\Common;
 /**
  * DSA Public Key
  *
- * @package DSA
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-class PublicKey extends \phpseclib3\Crypt\DSA implements \phpseclib3\Crypt\Common\PublicKey
+class PublicKey extends DSA implements Common\PublicKey
 {
     use Common\Traits\Fingerprint;
     /**
      * Verify a signature
      *
      * @see self::verify()
-     * @access public
      * @param string $message
      * @param string $signature
      * @return mixed
@@ -43,7 +38,7 @@ class PublicKey extends \phpseclib3\Crypt\DSA implements \phpseclib3\Crypt\Commo
         }
         \extract($params);
         if (self::$engines['OpenSSL'] && \in_array($this->hash->getHash(), \openssl_get_md_methods())) {
-            $sig = $format != 'ASN1' ? \phpseclib3\Crypt\DSA\Formats\Signature\ASN1::save($r, $s) : $signature;
+            $sig = $format != 'ASN1' ? ASN1Signature::save($r, $s) : $signature;
             $result = \openssl_verify($message, $sig, $this->toString('PKCS8'), $this->hash->getHash());
             if ($result != -1) {
                 return (bool) $result;

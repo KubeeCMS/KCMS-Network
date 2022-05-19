@@ -62,7 +62,7 @@ class Luhn
     public static function generateLuhnNumber($partialValue)
     {
         if (!\preg_match('/^\\d+$/', $partialValue)) {
-            throw new \InvalidArgumentException('Argument should be an integer.');
+            throw new InvalidArgumentException('Argument should be an integer.');
         }
         return $partialValue . \Faker\Calculator\Luhn::computeCheckDigit($partialValue);
     }

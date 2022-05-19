@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions;
 
 use Exception;
-class InvalidIpAddress extends \Exception
+class InvalidIpAddress extends Exception
 {
     public static function couldNotValidate(string $ipAddress) : self
     {

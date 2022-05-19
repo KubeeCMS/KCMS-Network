@@ -15,14 +15,20 @@ use WP_Ultimo\Dependencies\Carbon\Exceptions\InvalidTypeException;
 use WP_Ultimo\Dependencies\Carbon\Exceptions\NotLocaleAwareException;
 use WP_Ultimo\Dependencies\Carbon\Language;
 use WP_Ultimo\Dependencies\Carbon\Translator;
+use WP_Ultimo\Dependencies\Carbon\TranslatorStrongTypeInterface;
 use Closure;
 use Symfony\Component\Translation\TranslatorBagInterface;
 use Symfony\Component\Translation\TranslatorInterface;
 use WP_Ultimo\Dependencies\Symfony\Contracts\Translation\LocaleAwareInterface;
 use WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface as ContractsTranslatorInterface;
-if (!\interface_exists('Symfony\\Component\\Translation\\TranslatorInterface')) {
+if (\interface_exists('WP_Ultimo\\Dependencies\\Symfony\\Contracts\\Translation\\TranslatorInterface') && !\interface_exists('Symfony\\Component\\Translation\\TranslatorInterface')) {
     \class_alias('WP_Ultimo\\Dependencies\\Symfony\\Contracts\\Translation\\TranslatorInterface', 'Symfony\\Component\\Translation\\TranslatorInterface');
 }
+/**
+ * Trait Localization.
+ *
+ * Embed default and locale translators and translation base methods.
+ */
 trait Localization
 {
     /**
@@ -42,7 +48,7 @@ trait Localization
      *
      * @var int
      */
-    protected static $humanDiffOptions = \WP_Ultimo\Dependencies\Carbon\CarbonInterface::NO_ZERO_DIFF;
+    protected static $humanDiffOptions = CarbonInterface::NO_ZERO_DIFF;
     /**
      * @deprecated To avoid conflict between different third-party libraries, static setters should not be used.
      *             You should rather use the ->settings() method.
@@ -101,7 +107,7 @@ trait Localization
      *
      * @return void
      */
-    public static function setTranslator(\Symfony\Component\Translation\TranslatorInterface $translator)
+    public static function setTranslator(TranslatorInterface $translator)
     {
         static::$translator = $translator;
     }
@@ -130,7 +136,7 @@ trait Localization
      *
      * @return $this
      */
-    public function setLocalTranslator(\Symfony\Component\Translation\TranslatorInterface $translator)
+    public function setLocalTranslator(TranslatorInterface $translator)
     {
         $this->localTranslator = $translator;
         return $this;
@@ -145,15 +151,15 @@ trait Localization
      *
      * @return string
      */
-    public static function getTranslationMessageWith($translator, string $key, string $locale = null, string $default = null)
+    public static function getTranslationMessageWith($translator, string $key, ?string $locale = null, ?string $default = null)
     {
-        if (!($translator instanceof \Symfony\Component\Translation\TranslatorBagInterface && $translator instanceof \Symfony\Component\Translation\TranslatorInterface)) {
-            throw new \WP_Ultimo\Dependencies\Carbon\Exceptions\InvalidTypeException('Translator does not implement ' . \Symfony\Component\Translation\TranslatorInterface::class . ' and ' . \Symfony\Component\Translation\TranslatorBagInterface::class . '. ' . (\is_object($translator) ? \get_class($translator) : \gettype($translator)) . ' has been given.');
+        if (!($translator instanceof TranslatorBagInterface && $translator instanceof TranslatorInterface)) {
+            throw new InvalidTypeException('Translator does not implement ' . TranslatorInterface::class . ' and ' . TranslatorBagInterface::class . '. ' . (\is_object($translator) ? \get_class($translator) : \gettype($translator)) . ' has been given.');
         }
-        if (!$locale && $translator instanceof \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\LocaleAwareInterface) {
+        if (!$locale && $translator instanceof LocaleAwareInterface) {
             $locale = $translator->getLocale();
         }
-        $result = $translator->getCatalogue($locale)->get($key);
+        $result = self::getFromCatalogue($translator, $translator->getCatalogue($locale), $key);
         return $result === $key ? $default : $result;
     }
     /**
@@ -166,7 +172,7 @@ trait Localization
      *
      * @return string
      */
-    public function getTranslationMessage(string $key, string $locale = null, string $default = null, $translator = null)
+    public function getTranslationMessage(string $key, ?string $locale = null, ?string $default = null, $translator = null)
     {
         return static::getTranslationMessageWith($translator ?: $this->getLocalTranslator(), $key, $locale, $default);
     }
@@ -180,10 +186,10 @@ trait Localization
      *
      * @return string
      */
-    public static function translateWith(\Symfony\Component\Translation\TranslatorInterface $translator, string $key, array $parameters = [], $number = null) : string
+    public static function translateWith(TranslatorInterface $translator, string $key, array $parameters = [], $number = null) : string
     {
         $message = static::getTranslationMessageWith($translator, $key, null, $key);
-        if ($message instanceof \Closure) {
+        if ($message instanceof Closure) {
             return (string) $message(...\array_values($parameters));
         }
         if ($number !== null) {
@@ -193,21 +199,22 @@ trait Localization
             $parameters[':count'] = $parameters['%count%'];
         }
         // @codeCoverageIgnoreStart
-        $choice = $translator instanceof \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface ? $translator->trans($key, $parameters) : $translator->transChoice($key, $number, $parameters);
+        $choice = $translator instanceof ContractsTranslatorInterface ? $translator->trans($key, $parameters) : $translator->transChoice($key, $number, $parameters);
         // @codeCoverageIgnoreEnd
         return (string) $choice;
     }
     /**
      * Translate using translation string or callback available.
      *
-     * @param string                                             $key
-     * @param array                                              $parameters
-     * @param null                                               $number
-     * @param \Symfony\Component\Translation\TranslatorInterface $translator
+     * @param string                                                  $key
+     * @param array                                                   $parameters
+     * @param string|int|float|null                                   $number
+     * @param \Symfony\Component\Translation\TranslatorInterface|null $translator
+     * @param bool                                                    $altNumbers
      *
      * @return string
      */
-    public function translate(string $key, array $parameters = [], $number = null, \Symfony\Component\Translation\TranslatorInterface $translator = null, bool $altNumbers = \false) : string
+    public function translate(string $key, array $parameters = [], $number = null, ?TranslatorInterface $translator = null, bool $altNumbers = \false) : string
     {
         $translation = static::translateWith($translator ?: $this->getLocalTranslator(), $key, $parameters, $number);
         if ($number !== null && $altNumbers) {
@@ -256,7 +263,7 @@ trait Localization
             }
             return $result;
         }
-        return "{$number}";
+        return (string) $number;
     }
     /**
      * Translate a time string from a locale to an other.
@@ -274,7 +281,7 @@ trait Localization
      *
      * @return string
      */
-    public static function translateTimeString($timeString, $from = null, $to = null, $mode = \WP_Ultimo\Dependencies\Carbon\CarbonInterface::TRANSLATE_ALL)
+    public static function translateTimeString($timeString, $from = null, $to = null, $mode = CarbonInterface::TRANSLATE_ALL)
     {
         // Fallback source and destination locales
         $from = $from ?: static::getLocale();
@@ -288,7 +295,7 @@ trait Localization
         $toTranslations = [];
         foreach (['from', 'to'] as $key) {
             $language = ${$key};
-            $translator = \WP_Ultimo\Dependencies\Carbon\Translator::get($language);
+            $translator = Translator::get($language);
             $translations = $translator->getMessages();
             if (!isset($translations[$language])) {
                 return $timeString;
@@ -308,17 +315,17 @@ trait Localization
                     }
                 }
             }
-            ${$translationKey} = \array_merge($mode & \WP_Ultimo\Dependencies\Carbon\CarbonInterface::TRANSLATE_MONTHS ? static::getTranslationArray($months, 12, $timeString) : [], $mode & \WP_Ultimo\Dependencies\Carbon\CarbonInterface::TRANSLATE_MONTHS ? static::getTranslationArray($messages['months_short'] ?? [], 12, $timeString) : [], $mode & \WP_Ultimo\Dependencies\Carbon\CarbonInterface::TRANSLATE_DAYS ? static::getTranslationArray($weekdays, 7, $timeString) : [], $mode & \WP_Ultimo\Dependencies\Carbon\CarbonInterface::TRANSLATE_DAYS ? static::getTranslationArray($messages['weekdays_short'] ?? [], 7, $timeString) : [], $mode & \WP_Ultimo\Dependencies\Carbon\CarbonInterface::TRANSLATE_DIFF ? static::translateWordsByKeys(['diff_now', 'diff_today', 'diff_yesterday', 'diff_tomorrow', 'diff_before_yesterday', 'diff_after_tomorrow'], $messages, $key) : [], $mode & \WP_Ultimo\Dependencies\Carbon\CarbonInterface::TRANSLATE_UNITS ? static::translateWordsByKeys(['year', 'month', 'week', 'day', 'hour', 'minute', 'second'], $messages, $key) : [], $mode & \WP_Ultimo\Dependencies\Carbon\CarbonInterface::TRANSLATE_MERIDIEM ? \array_map(function ($hour) use($meridiem) {
+            ${$translationKey} = \array_merge($mode & CarbonInterface::TRANSLATE_MONTHS ? static::getTranslationArray($months, 12, $timeString) : [], $mode & CarbonInterface::TRANSLATE_MONTHS ? static::getTranslationArray($messages['months_short'] ?? [], 12, $timeString) : [], $mode & CarbonInterface::TRANSLATE_DAYS ? static::getTranslationArray($weekdays, 7, $timeString) : [], $mode & CarbonInterface::TRANSLATE_DAYS ? static::getTranslationArray($messages['weekdays_short'] ?? [], 7, $timeString) : [], $mode & CarbonInterface::TRANSLATE_DIFF ? static::translateWordsByKeys(['diff_now', 'diff_today', 'diff_yesterday', 'diff_tomorrow', 'diff_before_yesterday', 'diff_after_tomorrow'], $messages, $key) : [], $mode & CarbonInterface::TRANSLATE_UNITS ? static::translateWordsByKeys(['year', 'month', 'week', 'day', 'hour', 'minute', 'second'], $messages, $key) : [], $mode & CarbonInterface::TRANSLATE_MERIDIEM ? \array_map(function ($hour) use($meridiem) {
                 if (\is_array($meridiem)) {
                     return $meridiem[$hour < 12 ? 0 : 1];
                 }
                 return $meridiem($hour, 0, \false);
             }, \range(0, 23)) : []);
         }
-        return \substr(\preg_replace_callback('/(?<=[\\d\\s+.\\/,_-])(' . \implode('|', $fromTranslations) . ')(?=[\\d\\s+.\\/,_-])/i', function ($match) use($fromTranslations, $toTranslations) {
+        return \substr(\preg_replace_callback('/(?<=[\\d\\s+.\\/,_-])(' . \implode('|', $fromTranslations) . ')(?=[\\d\\s+.\\/,_-])/iu', function ($match) use($fromTranslations, $toTranslations) {
             [$chunk] = $match;
             foreach ($fromTranslations as $index => $word) {
-                if (\preg_match("/^{$word}\$/i", $chunk)) {
+                if (\preg_match("/^{$word}\$/iu", $chunk)) {
                     return $toTranslations[$index] ?? '';
                 }
             }
@@ -352,17 +359,17 @@ trait Localization
             return $this->getTranslatorLocale();
         }
         if (!$this->localTranslator || $this->getTranslatorLocale($this->localTranslator) !== $locale) {
-            $translator = \WP_Ultimo\Dependencies\Carbon\Translator::get($locale);
+            $translator = Translator::get($locale);
             if (!empty($fallbackLocales)) {
                 $translator->setFallbackLocales($fallbackLocales);
                 foreach ($fallbackLocales as $fallbackLocale) {
-                    $messages = \WP_Ultimo\Dependencies\Carbon\Translator::get($fallbackLocale)->getMessages();
+                    $messages = Translator::get($fallbackLocale)->getMessages();
                     if (isset($messages[$fallbackLocale])) {
                         $translator->setMessages($fallbackLocale, $messages[$fallbackLocale]);
                     }
                 }
             }
-            $this->setLocalTranslator($translator);
+            $this->localTranslator = $translator;
         }
         return $this;
     }
@@ -399,9 +406,9 @@ trait Localization
         $translator = static::getTranslator();
         if (\method_exists($translator, 'setFallbackLocales')) {
             $translator->setFallbackLocales([$locale]);
-            if ($translator instanceof \WP_Ultimo\Dependencies\Carbon\Translator) {
+            if ($translator instanceof Translator) {
                 $preferredLocale = $translator->getLocale();
-                $translator->setMessages($preferredLocale, \array_replace_recursive($translator->getMessages()[$locale] ?? [], \WP_Ultimo\Dependencies\Carbon\Translator::get($locale)->getMessages()[$locale] ?? [], $translator->getMessages($preferredLocale)));
+                $translator->setMessages($preferredLocale, \array_replace_recursive($translator->getMessages()[$locale] ?? [], Translator::get($locale)->getMessages()[$locale] ?? [], $translator->getMessages($preferredLocale)));
             }
         }
     }
@@ -432,7 +439,7 @@ trait Localization
     public static function executeWithLocale($locale, $func)
     {
         $currentLocale = static::getLocale();
-        $result = \call_user_func($func, static::setLocale($locale) ? static::getLocale() : \false, static::translator());
+        $result = $func(static::setLocale($locale) ? static::getLocale() : \false, static::translator());
         static::setLocale($currentLocale);
         return $result;
     }
@@ -446,7 +453,7 @@ trait Localization
      */
     public static function localeHasShortUnits($locale)
     {
-        return static::executeWithLocale($locale, function ($newLocale, \Symfony\Component\Translation\TranslatorInterface $translator) {
+        return static::executeWithLocale($locale, function ($newLocale, TranslatorInterface $translator) {
             return $newLocale && (($y = static::translateWith($translator, 'y')) !== 'y' && $y !== static::translateWith($translator, 'year')) || ($y = static::translateWith($translator, 'd')) !== 'd' && $y !== static::translateWith($translator, 'day') || ($y = static::translateWith($translator, 'h')) !== 'h' && $y !== static::translateWith($translator, 'hour');
         });
     }
@@ -460,12 +467,12 @@ trait Localization
      */
     public static function localeHasDiffSyntax($locale)
     {
-        return static::executeWithLocale($locale, function ($newLocale, \Symfony\Component\Translation\TranslatorInterface $translator) {
+        return static::executeWithLocale($locale, function ($newLocale, TranslatorInterface $translator) {
             if (!$newLocale) {
                 return \false;
             }
             foreach (['ago', 'from_now', 'before', 'after'] as $key) {
-                if ($translator instanceof \Symfony\Component\Translation\TranslatorBagInterface && $translator->getCatalogue($newLocale)->get($key) instanceof \Closure) {
+                if ($translator instanceof TranslatorBagInterface && self::getFromCatalogue($translator, $translator->getCatalogue($newLocale), $key) instanceof Closure) {
                     continue;
                 }
                 if ($translator->trans($key) === $key) {
@@ -485,7 +492,7 @@ trait Localization
      */
     public static function localeHasDiffOneDayWords($locale)
     {
-        return static::executeWithLocale($locale, function ($newLocale, \Symfony\Component\Translation\TranslatorInterface $translator) {
+        return static::executeWithLocale($locale, function ($newLocale, TranslatorInterface $translator) {
             return $newLocale && $translator->trans('diff_now') !== 'diff_now' && $translator->trans('diff_yesterday') !== 'diff_yesterday' && $translator->trans('diff_tomorrow') !== 'diff_tomorrow';
         });
     }
@@ -499,7 +506,7 @@ trait Localization
      */
     public static function localeHasDiffTwoDayWords($locale)
     {
-        return static::executeWithLocale($locale, function ($newLocale, \Symfony\Component\Translation\TranslatorInterface $translator) {
+        return static::executeWithLocale($locale, function ($newLocale, TranslatorInterface $translator) {
             return $newLocale && $translator->trans('diff_before_yesterday') !== 'diff_before_yesterday' && $translator->trans('diff_after_tomorrow') !== 'diff_after_tomorrow';
         });
     }
@@ -513,7 +520,7 @@ trait Localization
      */
     public static function localeHasPeriodSyntax($locale)
     {
-        return static::executeWithLocale($locale, function ($newLocale, \Symfony\Component\Translation\TranslatorInterface $translator) {
+        return static::executeWithLocale($locale, function ($newLocale, TranslatorInterface $translator) {
             return $newLocale && $translator->trans('period_recurrences') !== 'period_recurrences' && $translator->trans('period_interval') !== 'period_interval' && $translator->trans('period_start_date') !== 'period_start_date' && $translator->trans('period_end_date') !== 'period_end_date';
         });
     }
@@ -526,7 +533,7 @@ trait Localization
     public static function getAvailableLocales()
     {
         $translator = static::getLocaleAwareTranslator();
-        return $translator instanceof \WP_Ultimo\Dependencies\Carbon\Translator ? $translator->getAvailableLocales() : [$translator->getLocale()];
+        return $translator instanceof Translator ? $translator->getAvailableLocales() : [$translator->getLocale()];
     }
     /**
      * Returns list of Language object for each available locale. This object allow you to get the ISO name, native
@@ -538,7 +545,7 @@ trait Localization
     {
         $languages = [];
         foreach (static::getAvailableLocales() as $id) {
-            $languages[$id] = new \WP_Ultimo\Dependencies\Carbon\Language($id);
+            $languages[$id] = new Language($id);
         }
         return $languages;
     }
@@ -550,7 +557,7 @@ trait Localization
     protected static function translator()
     {
         if (static::$translator === null) {
-            static::$translator = \WP_Ultimo\Dependencies\Carbon\Translator::get();
+            static::$translator = Translator::get();
         }
         return static::$translator;
     }
@@ -584,10 +591,20 @@ trait Localization
         if (\func_num_args() === 0) {
             $translator = static::translator();
         }
-        if ($translator && !($translator instanceof \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\LocaleAwareInterface || \method_exists($translator, 'getLocale'))) {
-            throw new \WP_Ultimo\Dependencies\Carbon\Exceptions\NotLocaleAwareException($translator);
+        if ($translator && !($translator instanceof LocaleAwareInterface || \method_exists($translator, 'getLocale'))) {
+            throw new NotLocaleAwareException($translator);
         }
         return $translator;
+    }
+    /**
+     * @param mixed                                                    $translator
+     * @param \Symfony\Component\Translation\MessageCatalogueInterface $catalogue
+     *
+     * @return mixed
+     */
+    private static function getFromCatalogue($translator, $catalogue, string $id, string $domain = 'messages')
+    {
+        return $translator instanceof TranslatorStrongTypeInterface ? $translator->getFromCatalogue($catalogue, $id, $domain) : $catalogue->get($id, $domain);
     }
     /**
      * Return the word cleaned from its translation codes.
@@ -620,7 +637,7 @@ trait Localization
                 return '>>DO NOT REPLACE<<';
             }
             $parts = \explode('|', $message);
-            return $key === 'to' ? static::cleanWordFromTranslationString(\end($parts)) : '(?:' . \implode('|', \array_map([static::class, 'cleanWordFromTranslationString'], $parts)) . ')';
+            return $key === 'to' ? self::cleanWordFromTranslationString(\end($parts)) : '(?:' . \implode('|', \array_map([static::class, 'cleanWordFromTranslationString'], $parts)) . ')';
         }, $keys);
     }
     /**

@@ -60,7 +60,7 @@ class Event extends Base_Model {
 	 * @since 2.0.0
 	 * @var int
 	 */
-	protected $author_id;
+	protected $author_id = 0;
 
 	/**
 	 * Object type associated with this event.
@@ -89,7 +89,7 @@ class Event extends Base_Model {
 	 * Slug of the event.
 	 *
 	 * @since 2.0.0
-	 * @var mixed
+	 * @var string
 	 */
 	protected $slug;
 
@@ -97,7 +97,7 @@ class Event extends Base_Model {
 	 * Payload of the event.
 	 *
 	 * @since 2.0.0
-	 * @var mixed
+	 * @var object
 	 */
 	protected $payload;
 
@@ -122,10 +122,13 @@ class Event extends Base_Model {
 	public function validation_rules() {
 
 		return array(
-			'severity'    => 'required|numeric|between:0,5',
+			'severity'    => 'required|numeric|between:1,5',
+			'payload'     => 'required',
 			'object_type' => 'required|alpha_dash|lowercase',
-			'object_id'   => 'numeric',
-			'slug'        => 'lowercase'
+			'object_id'   => 'integer|default:0',
+			'author_id'   => 'integer|default:0',
+			'slug'        => 'required|alpha_dash',
+			'initiator'   => 'required|in:system,manual'
 		);
 
 	} // end validation_rules;
@@ -238,7 +241,7 @@ class Event extends Base_Model {
 	 * Set payload of the event..
 	 *
 	 * @since 2.0.0
-	 * @param mixed $payload Payload of the event.
+	 * @param object $payload Payload of the event.
 	 * @return void
 	 */
 	public function set_payload($payload) {
@@ -338,7 +341,8 @@ class Event extends Base_Model {
 	 * Set by people (admins, customers), saved as 'manual'.
 	 *
 	 * @since 2.0.0
-	 * @param string $initiator by people (admins, customers), saved as 'manual'.
+	 *
+	 * @param string $initiator The type of user responsible for initiating the event. There are two options: Manual and System. By default, the event is saved as manual.
 	 * @return void
 	 */
 	public function set_initiator($initiator) {
@@ -421,7 +425,7 @@ class Event extends Base_Model {
 	 * Set the author of the action, saved as the user_id.
 	 *
 	 * @since 2.0.0
-	 * @param int $author_id The author of the action, saved as the user_id.
+	 * @param int $author_id The user responsible for creating the event. By default, the event is saved with the current user_id.
 	 * @return void
 	 */
 	public function set_author_id($author_id) {
@@ -568,7 +572,7 @@ class Event extends Base_Model {
 	 * Set the object type associated with this event.
 	 *
 	 * @since 2.0.0
-	 * @param string $object_type Object type associated with this event.
+	 * @param string $object_type The type of object related to this event. It's usually the model name.
 	 * @return void
 	 */
 	public function set_object_type($object_type) {
@@ -593,7 +597,7 @@ class Event extends Base_Model {
 	 * Set the object type associated with this event.
 	 *
 	 * @since 2.0.0
-	 * @param string $slug of the event.
+	 * @param string $slug The event slug. It needs to be unique and preferably make it clear what it is about. Example: account_created is about creating an account.
 	 * @return void
 	 */
 	public function set_slug($slug) {
@@ -618,7 +622,7 @@ class Event extends Base_Model {
 	 * Set iD of the related objects.
 	 *
 	 * @since 2.0.0
-	 * @param int $object_id ID of the related objects.
+	 * @param int $object_id The ID of the related objects.
 	 * @return void
 	 */
 	public function set_object_id($object_id) {
@@ -669,5 +673,25 @@ class Event extends Base_Model {
 		return $array;
 
 	} // end to_array;
+
+	/**
+	 * Override to clear event count.
+	 *
+	 * @since 2.0.0
+	 * @return int|false
+	 */
+	public function save() {
+
+		if (!$this->exists() && function_exists('get_current_user_id')) {
+
+			$user_id = get_current_user_id();
+
+			delete_site_transient("wu_{$user_id}_unseen_events_count");
+
+		} // end if;
+
+		return parent::save();
+
+	} // end save;
 
 } // end class Event;

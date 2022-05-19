@@ -13,7 +13,7 @@ class DisputeService extends \WP_Ultimo\Dependencies\Stripe\Service\AbstractServ
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\Dispute>
      */
     public function all($params = null, $opts = null)
     {

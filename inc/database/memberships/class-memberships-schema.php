@@ -32,13 +32,14 @@ class Memberships_Schema extends Schema {
 
 		// id
 		array(
-			'name'     => 'id',
-			'type'     => 'bigint',
-			'length'   => '20',
-			'unsigned' => true,
-			'extra'    => 'auto_increment',
-			'primary'  => true,
-			'sortable' => true
+			'name'       => 'id',
+			'type'       => 'bigint',
+			'length'     => '20',
+			'unsigned'   => true,
+			'extra'      => 'auto_increment',
+			'primary'    => true,
+			'sortable'   => true,
+			'searchable' => true,
 		),
 
 		// customer_id
@@ -115,7 +116,7 @@ class Memberships_Schema extends Schema {
 			'type'       => 'tinyint',
 			'length'     => '4',
 			'unsigned'   => true,
-			'default'    => 1,
+			'default'    => 0,
 			'transition' => true,
 			'sortable'   => true,
 		),
@@ -147,7 +148,7 @@ class Memberships_Schema extends Schema {
 		array(
 			'name'       => 'date_created',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'created'    => true,
 			'date_query' => true,
 			'sortable'   => true,
@@ -157,7 +158,7 @@ class Memberships_Schema extends Schema {
 		array(
 			'name'       => 'date_activated',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'date_query' => true,
 			'sortable'   => true
 		),
@@ -166,7 +167,7 @@ class Memberships_Schema extends Schema {
 		array(
 			'name'       => 'date_trial_end',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'date_query' => true,
 			'sortable'   => true
 		),
@@ -175,7 +176,7 @@ class Memberships_Schema extends Schema {
 		array(
 			'name'       => 'date_renewed',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'date_query' => true,
 			'sortable'   => true
 		),
@@ -184,7 +185,7 @@ class Memberships_Schema extends Schema {
 		array(
 			'name'       => 'date_cancellation',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'date_query' => true,
 			'sortable'   => true
 		),
@@ -193,7 +194,7 @@ class Memberships_Schema extends Schema {
 		array(
 			'name'       => 'date_expiration',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'date_query' => true,
 			'sortable'   => true,
 			'transition' => true
@@ -203,7 +204,7 @@ class Memberships_Schema extends Schema {
 		array(
 			'name'       => 'date_payment_plan_completed',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'date_query' => true,
 			'sortable'   => true,
 			'transition' => true
@@ -305,7 +306,7 @@ class Memberships_Schema extends Schema {
 		array(
 			'name'       => 'date_modified',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'modified'   => true,
 			'date_query' => true,
 			'sortable'   => true

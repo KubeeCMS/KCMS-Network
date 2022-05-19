@@ -21,5 +21,5 @@ interface TranslationReaderInterface
     /**
      * Reads translation messages from a directory to the catalogue.
      */
-    public function read(string $directory, \Symfony\Component\Translation\MessageCatalogue $catalogue);
+    public function read(string $directory, MessageCatalogue $catalogue);
 }

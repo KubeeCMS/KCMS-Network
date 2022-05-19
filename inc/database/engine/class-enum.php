@@ -72,6 +72,18 @@ abstract class Enum {
 	abstract protected function labels();
 
 	/**
+	 * Returns an array with values => labels.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	protected function icon_classes() {
+
+		return array();
+
+	} // end icon_classes;
+
+	/**
 	 * Returns the options available as constants.
 	 *
 	 * @since 2.0.0
@@ -92,6 +104,14 @@ abstract class Enum {
 		return static::$options[$hook];
 
 	} // end get_options;
+
+	public static function get_allowed_list($string = false) {
+
+		$options = array_unique(self::get_options());
+
+		return $string ? implode(',', $options) : $options;
+
+	} // end get_allowed_list;
 
 	/**
 	 * Returns the value loaded here.
@@ -161,6 +181,22 @@ abstract class Enum {
 		return $this->exists_or_default($classes, $this->get_value());
 
 	} // end get_classes;
+
+	/**
+	 * Returns the classes of a given value.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_icon_classes() {
+
+		$hook = static::get_hook_name();
+
+		$classes = apply_filters("wu_available_{$hook}_icon_classes", $this->icon_classes());
+
+		return $this->exists_or_default($classes, $this->get_value());
+
+	} // end get_icon_classes;
 
 	/**
 	 * Returns an array of options.

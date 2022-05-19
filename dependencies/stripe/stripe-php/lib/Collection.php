@@ -5,12 +5,15 @@ namespace WP_Ultimo\Dependencies\Stripe;
 /**
  * Class Collection.
  *
+ * @template TStripeObject of StripeObject
+ * @template-implements \IteratorAggregate<TStripeObject>
+ *
  * @property string $object
  * @property string $url
  * @property bool $has_more
- * @property \Stripe\StripeObject[] $data
+ * @property TStripeObject[] $data
  */
-class Collection extends \WP_Ultimo\Dependencies\Stripe\StripeObject implements \Countable, \IteratorAggregate
+class Collection extends StripeObject implements \Countable, \IteratorAggregate
 {
     const OBJECT_NAME = 'list';
     use ApiOperations\Request;
@@ -21,7 +24,7 @@ class Collection extends \WP_Ultimo\Dependencies\Stripe\StripeObject implements 
      */
     public static function baseUrl()
     {
-        return \WP_Ultimo\Dependencies\Stripe\Stripe::$apiBase;
+        return Stripe::$apiBase;
     }
     /**
      * Returns the filters.
@@ -41,45 +44,72 @@ class Collection extends \WP_Ultimo\Dependencies\Stripe\StripeObject implements 
     {
         $this->filters = $filters;
     }
+    #[\ReturnTypeWillChange]
     public function offsetGet($k)
     {
         if (\is_string($k)) {
             return parent::offsetGet($k);
         }
         $msg = "You tried to access the {$k} index, but Collection " . 'types only support string keys. (HINT: List calls ' . 'return an object with a `data` (which is the data ' . "array). You likely want to call ->data[{$k}])";
-        throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException($msg);
+        throw new Exception\InvalidArgumentException($msg);
     }
+    /**
+     * @param null|array $params
+     * @param null|array|string $opts
+     *
+     * @throws Exception\ApiErrorException
+     *
+     * @return Collection<TStripeObject>
+     */
     public function all($params = null, $opts = null)
     {
         self::_validateParams($params);
         list($url, $params) = $this->extractPathAndUpdateParams($params);
         list($response, $opts) = $this->_request('get', $url, $params, $opts);
-        $obj = \WP_Ultimo\Dependencies\Stripe\Util\Util::convertToStripeObject($response, $opts);
+        $obj = Util\Util::convertToStripeObject($response, $opts);
         if (!$obj instanceof \WP_Ultimo\Dependencies\Stripe\Collection) {
             throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException('Expected type ' . \WP_Ultimo\Dependencies\Stripe\Collection::class . ', got "' . \get_class($obj) . '" instead.');
         }
         $obj->setFilters($params);
         return $obj;
     }
+    /**
+     * @param null|array $params
+     * @param null|array|string $opts
+     *
+     * @throws Exception\ApiErrorException
+     *
+     * @return TStripeObject
+     */
     public function create($params = null, $opts = null)
     {
         self::_validateParams($params);
         list($url, $params) = $this->extractPathAndUpdateParams($params);
         list($response, $opts) = $this->_request('post', $url, $params, $opts);
-        return \WP_Ultimo\Dependencies\Stripe\Util\Util::convertToStripeObject($response, $opts);
+        return Util\Util::convertToStripeObject($response, $opts);
     }
+    /**
+     * @param string $id
+     * @param null|array $params
+     * @param null|array|string $opts
+     *
+     * @throws Exception\ApiErrorException
+     *
+     * @return TStripeObject
+     */
     public function retrieve($id, $params = null, $opts = null)
     {
         self::_validateParams($params);
         list($url, $params) = $this->extractPathAndUpdateParams($params);
-        $id = \WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($id);
+        $id = Util\Util::utf8($id);
         $extn = \urlencode($id);
         list($response, $opts) = $this->_request('get', "{$url}/{$extn}", $params, $opts);
-        return \WP_Ultimo\Dependencies\Stripe\Util\Util::convertToStripeObject($response, $opts);
+        return Util\Util::convertToStripeObject($response, $opts);
     }
     /**
      * @return int the number of objects in the current page
      */
+    #[\ReturnTypeWillChange]
     public function count()
     {
         return \count($this->data);
@@ -88,6 +118,7 @@ class Collection extends \WP_Ultimo\Dependencies\Stripe\StripeObject implements 
      * @return \ArrayIterator an iterator that can be used to iterate
      *    across objects in the current page
      */
+    #[\ReturnTypeWillChange]
     public function getIterator()
     {
         return new \ArrayIterator($this->data);
@@ -101,7 +132,7 @@ class Collection extends \WP_Ultimo\Dependencies\Stripe\StripeObject implements 
         return new \ArrayIterator(\array_reverse($this->data));
     }
     /**
-     * @return \Generator|StripeObject[] A generator that can be used to
+     * @return \Generator|TStripeObject[] A generator that can be used to
      *    iterate across all objects across all pages. As page boundaries are
      *    encountered, the next page will be fetched automatically for
      *    continued iteration.
@@ -138,7 +169,7 @@ class Collection extends \WP_Ultimo\Dependencies\Stripe\StripeObject implements 
      */
     public static function emptyCollection($opts = null)
     {
-        return \WP_Ultimo\Dependencies\Stripe\Collection::constructFrom(['data' => []], $opts);
+        return Collection::constructFrom(['data' => []], $opts);
     }
     /**
      * Returns true if the page object contains no element.
@@ -158,7 +189,7 @@ class Collection extends \WP_Ultimo\Dependencies\Stripe\StripeObject implements 
      * @param null|array $params
      * @param null|array|string $opts
      *
-     * @return Collection
+     * @return Collection<TStripeObject>
      */
     public function nextPage($params = null, $opts = null)
     {
@@ -178,7 +209,7 @@ class Collection extends \WP_Ultimo\Dependencies\Stripe\StripeObject implements 
      * @param null|array $params
      * @param null|array|string $opts
      *
-     * @return Collection
+     * @return Collection<TStripeObject>
      */
     public function previousPage($params = null, $opts = null)
     {
@@ -192,7 +223,7 @@ class Collection extends \WP_Ultimo\Dependencies\Stripe\StripeObject implements 
     /**
      * Gets the first item from the current page. Returns `null` if the current page is empty.
      *
-     * @return null|\Stripe\StripeObject
+     * @return null|TStripeObject
      */
     public function first()
     {
@@ -201,7 +232,7 @@ class Collection extends \WP_Ultimo\Dependencies\Stripe\StripeObject implements 
     /**
      * Gets the last item from the current page. Returns `null` if the current page is empty.
      *
-     * @return null|\Stripe\StripeObject
+     * @return null|TStripeObject
      */
     public function last()
     {
@@ -211,7 +242,7 @@ class Collection extends \WP_Ultimo\Dependencies\Stripe\StripeObject implements 
     {
         $url = \parse_url($this->url);
         if (!isset($url['path'])) {
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException("Could not parse list url into parts: {$url}");
+            throw new Exception\UnexpectedValueException("Could not parse list url into parts: {$url}");
         }
         if (isset($url['query'])) {
             // If the URL contains a query param, parse it out into $params so they

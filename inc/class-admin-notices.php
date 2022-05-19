@@ -38,7 +38,7 @@ class Admin_Notices {
 	 *
 	 * @since 2.0.0
 	 */
-	public function __construct() {
+	public function init() {
 
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_scripts'));
 
@@ -46,7 +46,7 @@ class Admin_Notices {
 
 		add_action('wp_ajax_wu_dismiss_admin_notice', array($this, 'ajax_dismiss_admin_notices'));
 
-	} // end __construct;
+	} // end init;
 
 	/**
 	 * Get the notices the current user has dismissed
@@ -81,7 +81,9 @@ class Admin_Notices {
 	 */
 	public function add($notice, $type = 'success', $panel = 'admin', $dismissible_key = false, $actions = array()) {
 
-		$this->notices[$panel][] = array(
+		$id = $dismissible_key ? $dismissible_key : md5($notice);
+
+		$this->notices[$panel][$id] = array(
 			'type'            => $type,
 			'message'         => $notice,
 			'dismissible_key' => is_string($dismissible_key) ? $dismissible_key : false,
@@ -125,21 +127,21 @@ class Admin_Notices {
 		 * @param string $panel Panel to retrieve the notices.
 		 * @param string $filter If the dismissable notices have been filtered out.
 		 * @param array  $dismissed_messages List of dismissed notice keys.
-	 * @return array
+	   * @return array
 		 */
 		return apply_filters('wu_admin_notices', $notices, $this->notices, $panel, $filter, $dismissed_messages);
 
 	} // end get_notices;
 
 	/**
-	 * Enqueues the JavaScript code thhat sends the dismiss call to the ajax endpoint.
+	 * Enqueues the JavaScript code that sends the dismiss call to the ajax endpoint.
 	 *
 	 * @since 2.0.0
 	 * @return void
 	 */
 	public function enqueue_scripts() {
 
-		wp_enqueue_script('wu-admin-notices', wu_get_asset('admin-notices.js', 'js'), array('jquery', 'wu-vue'), wu_get_version());
+		wp_enqueue_script('wu-admin-notices', wu_get_asset('admin-notices.js', 'js'), array('jquery'), wu_get_version());
 
 	} // end enqueue_scripts;
 
@@ -181,7 +183,7 @@ class Admin_Notices {
 
 		$notices = $this->get_notices($panel);
 
-		WP_Ultimo()->helper->render('admin-notices', array(
+		wu_get_template('admin-notices', array(
 			'notices' => $notices,
 			'nonce'   => wp_create_nonce('wu-dismiss-admin-notice'),
 		));

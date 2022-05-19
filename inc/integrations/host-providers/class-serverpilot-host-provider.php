@@ -251,7 +251,7 @@ class ServerPilot_Host_Provider extends Base_Host_Provider {
 		 */
 
 		// translators: %s is the json_encode of the error.
-		wu_log_add('integration-serverpilot', sprintf(__('A error happening trying to get the current list of domains: %s', 'wp-ultimo'), json_encode($app_info)));
+		wu_log_add('integration-serverpilot', sprintf(__('An error occurred while trying to get the current list of domains: %s', 'wp-ultimo'), json_encode($app_info)));
 
 		return false;
 

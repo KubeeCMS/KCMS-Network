@@ -86,9 +86,23 @@ class Signup_Field_Checkbox extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('Checkbox Description', 'wp-ultimo');
+		return __('Adds a checkout box that can be checked by the customer.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Adds a checkout box that can be checked by the customer.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -100,7 +114,7 @@ class Signup_Field_Checkbox extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-wu-check';
+		return 'dashicons-wu-check-square';
 
 	} // end get_icon;
 
@@ -132,8 +146,8 @@ class Signup_Field_Checkbox extends Base_Signup_Field {
 		return array(
 			'id',
 			'name',
-			'placeholder',
 			'tooltip',
+			'save_as',
 			'required',
 		);
 
@@ -165,6 +179,7 @@ class Signup_Field_Checkbox extends Base_Signup_Field {
 				'title' => __('Default State', 'wp-ultimo'),
 				'desc'  => __('Use the toggle to the set the default state of the checkbox.', 'wp-ultimo'),
 				'value' => 0,
+				'order' => 12,
 			),
 		);
 
@@ -183,13 +198,27 @@ class Signup_Field_Checkbox extends Base_Signup_Field {
 		$checkout_fields = array();
 
 		$checkout_fields[$attributes['id']] = array(
-			'type'        => 'checkbox',
-			'id'          => $attributes['id'],
-			'name'        => $attributes['name'],
-			'placeholder' => $attributes['placeholder'],
-			'tooltip'     => $attributes['tooltip'],
-			'required'    => $attributes['required'],
+			'type'            => 'checkbox',
+			'id'              => $attributes['id'],
+			'name'            => $attributes['name'],
+			'tooltip'         => $attributes['tooltip'],
+			'required'        => $attributes['required'],
+			'wrapper_classes' => $attributes['element_classes'],
 		);
+
+		if ($attributes['default_state']) {
+
+			$checkout_fields[$attributes['id']]['html_attr']['checked'] = 'checked';
+
+		} // end if;
+
+		$value = $this->get_value();
+
+		if ($value !== '' && (bool) $value === true) {
+
+			$checkout_fields[$attributes['id']]['html_attr']['checked'] = 'checked';
+
+		} // end if;
 
 		return $checkout_fields;
 

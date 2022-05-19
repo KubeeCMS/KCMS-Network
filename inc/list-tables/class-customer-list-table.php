@@ -120,6 +120,10 @@ class Customer_List_Table extends Base_List_Table {
 		// Get user info
 		$user = get_user_by('id', $item->get_user_id());
 
+		$url_atts = array(
+			'id' => $item->get_id(),
+		);
+
 		// Check if user exists
 		if (!$user) {
 
@@ -142,17 +146,14 @@ class Customer_List_Table extends Base_List_Table {
 
 		$desc = sprintf('<a %s href="mailto:%s" class="description wu-ml-1 wu-text-xs">(%s)</a>', wu_tooltip_text(__('Send an email to this customer', 'wp-ultimo')), $user->user_email, $user->user_email);
 
-		$url_atts = array(
-			'id' => $item->get_id(),
-		);
-
 		// Concatenate switch to url
 		$is_modal_switch_to = \WP_Ultimo\User_Switching::get_instance()->check_user_switching_is_activated() ? '' : 'wubox';
+
 		$url_switch_to      = sprintf('<a title="%s" class="%s" href="%s">%s</a>', __('Switch To', 'wp-ultimo'), $is_modal_switch_to, \WP_Ultimo\User_Switching::get_instance()->render($item->get_user_id()), __('Switch To', 'wp-ultimo'));
 
 		$actions = array(
 			'edit'      => sprintf('<a href="%s">%s</a>', wu_network_admin_url('wp-ultimo-edit-customer', $url_atts), __('Edit', 'wp-ultimo')),
-			'switch-to' => $url_switch_to,
+			'switch-to' => $item->get_user_id() !== get_current_user_id() ? $url_switch_to : false,
 			'delete'    => sprintf(
 				'<a title="%s" class="wubox" href="%s">%s</a>',
 				__('Delete', 'wp-ultimo'),
@@ -166,6 +167,8 @@ class Customer_List_Table extends Base_List_Table {
 				__('Delete', 'wp-ultimo')
 			),
 		);
+
+		$actions = array_filter($actions);
 
 		return $title . $desc . $this->row_actions($actions);
 

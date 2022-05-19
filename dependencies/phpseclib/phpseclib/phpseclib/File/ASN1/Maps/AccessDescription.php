@@ -5,8 +5,6 @@
  *
  * PHP version 5
  *
- * @category  File
- * @package   ASN1
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2016 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -18,11 +16,9 @@ use phpseclib3\File\ASN1;
 /**
  * AccessDescription
  *
- * @package ASN1
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
 abstract class AccessDescription
 {
-    const MAP = ['type' => \phpseclib3\File\ASN1::TYPE_SEQUENCE, 'children' => ['accessMethod' => ['type' => \phpseclib3\File\ASN1::TYPE_OBJECT_IDENTIFIER], 'accessLocation' => \phpseclib3\File\ASN1\Maps\GeneralName::MAP]];
+    const MAP = ['type' => ASN1::TYPE_SEQUENCE, 'children' => ['accessMethod' => ['type' => ASN1::TYPE_OBJECT_IDENTIFIER], 'accessLocation' => \phpseclib3\File\ASN1\Maps\GeneralName::MAP]];
 }

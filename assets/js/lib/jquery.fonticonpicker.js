@@ -1,4 +1,3 @@
-
 /**
  *  jQuery fontIconPicker - 3.1.1
  *
@@ -1210,4 +1209,3 @@
   return jquery_fonticonpicker;
 
 })));
-//# sourceMappingURL=jquery.fonticonpicker.js.map

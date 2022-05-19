@@ -47,31 +47,17 @@ abstract class Table extends \WP_Ultimo\Dependencies\BerlinDB\Database\Table {
 	 */
 	public function is_upgradeable() {
 
-		$setup_finished = get_network_option(null, 'wu_setup_finished', false);
-
-		if (!$setup_finished) {
-
-			return true;
-
-		} // end if;
-
-		$check_time = 5 * HOUR_IN_SECONDS; // Every 5 Hours
-
-		$last_check = get_network_option(null, 'wu_last_database_update');
-
-		if ($last_check && $last_check <= time() + $check_time) {
+		if (!is_main_network()) {
 
 			return false;
 
 		} // end if;
 
-		if ($this->global && !is_main_site()) {
+		if (!is_main_site()) {
 
 			return false;
 
 		} // end if;
-
-		update_network_option(null, 'wu_last_database_update', time());
 
 		return true;
 

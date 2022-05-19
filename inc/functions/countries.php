@@ -2,12 +2,8 @@
 /**
  * Country Functions
  *
- * Helper functions to handle currency conversion and similar
- *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Helper/Currency
- * @version     1.4.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
 
 // Exit if accessed directly
@@ -290,6 +286,123 @@ function wu_get_countries_as_options() {
 } // end wu_get_countries_as_options;
 
 /**
+ * Returns the country object.
+ *
+ * @since 2.0.11
+ *
+ * @param string      $country_code Two-letter country ISO code.
+ * @param string|null $name The country name.
+ * @param array       $fallback_attributes Fallback attributes if the country class is not present.
+ * @return \WP_Ultimo\Country\Country
+ */
+function wu_get_country($country_code, $name = null, $fallback_attributes = array()) {
+
+	$country_code = strtoupper($country_code);
+
+	$country_class = "\\WP_Ultimo\\Country\\Country_{$country_code}";
+
+	if (class_exists($country_class)) {
+
+		return $country_class::get_instance();
+
+	} // end if;
+
+	return \WP_Ultimo\Country\Country_Default::build($country_code, $name, $fallback_attributes);
+
+} // end wu_get_country;
+
+/**
+ * Get the state list for a country.
+ *
+ * @since 2.0.12
+ *
+ * @param string $country_code The country code.
+ * @param string $key_name The name to use for the key entry.
+ * @param string $value_name The name to use for the value entry.
+ * @return array
+ */
+function wu_get_country_states($country_code, $key_name = 'id', $value_name = 'value') {
+
+	static $state_options = array();
+
+	$options = array();
+
+	$cache = wu_get_isset($state_options, $country_code, false);
+
+	if ($cache) {
+
+		$options = $cache;
+
+	} else {
+
+		$country = wu_get_country($country_code);
+
+		$state_options[$country_code] = $country->get_states_as_options(false);
+
+		$options = $state_options[$country_code];
+
+	} // end if;
+
+	if (empty($key_name)) {
+
+		return $options;
+
+	} // end if;
+
+	return wu_key_map_to_array($options, $key_name, $value_name);
+
+} // end wu_get_country_states;
+
+/**
+ * Get cities for a collection of states of a country.
+ *
+ * @since 2.0.11
+ *
+ * @param string $country_code The country code.
+ * @param array  $states The list of state codes to retrieve.
+ * @param string $key_name The name to use for the key entry.
+ * @param string $value_name The name to use for the value entry.
+ * @return array
+ */
+function wu_get_country_cities($country_code, $states, $key_name = 'id', $value_name = 'value') {
+
+	static $city_options = array();
+
+	$states = (array) $states;
+
+	$options = array();
+
+	foreach ($states as $state_code) {
+
+		$cache = wu_get_isset($city_options, $state_code, false);
+
+		if ($cache) {
+
+			$options = array_merge($options, $cache);
+
+		} else {
+
+			$country = wu_get_country($country_code);
+
+			$city_options[$state_code] = $country->get_cities_as_options($state_code, false);
+
+			$options = array_merge($options, $city_options[$state_code]);
+
+		} // end if;
+
+	} // end foreach;
+
+	if (empty($key_name)) {
+
+		return $options;
+
+	} // end if;
+
+	return wu_key_map_to_array($options, $key_name, $value_name);
+
+} // end wu_get_country_cities;
+
+/**
  * Returns the country name for a given country code.
  *
  * @since 2.0.0
@@ -357,3 +470,77 @@ function wu_get_countries_of_customers($count = 10, $start_date = false, $end_da
 	return $countries;
 
 } // end wu_get_countries_of_customers;
+
+/**
+ * Get the list of countries and counts based on customers.
+ *
+ * @since 2.0.0
+ * @param string         $country_code The country code.
+ * @param integer        $count The number of results to return.
+ * @param boolean|string $start_date The start date.
+ * @param boolean|string $end_date The end date.
+ * @return array
+ */
+function wu_get_states_of_customers($country_code, $count = 100, $start_date = false, $end_date = false) {
+
+	global $wpdb;
+
+	static $states = array();
+
+	$table_name          = "{$wpdb->base_prefix}wu_customermeta";
+	$customer_table_name = "{$wpdb->base_prefix}wu_customers";
+
+	$date_query = '';
+
+	if ($start_date || $end_date) {
+
+		$date_query = 'AND c.date_registered >= %s AND c.date_registered <= %s';
+
+		$date_query = $wpdb->prepare($date_query, $start_date . ' 00:00:00', $end_date . " 23:59:59"); // phpcs:ignore
+
+	} // end if;
+
+	$states = wu_get_country_states('BR', false);
+
+	if (empty($states)) {
+
+		return array();
+
+	} // end if;
+
+	$states_in = implode("','", array_keys($states));
+
+	$query = "
+		SELECT m.meta_value as state, COUNT(distinct c.id) as count
+		FROM `{$table_name}` as m
+		INNER JOIN `{$customer_table_name}` as c ON m.wu_customer_id = c.id
+		WHERE m.meta_key = 'ip_state' AND m.meta_value IN ('$states_in')
+		$date_query
+		GROUP BY m.meta_value
+		ORDER BY count DESC
+		LIMIT %d
+	";
+
+	$query = $wpdb->prepare($query, $count); // phpcs:ignore
+
+	$results = $wpdb->get_results($query); // phpcs:ignore
+
+	if (empty($results)) {
+
+		return array();
+
+	} // end if;
+
+	$_states = array();
+
+	foreach ($results as $result) {
+
+		$final_label = sprintf('%s (%s)', $states[$result->state], $result->state);
+
+		$_states[$final_label] = absint($result->count);
+
+	} // end foreach;
+
+	return $_states;
+
+} // end wu_get_states_of_customers;

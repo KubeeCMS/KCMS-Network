@@ -27,10 +27,10 @@ abstract class WebhookSignature
         $timestamp = self::getTimestamp($header);
         $signatures = self::getSignatures($header, self::EXPECTED_SCHEME);
         if (-1 === $timestamp) {
-            throw \WP_Ultimo\Dependencies\Stripe\Exception\SignatureVerificationException::factory('Unable to extract timestamp and signatures from header', $payload, $header);
+            throw Exception\SignatureVerificationException::factory('Unable to extract timestamp and signatures from header', $payload, $header);
         }
         if (empty($signatures)) {
-            throw \WP_Ultimo\Dependencies\Stripe\Exception\SignatureVerificationException::factory('No signatures found with expected scheme', $payload, $header);
+            throw Exception\SignatureVerificationException::factory('No signatures found with expected scheme', $payload, $header);
         }
         // Check if expected signature is found in list of signatures from
         // header
@@ -38,17 +38,17 @@ abstract class WebhookSignature
         $expectedSignature = self::computeSignature($signedPayload, $secret);
         $signatureFound = \false;
         foreach ($signatures as $signature) {
-            if (\WP_Ultimo\Dependencies\Stripe\Util\Util::secureCompare($expectedSignature, $signature)) {
+            if (Util\Util::secureCompare($expectedSignature, $signature)) {
                 $signatureFound = \true;
                 break;
             }
         }
         if (!$signatureFound) {
-            throw \WP_Ultimo\Dependencies\Stripe\Exception\SignatureVerificationException::factory('No signatures found matching the expected signature for payload', $payload, $header);
+            throw Exception\SignatureVerificationException::factory('No signatures found matching the expected signature for payload', $payload, $header);
         }
         // Check if timestamp is within tolerance
         if ($tolerance > 0 && \abs(\time() - $timestamp) > $tolerance) {
-            throw \WP_Ultimo\Dependencies\Stripe\Exception\SignatureVerificationException::factory('Timestamp outside the tolerance zone', $payload, $header);
+            throw Exception\SignatureVerificationException::factory('Timestamp outside the tolerance zone', $payload, $header);
         }
         return \true;
     }
@@ -89,7 +89,7 @@ abstract class WebhookSignature
         foreach ($items as $item) {
             $itemParts = \explode('=', $item, 2);
             if (\trim($itemParts[0]) === $scheme) {
-                \array_push($signatures, $itemParts[1]);
+                $signatures[] = $itemParts[1];
             }
         }
         return $signatures;

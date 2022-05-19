@@ -5,21 +5,21 @@
  * @since 2.0.0
  */
 ?>
-<li class="<?php echo esc_attr($field->wrapper_classes); ?>" data-wu-app="<?php echo esc_attr($field->id); ?>" data-state='{"edit":false}'>
+<li class="<?php echo esc_attr(trim($field->wrapper_classes)); ?>" data-wu-app="<?php echo esc_attr($field->id); ?>" data-state='{"edit":false}'>
 
   <div class="wu-block" v-show="!edit">
 
-    <h3 class="wu-my-1 wu-text-2xs wu-uppercase">
+    <?php
 
-      <?php echo $field->title; ?>
+    /**
+     * Adds the partial title template.
+     * @since 2.0.0
+     */
+    wu_get_template('admin-pages/fields/partials/field-title', array(
+      'field' => $field,
+    ));
 
-      <?php if ($field->tooltip) : ?>
-
-        <?php echo wu_tooltip($field->tooltip); ?>
-
-      <?php endif; ?>
-
-    </h3>
+    ?>
 
     <?php if ($field->type === 'date' || $field->date === true) : ?>
 
@@ -35,13 +35,13 @@
 
             $date = $field->value;
 
-            $time = strtotime($date, current_time('timestamp')); // phpcs:ignore
+            $time = strtotime(get_date_from_gmt($date));
 
             $formatted_value = date_i18n(get_option('date_format'), $time);
 
-            $placeholder = current_time('timestamp') > $time ? __('%s ago', 'wp-ultimo') : __('In %s', 'wp-ultimo'); // phpcs:ignore
+            $placeholder = wu_get_current_time('timestamp') > $time ? __('%s ago', 'wp-ultimo') : __('In %s', 'wp-ultimo'); // phpcs:ignore
 
-            echo $formatted_value.sprintf('<br><small>%s</small>', sprintf($placeholder, human_time_diff($time)));
+            echo sprintf('<time datetime="%3$s">%1$s</time><br><small>%2$s</small>', $formatted_value, sprintf($placeholder, human_time_diff($time, wu_get_current_time('timestamp'))), get_date_from_gmt($date));
 
           } // end if;
 
@@ -75,19 +75,31 @@
 
     <div v-cloak class="wu-block wu-w-full" v-show="edit">
 
-      <h3 class="wu-my-1 wu-text-2xs wu-uppercase">
+      <?php
 
-        <?php echo $field->title; ?>
+      /**
+       * Adds the partial title template.
+       * @since 2.0.0
+       */
+      wu_get_template('admin-pages/fields/partials/field-title', array(
+        'field' => $field,
+      ));
 
-        <?php if ($field->tooltip) : ?>
-
-          <?php echo wu_tooltip($field->tooltip); ?>
-
-        <?php endif; ?>
-
-      </h3>
+      ?>
 
       <input class="form-control wu-w-full wu-my-1" name="<?php echo esc_attr($field->id); ?>" type="text" placeholder="<?php echo esc_attr($field->placeholder); ?>" value="<?php echo esc_attr($field->value); ?>" <?php echo $field->get_html_attributes(); ?>>
+
+      <?php
+
+      /**
+       * Adds the partial title template.
+       * @since 2.0.0
+       */
+      wu_get_template('admin-pages/fields/partials/field-description', array(
+        'field' => $field,
+      ));
+
+      ?>
 
     </div>
 

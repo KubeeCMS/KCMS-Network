@@ -5,7 +5,7 @@
  * @since 2.0.0
  */
 ?>
-<div id="wp-ultimo-wrap" class="wrap wu-styling">
+<div id="wp-ultimo-wrap" class="<?php wu_wrap_use_container() ?> wrap wu-styling">
 
   <h1 class="wp-heading-inline">
 
@@ -85,38 +85,50 @@
 
             <?php endif; ?>
 
-            <div id="postbox-container-1" class="postbox-container">
-                <?php
-                /**
-                 * Print Advanced Metaboxes
-                 *
-                 * Allow plugin developers to add new metaboxes
-                 *
-                 * @since 1.8.2
-                 * @param object Object being edited right now
-                 */
-                do_meta_boxes($screen->id, 'normal', null);
-                ?>
-            </div>
+            <div class="sm:wu-grid md:wu-grid-cols-2 xl:wu-grid-cols-3">
 
-            <div id="postbox-container-2" class="postbox-container">
-                <?php
-                /**
-                 * Print Advanced Metaboxes
-                 *
-                 * Allow plugin developers to add new metaboxes
-                 *
-                 * @since 1.8.2
-                 * @param object Object being edited right now
-                 */
-                do_meta_boxes($screen->id, 'side', null);
-                ?>
-            </div>
+              <div id="postbox-container" class="wu-postbox-container">
+                  <?php
+                  /**
+                   * Print Advanced Metaboxes
+                   *
+                   * Allow plugin developers to add new metaboxes
+                   *
+                   * @since 1.8.2
+                   * @param object Object being edited right now
+                   */
+                  do_meta_boxes($screen->id, 'normal', null);
+                  ?>
+              </div>
 
-            <div id="postbox-container-3" class="postbox-container">
-            </div>
+              <div id="postbox-container" class="wu-postbox-container">
+                  <?php
+                  /**
+                   * Print Advanced Metaboxes
+                   *
+                   * Allow plugin developers to add new metaboxes
+                   *
+                   * @since 1.8.2
+                   * @param object Object being edited right now
+                   */
+                  do_meta_boxes($screen->id, 'side', null);
+                  ?>
+              </div>
 
-            <div id="postbox-container-4" class="postbox-container">
+              <div id="postbox-container" class="wu-postbox-container">
+                  <?php
+                  /**
+                   * Print Advanced Metaboxes
+                   *
+                   * Allow plugin developers to add new metaboxes
+                   *
+                   * @since 1.8.2
+                   * @param object Object being edited right now
+                   */
+                  do_meta_boxes($screen->id, 'column3', null);
+                  ?>
+              </div>
+
             </div>
 
         </div>

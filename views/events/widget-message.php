@@ -19,6 +19,6 @@
 
 </ul>
 
-<div class="wu-bg-gray-200 wu-px-4 wu-py-2 wu--m-3 wu-mt-3 wu-border-t wu-border-l-0 wu-border-r-0 wu-border-b-0 wu-border-gray-400 wu-border-solid wu-text-right">
+<div class="wu-bg-gray-100 wu-px-4 wu-py-2 wu--m-3 wu-mt-3 wu-border-t wu-border-l-0 wu-border-r-0 wu-border-b-0 wu-border-gray-400 wu-border-solid wu-text-right">
 
 </div>

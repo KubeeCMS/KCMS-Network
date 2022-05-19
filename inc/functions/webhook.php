@@ -1,19 +1,15 @@
 <?php
 /**
- * Webhook Functions
+ * Webhooks Functions
  *
- * Public APIs to load and deal with WP Ultimo webhook.
- *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Webhooks
- * @version     2.0.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
-
-use \WP_Ultimo\Models\Webhook;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
+
+use \WP_Ultimo\Models\Webhook;
 
 /**
  * Queries webhook.
@@ -35,7 +31,7 @@ function wu_get_webhooks($query = array()) {
  * @since 2.0.0
  *
  * @param integer $webhook_id ID of the webhook to retrieve.
- * @return @return \WP_Ultimo\Models\Webhook|false
+ * @return \WP_Ultimo\Models\Webhook|false
  */
 function wu_get_webhook($webhook_id) {
 
@@ -61,8 +57,8 @@ function wu_create_webhook($webhook_data) {
 		'event'            => false,
 		'active'           => false,
 		'event_count'      => 0,
-		'date_created'     => current_time('mysql'),
-		'date_modified'    => current_time('mysql'),
+		'date_created'     => wu_get_current_time('mysql', true),
+		'date_modified'    => wu_get_current_time('mysql', true),
 		'migrated_from_id' => 0,
 	));
 

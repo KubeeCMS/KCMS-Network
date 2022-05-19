@@ -2,7 +2,7 @@
 // eslint-disable-next-line prefer-const
 let wu_block_ui_polyfill = function(el) {
 
-  jQuery(el).block({
+  jQuery(el).wu_block({
     message: '<span style="float: none;" class="spinner is-active wu-float-none"></span>',
     overlayCSS: {
       backgroundColor: '#FFF',
@@ -23,7 +23,11 @@ let wu_block_ui_polyfill = function(el) {
     },
   });
 
-  return jQuery(el);
+  const el_instance = jQuery(el);
+
+  el_instance.unblock = jQuery(el).wu_unblock;
+
+  return el_instance;
 
 };
 

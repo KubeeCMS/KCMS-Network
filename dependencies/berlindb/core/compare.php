@@ -22,7 +22,7 @@ namespace WP_Ultimo\Dependencies\BerlinDB\Database\Queries;
  *
  * @since 1.0.0
  */
-class Compare extends \WP_Ultimo\Dependencies\BerlinDB\Database\Queries\Meta
+class Compare extends Meta
 {
     /**
      * Generate SQL WHERE clauses for a first-order query clause.

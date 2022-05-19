@@ -13,7 +13,7 @@ class SigmaServiceFactory extends \WP_Ultimo\Dependencies\Stripe\Service\Abstrac
     /**
      * @var array<string, string>
      */
-    private static $classMap = ['scheduledQueryRuns' => \WP_Ultimo\Dependencies\Stripe\Service\Sigma\ScheduledQueryRunService::class];
+    private static $classMap = ['scheduledQueryRuns' => ScheduledQueryRunService::class];
     protected function getServiceClass($name)
     {
         return \array_key_exists($name, self::$classMap) ? self::$classMap[$name] : null;

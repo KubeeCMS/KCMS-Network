@@ -15,19 +15,10 @@
  * @version     1.4.0
  */
 
-if (!defined('ABSPATH')) {
-	exit; // Exit if accessed directly
-} // end if;
+// Exit if accessed directly
+defined('ABSPATH') || exit;
 
-/**
- * @todo add function comment.
- * @version     2.0.0
- */
-function get_current_screen() {
-
-	return false;
-
-} // end get_current_screen;
+do_action('wu_checkout_scripts');
 
 ?>
 <!DOCTYPE html>
@@ -48,8 +39,7 @@ function get_current_screen() {
     <?php do_action('admin_print_scripts'); ?>
     <?php do_action('admin_print_styles'); ?>
 
-    <?php do_action('wu_checkout_scripts'); ?>
-    <?php do_action('admin_head'); ?>
+    <?php //do_action('admin_head'); ?>
 
     <?php
     /**
@@ -98,7 +88,7 @@ function get_current_screen() {
 
         ?>
 
-        <div class="wu-setup-content wu-content-<?php echo wu_request('step', $signup->step); ?>">
+        <div class="wu-setup-content wu-content-<?php echo wu_request('step', isset($signup->step) ? $signup->step : 'default'); ?>">
 
           <div name="loginform" id="loginform">
 
@@ -140,23 +130,21 @@ function get_current_screen() {
 		 * @since 1.6.2
 		 */
 		do_action('wu_signup_footer');
+    
 		?>
 
-    <?php
+    <?php endwhile; ?>
+
+    <?php 
+
+    global $wp_scripts; 
+
+    $wp_scripts->print_inline_script('wu-checkout', 'after', true);
     
-    endwhile;
-		?>
+    ?>
 
     </div>
 
   </body>
-
-  <style>
-
-  body.wu-legacy-signup-body {
-
-  }
-
-  </style>
 
 </html>

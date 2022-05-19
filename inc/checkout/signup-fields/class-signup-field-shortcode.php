@@ -71,9 +71,23 @@ class Signup_Field_Shortcode extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('Text Description', 'wp-ultimo');
+		return __('Displays the content of a given WordPress shortcode. Can be useful to inset content from other plugins inside a WP Ultimo checkout form.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Displays the content of a given WordPress shortcode. Can be useful to insert content from other plugins inside a WP Ultimo checkout form.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -85,7 +99,7 @@ class Signup_Field_Shortcode extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-before dashicons-shortcode';
+		return 'dashicons-wu-terminal';
 
 	} // end get_icon;
 
@@ -115,8 +129,8 @@ class Signup_Field_Shortcode extends Base_Signup_Field {
 	public function default_fields() {
 
 		return array(
-			'id',
-			'name',
+			// 'id',
+			// 'name',
 		);
 
 	} // end default_fields;
@@ -129,7 +143,9 @@ class Signup_Field_Shortcode extends Base_Signup_Field {
 	 */
 	public function force_attributes() {
 
-		return array();
+		return array(
+			'name' => __('Shortcode', 'wp-ultimo'),
+		);
 
 	} // end force_attributes;
 
@@ -145,7 +161,8 @@ class Signup_Field_Shortcode extends Base_Signup_Field {
 			'shortcode_code' => array(
 				'type'        => 'text',
 				'title'       => __('Shortcode', 'wp-ultimo'),
-				'placeholder' => __('[shortcode]', 'wp-ultimo'),
+				'placeholder' => __('e.g. [shortcode]', 'wp-ultimo'),
+				'desc'        => __('Please, enter the full shortcode, including [].', 'wp-ultimo'),
 			),
 		);
 
@@ -163,10 +180,17 @@ class Signup_Field_Shortcode extends Base_Signup_Field {
 
 		return array(
 			$attributes['id'] => array(
-				'type' => 'note',
-				'id'   => $attributes['id'],
-				'name' => $attributes['name'],
-				'desc' => do_shortcode($attributes['shortcode_code']),
+				'type'              => 'note',
+				'desc'              => function() use ($attributes) {
+
+					return do_shortcode($attributes['shortcode_code']);
+
+				},
+				'wrapper_classes'   => wu_get_isset($attributes, 'wrapper_element_classes', ''),
+				'classes'           => wu_get_isset($attributes, 'element_classes', ''),
+				'wrapper_html_attr' => array(
+					'style' => $this->calculate_style_attr(),
+				),
 			),
 		);
 

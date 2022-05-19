@@ -21,7 +21,7 @@ class ReflectionHelper
      *
      * @return ReflectionProperty[]
      */
-    public static function getProperties(\ReflectionClass $ref)
+    public static function getProperties(ReflectionClass $ref)
     {
         $props = $ref->getProperties();
         $propsArr = array();
@@ -51,13 +51,13 @@ class ReflectionHelper
      */
     public static function getProperty($object, $name)
     {
-        $reflection = \is_object($object) ? new \ReflectionObject($object) : new \ReflectionClass($object);
+        $reflection = \is_object($object) ? new ReflectionObject($object) : new ReflectionClass($object);
         if ($reflection->hasProperty($name)) {
             return $reflection->getProperty($name);
         }
         if ($parentClass = $reflection->getParentClass()) {
             return self::getProperty($parentClass->getName(), $name);
         }
-        throw new \WP_Ultimo\Dependencies\DeepCopy\Exception\PropertyException(\sprintf('The class "%s" doesn\'t have a property with the given name: "%s".', \is_object($object) ? \get_class($object) : $object, $name));
+        throw new PropertyException(\sprintf('The class "%s" doesn\'t have a property with the given name: "%s".', \is_object($object) ? \get_class($object) : $object, $name));
     }
 }

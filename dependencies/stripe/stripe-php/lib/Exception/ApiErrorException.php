@@ -5,7 +5,7 @@ namespace WP_Ultimo\Dependencies\Stripe\Exception;
 /**
  * Implements properties and methods common to all (non-SPL) Stripe exceptions.
  */
-abstract class ApiErrorException extends \Exception implements \WP_Ultimo\Dependencies\Stripe\Exception\ExceptionInterface
+abstract class ApiErrorException extends \Exception implements ExceptionInterface
 {
     protected $error;
     protected $httpBody;

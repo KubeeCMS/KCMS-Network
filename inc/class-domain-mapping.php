@@ -24,6 +24,22 @@ class Domain_Mapping {
 	use \WP_Ultimo\Traits\Singleton;
 
 	/**
+	 * Keeps a copy of the current mapping.
+	 *
+	 * @since 2.0.0
+	 * @var \WP_Ultimo\Models\Domain
+	 */
+	public $current_mapping = null;
+
+	/**
+	 * Keeps a copy of the original URL.
+	 *
+	 * @since 2.0.0
+	 * @var string
+	 */
+	public $original_url = null;
+
+	/**
 	 * Runs on singleton instantiation.
 	 *
 	 * @since 2.0.0
@@ -80,6 +96,14 @@ class Domain_Mapping {
 
 		} // end if;
 
+		$is_enabled = (bool) wu_get_setting_early('enable_domain_mapping');
+
+		if ($is_enabled === false) {
+
+			return;
+
+		} // end if;
+
 		/*
 		 * Start the engines!
 		 */
@@ -116,12 +140,14 @@ class Domain_Mapping {
 		/*
 		 * When a site gets delete, clean up the mapped domains
 		 */
-		add_action('delete_blog', array($this, 'clear_mappings_on_delete') );
+		add_action('wp_delete_site', array($this, 'clear_mappings_on_delete'));
 
 		/*
 		 * Adds the filters that will change the URLs when a mapped domains is in use
 		 */
-		add_action('muplugins_loaded', array($this, 'register_mapped_filters'), -10);
+		add_action('ms_loaded', array($this, 'register_mapped_filters'), 11);
+
+		// add_action('allowed_http_origin', array($this, 'add_mapped_domains_as_allowed_origins'));
 
 		/**
 		 * On WP Ultimo 1.X builds we used Mercator. The Mercator actions and filters are now deprecated.
@@ -132,6 +158,19 @@ class Domain_Mapping {
 
 		} // end if;
 
+		add_action('wu_sso_site_allowed_domains', function($list, $site_id) {
+
+			$domains = wu_get_domains(array(
+				'active'        => true,
+				'blog_id'       => $site_id,
+				'stage__not_in' => \WP_Ultimo\Models\Domain::INACTIVE_STAGES,
+				'fields'        => 'domain',
+			));
+
+			return array_merge($list, $domains);
+
+		}, 10, 2);
+
 		/**
 		 * Fired after our core Domain Mapping has been loaded
 		 *
@@ -140,6 +179,71 @@ class Domain_Mapping {
 		do_action('wu_domain_mapping_load');
 
 	} // end startup;
+
+	/**
+	 * Checks if an origin is a mapped domain.
+	 *
+	 * If that's the case, we should always allow that origin.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $origin The origin passed.
+	 * @return string
+	 */
+	public function add_mapped_domains_as_allowed_origins($origin) {
+
+		if (!function_exists('wu_get_domain_by_domain')) {
+
+			return;
+
+		} // end if;
+
+		if (empty($origin) && wp_doing_ajax()) {
+
+			$origin = wu_get_current_url();
+
+		} // end if;
+
+		$the_domain = wp_parse_url($origin, PHP_URL_HOST);
+
+		$domain = wu_get_domain_by_domain($the_domain);
+
+		if ($domain) {
+
+			return $domain->get_domain();
+
+		} // end if;
+
+		return $origin;
+
+	} // end add_mapped_domains_as_allowed_origins;
+
+	/**
+	 * Fixes the SSO target site in cases of domain mapping.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param \WP_Site $target_site The current target site.
+	 * @param string   $domain The domain being searched.
+	 * @return \WP_Site
+	 */
+	public function fix_sso_target_site($target_site, $domain) {
+
+		if (!$target_site || !$target_site->blog_id) {
+
+			$mapping = \WP_Ultimo\Models\Domain::get_by_domain($domain);
+
+			if ($mapping) {
+
+				$target_site = get_site($mapping->get_site_id());
+
+			} // end if;
+
+		} // end if;
+
+		return $target_site;
+
+	} // end fix_sso_target_site;
 
 	/**
 	 * Returns both the naked and www. version of the given domain
@@ -254,23 +358,37 @@ class Domain_Mapping {
 
 		} // end if;
 
-		$GLOBALS['wu_original_url'] = $mapped_site->domain . $mapped_site->path;
+		$_site = $site;
+
+		if (is_a($mapped_site, '\WP_Site')) {
+
+			$this->original_url = $mapped_site->domain . $mapped_site->path;
+
+			$_site = $mapped_site;
+
+		} elseif (is_a($mapped_site, '\WP_Ultimo\Models\Site')) {
+
+			$this->original_url = $mapped_site->get_domain() . $mapped_site->get_path();
+
+			$_site = $mapped_site->to_wp_site();
+
+		} // end if;
 
 		/*
 		 * We found a site based on the mapped domain =)
 		 */
-		return $mapped_site;
+		return $_site;
 
 	} // end check_domain_mapping;
 
 	/**
 	 * Clear mappings for a site when it's deleted
 	 *
-	 * @param int $site_id Site being deleted.
+	 * @param WP_Site $site Site being deleted.
 	 */
-	public function clear_mappings_on_delete($site_id) {
+	public function clear_mappings_on_delete($site) {
 
-		$mappings = Domain::get_by_site($site_id);
+		$mappings = Domain::get_by_site($site->blog_id);
 
 		if (empty($mappings)) {
 
@@ -285,7 +403,7 @@ class Domain_Mapping {
 			if (is_wp_error($error)) {
 
 				// translators: First placeholder is the mapping ID, second is the site ID.
-				$message = sprintf(__('Unable to delete mapping %1$d for site %2$d', 'wp_ultimo'), $mapping->get_id(), $site_id);
+				$message = sprintf(__('Unable to delete mapping %1$d for site %2$d', 'wp-ultimo'), $mapping->get_id(), $site->blog_id);
 
 				trigger_error($message, E_USER_WARNING);
 
@@ -304,8 +422,15 @@ class Domain_Mapping {
 	public function register_mapped_filters() {
 
 		$current_site = $GLOBALS['current_blog'];
-		$real_domain  = $current_site->domain;
-		$domain       = $_SERVER['HTTP_HOST'];
+
+		if (!$current_site) {
+
+			return;
+
+		} // end if;
+
+		$real_domain = $current_site->domain;
+		$domain      = $_SERVER['HTTP_HOST'];
 
 		if ($domain === $real_domain) {
 
@@ -314,93 +439,125 @@ class Domain_Mapping {
 
 		} // end if;
 
-		// Grab both WWW and no-WWW
 		$domains = $this->get_www_and_nowww_versions($domain);
 
 		$mapping = Domain::get_by_domain($domains);
 
-		/*
-		 * Bail if no mapping.
-		 */
 		if (empty($mapping) || is_wp_error($mapping)) {
 
 			return;
 
 		} // end if;
 
-		/*
-		 * Important: set the current mapping as global for future reference.
-		 */
-		$GLOBALS['wu_current_mapping'] = $mapping;
+		$this->current_mapping = $mapping;
 
-		/*
-		 * Adds the URL filters, replacing the original URL with the mapped domain instead.
-		 */
+		add_filter('site_url', array($this, 'mangle_url'), -10, 4);
+		add_filter('home_url', array($this, 'mangle_url'), -10, 4);
 
-		add_filter('site_url', array($this, 'replace_url'), -10, 4 );
+		add_filter('theme_file_uri', array($this, 'mangle_url'));
+		add_filter('stylesheet_directory_uri', array($this, 'mangle_url'));
+		add_filter('template_directory_uri', array($this, 'mangle_url'));
+		add_filter('plugins_url', array($this, 'mangle_url'), -10, 3);
 
-		add_filter('home_url', array($this, 'replace_url'), -10, 4 );
+		add_filter('autoptimize_filter_base_replace_cdn', array($this, 'mangle_url'), 8); // @since 1.8.2 - Fix for Autoptimizer
 
-		add_filter('theme_file_uri', array($this, 'replace_url'), 99);
-
-		add_filter('stylesheet_directory_uri', array($this, 'replace_url'));
-
-		add_filter('template_directory_uri', array($this, 'replace_url'));
-
-		add_filter('plugins_url', array($this, 'replace_url'));
-
-		add_filter('wp_ultimo_url', array($this, 'replace_url'));
-
-		add_filter('wp_get_attachment_url', array($this, 'replace_url'), 1);
-
-		add_filter('script_loader_src', array($this, 'replace_url'));
-
-		add_filter('style_loader_src', array($this, 'replace_url'));
-
-		add_filter('theme_mod_header_image', array($this, 'replace_url')); // @since 1.5.5
-
-		add_filter('wu_get_logo', array($this, 'replace_url')); // @since 1.9.0
-
-		add_filter('autoptimize_filter_base_replace_cdn', array($this, 'replace_url'), 8); // @since 1.8.2 - Fix for Autoptimiza
+		// Fix srcset
+		add_filter('wp_calculate_image_srcset', array($this, 'fix_srcset')); // @since 1.5.5
 
 		// If on network site, also filter network urls
 		if (is_main_site()) {
 
-			add_filter('network_site_url', array($this, 'replace_url'), -10, 3);
-
-			add_filter('network_home_url', array($this, 'replace_url'), -10, 3);
+			add_filter('network_site_url', array($this, 'mangle_url'), -10, 3);
+			add_filter('network_home_url', array($this, 'mangle_url'), -10, 3);
 
 		} // end if;
+
+		add_filter('jetpack_sync_home_url', array($this, 'mangle_url'));
+		add_filter('jetpack_sync_site_url', array($this, 'mangle_url'));
+
+		/**
+		 * Some plugins will save URL before the mapping was active
+		 * or will build URLs in a different manner that is not included on
+		 * the above filters.
+		 *
+		 * In cases like that, we want to add additional filters.
+		 * The second parameter passed is the mangle_url callback.
+		 *
+		 * We recommend against using this filter directly.
+		 * Instead, use the Domain_Mapping::apply_mapping_to_url method.
+		 *
+		 * @since 2.0.0
+		 * @param array The mangle callable.
+		 * @param self  This object.
+		 * @return void
+		 */
+		do_action('wu_domain_mapping_register_filters', array($this, 'mangle_url'), $this);
 
 	} // end register_mapped_filters;
 
 	/**
-	 * On subdirectory install, remove the subdirectory from the mapped version
+	 * Apply the replace URL to URL filters provided by other plugins.
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $url URL containing the path for the site.
+	 * @param string|array $hooks List of hooks to apply the callback to.
+	 * @return void
+	 */
+	public static function apply_mapping_to_url($hooks) {
+
+		add_action('wu_domain_mapping_register_filters', function($callback) use ($hooks) {
+
+			$hooks = (array) $hooks;
+
+			foreach ($hooks as $hook) {
+
+				add_filter($hook, $callback);
+
+			} // end foreach;
+
+		});
+
+	} // end apply_mapping_to_url;
+
+	/**
+	 * Replaces the URL.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string                        $url URL to replace.
+	 * @param null|\WP_Ultimo\Models\Domain $current_mapping The current mapping.
 	 * @return string
 	 */
-	public function remove_subdirectory($url) {
+	public function replace_url($url, $current_mapping = null) {
 
-		if (!is_subdomain_install()) {
+		if ($current_mapping === null) {
 
-			$site = $GLOBALS['current_blog'];
-
-			$to_remove = rtrim($site->path, '/');
-
-			if ($to_remove && $to_remove !== '/') {
-
-				return esc_url_raw(str_replace($to_remove, '', $url));
-
-			} // end if;
+			$current_mapping = $this->current_mapping;
 
 		} // end if;
 
-		return $url;
+		// Replace the domain
+		$domain_base = parse_url($url, PHP_URL_HOST);
+		$domain      = rtrim($domain_base . '/' . $current_mapping->get_site()->get_path(), '/');
+		$regex       = '#^(\w+://)' . preg_quote($domain, '#') . '#i';
+		$mangled     = preg_replace($regex, '${1}' . $current_mapping->get_domain(), $url);
 
-	} // end remove_subdirectory;
+		/*
+		 * Another try if we don't need to deal with subdirectory.
+		 */
+		if ($mangled === $url && $this->current_mapping !== $current_mapping) {
+
+			$domain  = rtrim($domain_base, '/');
+			$regex   = '#^(\w+://)' . preg_quote($domain, '#') . '#i';
+			$mangled = preg_replace($regex, '${1}' . $current_mapping->get_domain(), $url);
+
+		} // end if;
+
+		$mangled = wu_replace_scheme($mangled, $current_mapping->is_secure() ? 'https://' : 'http://');
+
+		return $mangled;
+
+	} // end replace_url;
 
 	/**
 	 * Mangle the home URL to give our primary domain
@@ -411,7 +568,7 @@ class Domain_Mapping {
 	 * @param int|null    $site_id Blog ID, or null for the current blog.
 	 * @return string Mangled URL
 	 */
-	public function replace_url($url, $path = '/', $orig_scheme = 'http', $site_id = 0) {
+	public function mangle_url($url, $path = '/', $orig_scheme = '', $site_id = 0) {
 
 		if (empty($site_id)) {
 
@@ -419,7 +576,7 @@ class Domain_Mapping {
 
 		} // end if;
 
-		$current_mapping = $GLOBALS['wu_current_mapping'];
+		$current_mapping = $this->current_mapping;
 
 		if (empty($current_mapping) || $site_id !== $current_mapping->get_site_id()) {
 
@@ -427,17 +584,27 @@ class Domain_Mapping {
 
 		} // end if;
 
-		// Replace the domain
-		$domain = parse_url($url, PHP_URL_HOST);
+		return $this->replace_url($url);
 
-		$regex = '#^(\w+://)' . preg_quote($domain, '#') . '#i';
+	} // end mangle_url;
 
-		$mangled = preg_replace($regex, '${1}' . $current_mapping->get_domain(), $url);
+	/**
+	 * Adds a fix to the srcset URLs when we need that domain mapped
+	 *
+	 * @since 1.5.5
+	 * @param array $sources Image source URLs.
+	 * @return array
+	 */
+	public function fix_srcset($sources) {
 
-		$mangled = $this->remove_subdirectory($mangled);
+		foreach ($sources as &$source) {
 
-		return $mangled;
+			$sources[$source['value']]['url'] = $this->replace_url($sources[$source['value']]['url']);
 
-	} // end replace_url;
+		} // end foreach;
+
+		return $sources;
+
+	} // end fix_srcset;
 
 } // end class Domain_Mapping;

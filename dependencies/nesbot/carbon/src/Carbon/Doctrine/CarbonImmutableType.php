@@ -1,16 +1,22 @@
 <?php
 
 /**
- * Thanks to https://github.com/flaushi for his suggestion:
- * https://github.com/doctrine/dbal/issues/2873#issuecomment-534956358
+ * This file is part of the Carbon package.
+ *
+ * (c) Brian Nesbitt <brian@nesbot.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 namespace WP_Ultimo\Dependencies\Carbon\Doctrine;
 
 use WP_Ultimo\Dependencies\Doctrine\DBAL\Platforms\AbstractPlatform;
-class CarbonImmutableType extends \WP_Ultimo\Dependencies\Carbon\Doctrine\DateTimeImmutableType implements \WP_Ultimo\Dependencies\Carbon\Doctrine\CarbonDoctrineType
+class CarbonImmutableType extends DateTimeImmutableType implements CarbonDoctrineType
 {
     /**
      * {@inheritdoc}
+     *
+     * @return string
      */
     public function getName()
     {
@@ -18,8 +24,10 @@ class CarbonImmutableType extends \WP_Ultimo\Dependencies\Carbon\Doctrine\DateTi
     }
     /**
      * {@inheritdoc}
+     *
+     * @return bool
      */
-    public function requiresSQLCommentHint(\WP_Ultimo\Dependencies\Doctrine\DBAL\Platforms\AbstractPlatform $platform)
+    public function requiresSQLCommentHint(AbstractPlatform $platform)
     {
         return \true;
     }

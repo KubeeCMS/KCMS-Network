@@ -1,15 +1,19 @@
 <?php
 
 /**
- * Thanks to https://github.com/flaushi for his suggestion:
- * https://github.com/doctrine/dbal/issues/2873#issuecomment-534956358
+ * This file is part of the Carbon package.
+ *
+ * (c) Brian Nesbitt <brian@nesbot.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 namespace WP_Ultimo\Dependencies\Carbon\Doctrine;
 
 use WP_Ultimo\Dependencies\Doctrine\DBAL\Platforms\AbstractPlatform;
 interface CarbonDoctrineType
 {
-    public function getSQLDeclaration(array $fieldDeclaration, \WP_Ultimo\Dependencies\Doctrine\DBAL\Platforms\AbstractPlatform $platform);
-    public function convertToPHPValue($value, \WP_Ultimo\Dependencies\Doctrine\DBAL\Platforms\AbstractPlatform $platform);
-    public function convertToDatabaseValue($value, \WP_Ultimo\Dependencies\Doctrine\DBAL\Platforms\AbstractPlatform $platform);
+    public function getSQLDeclaration(array $fieldDeclaration, AbstractPlatform $platform);
+    public function convertToPHPValue($value, AbstractPlatform $platform);
+    public function convertToDatabaseValue($value, AbstractPlatform $platform);
 }

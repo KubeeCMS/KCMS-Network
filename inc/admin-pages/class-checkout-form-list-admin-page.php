@@ -101,7 +101,7 @@ class Checkout_Form_List_Admin_Page extends List_Admin_Page {
 		wu_register_form('add_new_checkout_form', array(
 			'render'     => array($this, 'render_add_new_checkout_form_modal'),
 			'handler'    => array($this, 'handle_add_new_checkout_form_modal'),
-			'capability' => 'wu_add_checkout_forms',
+			'capability' => 'wu_edit_checkout_forms',
 		));
 
 	} // end register_forms;
@@ -203,6 +203,21 @@ class Checkout_Form_List_Admin_Page extends List_Admin_Page {
 		} // end if;
 
 	} // end handle_add_new_checkout_form_modal;
+
+	/**
+	 * Returns an array with the labels for the edit page.
+	 *
+	 * @since 1.8.2
+	 * @return array
+	 */
+	public function get_labels() {
+
+		return array(
+			'deleted_message' => __('Checkout Form removed successfully.', 'wp-ultimo'),
+			'search_label'    => __('Search Checkout Form', 'wp-ultimo'),
+		);
+
+	} // end get_labels;
 
 	/**
 	 * Returns the title of the page.

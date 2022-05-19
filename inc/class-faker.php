@@ -9,8 +9,6 @@
 
 namespace WP_Ultimo;
 
-// require_once __DIR__ . '/../vendor/fzaninotto/faker/src/autoload.php';
-
 use Faker as Lib_Faker;
 
 // Exit if accessed directly
@@ -81,7 +79,11 @@ class Faker {
 				'products'       => array(),
 				'memberships'    => array(),
 				'domains'        => array(),
+				'events'         => array(),
 				'discount_codes' => array(),
+				'checkout_forms' => array(),
+				'emails'         => array(),
+				'broadcasts'     => array(),
 				'webhooks'       => array(),
 				'payments'       => array(),
 				'sites'          => array(),
@@ -129,134 +131,22 @@ class Faker {
 	 */
 	public function get_option_debug_faker() {
 
-		return WP_Ultimo()->helper->get_option('debug_faker', array(
+		return wu_get_option('debug_faker', array(
 			'customers'      => array(),
 			'products'       => array(),
 			'memberships'    => array(),
 			'domains'        => array(),
+			'events'         => array(),
 			'discount_codes' => array(),
+			'checkout_forms' => array(),
+			'emails'         => array(),
+			'broadcasts'     => array(),
 			'webhooks'       => array(),
 			'payments'       => array(),
 			'sites'          => array(),
 		));
 
 	} // end get_option_debug_faker;
-
-	/**
-	 * Generate a faker customer.
-	 *
-	 * @since 2.0.0
-	 * @param int $number The number of fake data that will be generated.
-	 * @throws \Exception In case of failures, an exception is thrown.
-	 */
-	public function generate_fake_customers($number = 1) {
-
-		for ($i = 0; $i < $number; $i++) {
-
-			$user_name  = $this->get_faker()->userName;
-			$user_email = $this->get_faker()->safeEmail;
-
-			if (!username_exists($user_name) && !email_exists($user_email)) {
-
-				$password = wp_generate_password( 12, false );
-
-				$user_id = wp_create_user($user_name, $password, $user_email);
-
-				remove_user_from_blog($user_id);
-
-				$customer = wu_create_customer(array(
-					'user_id'            => $user_id,
-					'vip'                => $this->get_faker()->boolean,
-					'date_registered'    => $this->get_faker()->dateTimeThisYear()->format('Y-m-d H:i:s'),
-					'email_verification' => $this->get_faker()->randomElement(array(
-						'none',
-						'pending',
-						'verified'
-					)),
-					'meta'               => array(
-						'ip_country' => $this->get_faker()->countryCode,
-					),
-				));
-
-				if (is_wp_error($customer)) {
-
-					throw new \Exception('Error customer');
-
-				} else {
-
-					$this->set_fake_data_generated('customers', $customer);
-
-				} // end if;
-
-			} // end if;
-		} // end for;
-	} // end generate_fake_customers;
-
-	/**
-	 * Generate a faker product.
-	 *
-	 * @since 2.0.0
-	 * @param int $number The number of fake data that will be generated.
-	 * @throws \Exception In case of failures, an exception is thrown.
-	 */
-	public function generate_fake_products($number = 1) {
-
-		$faker                 = $this->get_faker();
-		$product_type_options  = array(
-			'plan',
-			'package',
-			'service'
-		);
-		$pricing_type_options  = array(
-			'paid',
-			'free',
-			'contact_us'
-		);
-		$duration_unit_options = array(
-			'day',
-			'week',
-			'month',
-			'year'
-		);
-
-		for ($i = 0; $i < $number; $i++) {
-
-			$product_data = array();
-
-			$type         = $faker->optional(0.5, $product_type_options[0])->randomElement($product_type_options);
-			$pricing_type = $faker->optional(0.2, $pricing_type_options[0])->randomElement($pricing_type_options);
-			$amount       = 'free' === $pricing_type ? 0 : $faker->numberBetween(10, 55);
-			$name         = $faker->unique()->word;
-
-			$product_data['type']                = $type;
-			$product_data['name']                = ucwords($type . ' ' . $name);
-			$product_data['description']         = $faker->sentence();
-			$product_data['pricing_type']        = $pricing_type;
-			$product_data['amount']              = $amount;
-			$product_data['trial_duration']      = $faker->numberBetween(0, 5);
-			$product_data['trial_duration_unit'] = $faker->randomElement($duration_unit_options);
-			$product_data['duration']            = $faker->numberBetween(1, 3);
-			$product_data['duration_unit']       = $faker->randomElement($duration_unit_options);
-			$product_data['active']              = $faker->boolean(75);
-			$product_data['currency']            = 'USD';
-			$product_data['slug']                = $type . '-' . $name;
-			$product_data['recurring']           = $faker->boolean(75);
-
-			$product = wu_create_product($product_data);
-
-			if (is_wp_error($product)) {
-
-				throw new \Exception('Error product');
-
-			} else {
-
-				$this->set_fake_data_generated('products', $product);
-
-			} // end if;
-
-		} // end for;
-
-	} // end generate_fake_products;
 
 	/**
 	 * Get random data.
@@ -447,6 +337,154 @@ class Faker {
 	} // end get_random_site;
 
 	/**
+	 * Get random payment.
+	 *
+	 * @since 2.0.0
+	 * @return object The payment object.
+	 */
+	private function get_random_payment() {
+
+		$faker = $this->get_faker();
+
+		$payment = $this->get_random_data('payments');
+
+		if (!$payment) {
+
+			return false;
+
+		} // end if;
+
+		if (is_object($payment)) {
+
+			return $payment;
+
+		} else {
+
+			return wu_get_payment($payment);
+
+		} // end if;
+
+	} // end get_random_payment;
+
+	/**
+	 * Generate a faker customer.
+	 *
+	 * @since 2.0.0
+	 * @param int $number The number of fake data that will be generated.
+	 * @throws \Exception In case of failures, an exception is thrown.
+	 */
+	public function generate_fake_customers($number = 1) {
+
+		for ($i = 0; $i < $number; $i++) {
+
+			$user_name  = $this->get_faker()->userName;
+			$user_email = $this->get_faker()->safeEmail;
+
+			if (!username_exists($user_name) && !email_exists($user_email)) {
+
+				$password = wp_generate_password( 12, false );
+
+				$user_id = wp_create_user($user_name, $password, $user_email);
+
+				remove_user_from_blog($user_id);
+
+				$customer = wu_create_customer(array(
+					'user_id'            => $user_id,
+					'vip'                => $this->get_faker()->boolean,
+					'date_registered'    => $this->get_faker()->dateTimeThisYear()->format('Y-m-d H:i:s'),
+					'email_verification' => $this->get_faker()->randomElement(array(
+						'none',
+						'pending',
+						'verified'
+					)),
+					'meta'               => array(
+						'ip_country' => $this->get_faker()->countryCode,
+					),
+				));
+
+				if (is_wp_error($customer)) {
+
+					throw new \Exception($customer->get_error_message());
+
+				} else {
+
+					$this->set_fake_data_generated('customers', $customer);
+
+				} // end if;
+
+			} // end if;
+
+		} // end for;
+
+	} // end generate_fake_customers;
+
+	/**
+	 * Generate a faker product.
+	 *
+	 * @since 2.0.0
+	 * @param int $number The number of fake data that will be generated.
+	 * @throws \Exception In case of failures, an exception is thrown.
+	 */
+	public function generate_fake_products($number = 1) {
+
+		$faker                 = $this->get_faker();
+		$product_type_options  = array(
+			'plan',
+			'package',
+			'service'
+		);
+		$pricing_type_options  = array(
+			'paid',
+			'free',
+			'contact_us'
+		);
+		$duration_unit_options = array(
+			'day',
+			'week',
+			'month',
+			'year'
+		);
+
+		for ($i = 0; $i < $number; $i++) {
+
+			$product_data = array();
+
+			$type         = $faker->optional(0.5, $product_type_options[0])->randomElement($product_type_options);
+			$pricing_type = $faker->optional(0.2, $pricing_type_options[0])->randomElement($pricing_type_options);
+			$amount       = 'free' === $pricing_type ? 0 : $faker->numberBetween(10, 55);
+			$name         = $faker->sentence(2);
+
+			$product_data['type']                = $type;
+			$product_data['name']                = $name;
+			$product_data['description']         = $faker->sentence();
+			$product_data['pricing_type']        = $pricing_type;
+			$product_data['amount']              = $amount;
+			$product_data['trial_duration']      = $faker->numberBetween(0, 5);
+			$product_data['trial_duration_unit'] = $faker->randomElement($duration_unit_options);
+			$product_data['duration']            = $faker->numberBetween(1, 3);
+			$product_data['duration_unit']       = $faker->randomElement($duration_unit_options);
+			$product_data['active']              = $faker->boolean(75);
+			$product_data['currency']            = 'USD';
+			$product_data['slug']                = strtolower(str_replace(' ', '-', $name));
+			$product_data['recurring']           = $faker->boolean(75);
+
+			$product = wu_create_product($product_data);
+
+			if (is_wp_error($product)) {
+
+				throw new \Exception($product->get_error_message());
+
+			} else {
+
+				$this->set_fake_data_generated('products', $product);
+
+			} // end if;
+
+		} // end for;
+
+	} // end generate_fake_products;
+
+	/**
 	 * Generate a faker membership.
 	 *
 	 * @since 2.0.0
@@ -465,8 +503,9 @@ class Faker {
 			$status_options = array(
 				'pending',
 				'active',
+				'on-hold',
 				'expired',
-				'canceled'
+				'cancelled'
 			);
 
 			$membership_data = array();
@@ -489,7 +528,7 @@ class Faker {
 
 			if (is_wp_error($membership)) {
 
-				throw new \Exception('Error membership');
+				throw new \Exception($membership->get_error_message());
 
 			} else {
 
@@ -500,133 +539,6 @@ class Faker {
 		} // end for;
 
 	} // end generate_fake_memberships;
-
-	/**
-	 * Generate a faker product.
-	 *
-	 * @since 2.0.0
-	 * @param int $number The number of fake data that will be generated.
-	 * @throws \Exception In case of failures, an exception is thrown.
-	 */
-	public function generate_fake_site($number = 1) {
-
-		$faker = $this->get_faker();
-
-		$type_options        = array(
-			'default',
-			'site_template',
-			'customer_owned',
-		);
-		$type_customer_owned = $type_options[2];
-
-		for ($i = 0; $i < $number; $i++) {
-			$site_data = array();
-
-			$title = rtrim($faker->sentence(2), '.');
-			$path  = strtolower(implode('-', explode(' ', $title)));
-			$type  = $faker->optional(0.2, $type_customer_owned)->randomElement($type_options);
-
-			$site_data['title']  = $title;
-			$site_data['path']   = $path;
-			$site_data['type']   = $type;
-			$site_data['public'] = $faker->boolean(75);
-
-			if ($type_customer_owned === $type) {
-
-				$membership = $this->get_random_membership();
-
-				if ($membership) {
-
-					$site_data['customer_id']   = $membership->get_customer_id();
-					$site_data['membership_id'] = $membership->get_id();
-
-				} // end if;
-			} // end if;
-
-			$site = wu_create_site($site_data);
-
-			if (is_wp_error($site)) {
-
-				throw new \Exception('Error site');
-
-			} else {
-
-				$this->set_fake_data_generated('sites', $site);
-
-			} // end if;
-
-		} // end for;
-
-	} // end generate_fake_site;
-
-	/**
-	 * Generate a fake payment.
-	 *
-	 * @since 2.0.0
-	 * @param int $number The number of fake data that will be generated.
-	 * @throws \Exception In case of failures, an exception is thrown.
-	 */
-	public function generate_fake_payment($number = 1) {
-
-		$faker          = $this->get_faker();
-		$type_options   = array(
-			'percentage',
-			'absolute',
-		);
-		$status_options = array(
-			'pending',
-			'completed',
-			'refund',
-			'partial',
-			'failed',
-		);
-
-		$type_options_percentage = $type_options[0];
-		$status_options_pending  = $status_options[0];
-		$memberships             = $this->get_fake_data_generated('memberships');
-
-		for ($i = 0; $i < $number; $i++) {
-
-			$membership = $this->get_random_membership();
-
-			$payment_data = array(
-				'description'        => $faker->sentence(),
-				'parent_id'          => 0,
-				'status'             => $faker->randomElement($status_options),
-				'customer_id'        => $membership ? $membership->get_customer_id() : false,
-				'membership_id'      => $membership ? $membership->get_id() : false,
-				'product_id'         => $membership ? $membership->get_plan_id() : false,
-				'currency'           => $membership ? $membership->get_currency() : false,
-				'quantity'           => 1,
-				'unit_price'         => $membership ? $membership->get_amount() : false,
-				'tax_type'           => $faker->optional(0.2, $type_options_percentage)->randomElement($type_options),
-				'tax'                => 0.00,
-				'credits'            => 0.00,
-				'fees'               => 0.00,
-				'discounts'          => 0.00,
-				'discount_code'      => '',
-				'gateway'            => '',
-				'gateway_payment_id' => '',
-				'date_created'       => $this->get_faker()->dateTimeThisYear()->format('Y-m-d H:i:s'),
-			);
-
-			$payment = wu_create_payment($payment_data);
-
-			if (is_wp_error($payment)) {
-
-				throw new \Exception('Error payment');
-
-			} else {
-
-				$payment->recalculate_totals()->save();
-
-				$this->set_fake_data_generated('payments', $payment);
-
-			} // end if;
-
-		} // end for;
-
-	} // end generate_fake_payment;
 
 	/**
 	 * Generate a fake domain.
@@ -663,7 +575,7 @@ class Faker {
 
 			if (is_wp_error($domain)) {
 
-				throw new \Exception('Error domain');
+				throw new \Exception($domain->get_error_message());
 
 			} else {
 
@@ -674,6 +586,61 @@ class Faker {
 		} // end for;
 
 	} // end generate_fake_domain;
+
+	/**
+	 * Generate a fake event.
+	 *
+	 * @since 2.0.0
+	 * @param int $number The number of fake data that will be generated.
+	 * @throws \Exception In case of failures, an exception is thrown.
+	 */
+	public function generate_fake_events($number = 1) {
+
+		$faker = $this->get_faker();
+
+		$initiator_options = array(
+			'system',
+			'manual',
+		);
+
+		$payload = array(
+			'key'       => '1234',
+			'old_value' => 'None',
+			'new_value' => 'created',
+		);
+
+		for ($i = 0; $i < $number; $i++) {
+
+			$membership = $this->get_random_membership(true);
+
+			$author_id = $membership->get_id();
+
+			$event_data = array(
+				'severity'     => 3,
+				'initiator'    => $faker->randomElement($initiator_options),
+				'author_id'    => $author_id > 0 ? $author_id : 1,
+				'object_id'    => 6,
+				'object_type'  => 'customer',
+				'slug'         => 'created',
+				'payload'      => $payload,
+				'date_created' => $faker->dateTimeThisYear()->format('Y-m-d H:i:s'),
+			);
+
+			$event_data = wu_create_event($event_data);
+
+			if (is_wp_error($event_data)) {
+
+				throw new \Exception($event_data->get_error_message());
+
+			} else {
+
+				$this->set_fake_data_generated('events', $event_data);
+
+			} // end if;
+
+		} // end for;
+
+	} // end generate_fake_events;
 
 	/**
 	 * Generate a fake discount code.
@@ -717,7 +684,7 @@ class Faker {
 
 			if (is_wp_error($discount_code)) {
 
-				throw new \Exception('Error discount code');
+				throw new \Exception($discount_code->get_error_message());
 
 			} else {
 
@@ -728,6 +695,162 @@ class Faker {
 		} // end for;
 
 	} // end generate_fake_discount_code;
+
+	/**
+	 * Generate a fake checkout form.
+	 *
+	 * @since 2.0.0
+	 * @param int $number The number of fake data that will be generated.
+	 * @throws \Exception In case of failures, an exception is thrown.
+	 */
+	public function generate_fake_checkout_form($number = 1) {
+
+		$faker = $this->get_faker();
+
+		$checkout_form_name = rtrim($faker->sentence(2), '.');
+		$checkout_form_slug = str_replace(' ', '-', $checkout_form_name);
+
+		for ($i = 0; $i < $number; $i++) {
+
+			$checkout_form_data = array(
+				'name'              => $checkout_form_name,
+				'slug'              => strtolower($checkout_form_slug),
+				'active'            => true,
+				'settings'          => array(),
+				'custom_css'        => '',
+				'allowed_countries' => '',
+				'date_created'      => $faker->dateTimeThisYear()->format('Y-m-d H:i:s'),
+				'date_modified'     => $faker->dateTimeThisYear()->format('Y-m-d H:i:s'),
+			);
+
+			$checkout_form = wu_create_checkout_form($checkout_form_data);
+
+			if (is_wp_error($checkout_form)) {
+
+				throw new \Exception($checkout_form->get_error_message());
+
+			} else {
+
+				$this->set_fake_data_generated('checkout_forms', $checkout_form);
+
+			} // end if;
+
+		} // end for;
+
+	} // end generate_fake_checkout_form;
+
+	/**
+	 * Generate a fake email.
+	 *
+	 * @since 2.0.0
+	 * @param int $number The number of fake data that will be generated.
+	 * @throws \Exception In case of failures, an exception is thrown.
+	 */
+	public function generate_fake_email($number = 1) {
+
+		$faker = $this->get_faker();
+
+		$schedule_type_options = array(
+			'days',
+			'hours',
+		);
+
+		$target_options = array(
+			'customer',
+			'admin',
+		);
+
+		for ($i = 0; $i < $number; $i++) {
+
+			$email_title = rtrim($faker->sentence(2), '.');
+			$email_slug  = strtolower(str_replace(' ', '-', $email_title));
+			$user_name   = $this->get_faker()->userName;
+			$user_email  = $this->get_faker()->safeEmail;
+
+			$email_data = array(
+				'schedule'            => 0,
+				'type'                => 'system_email',
+				'event'               => $faker->sentence(2),
+				'send_hours'          => '',
+				'send_days'           => 1,
+				'schedule_type'       => $faker->randomElement($schedule_type_options),
+				'name'                => $email_title,
+				'title'               => $email_title,
+				'slug'                => $email_slug,
+				'custom_sender'       => 0,
+				'custom_sender_name'  => $user_name,
+				'custom_sender_email' => $user_email,
+				'target'              => $faker->randomElement($target_options),
+				'send_copy_to_admin'  => 0,
+				'active'              => 1,
+				'legacy'              => 0,
+			);
+
+			$email = wu_create_email($email_data);
+
+			if (is_wp_error($email)) {
+
+				throw new \Exception($email->get_error_message());
+
+			} else {
+
+				$this->set_fake_data_generated('emails', $email);
+
+			} // end if;
+
+		} // end for;
+
+	} // end generate_fake_email;
+
+	/**
+	 * Generate a fake broadcast.
+	 *
+	 * @since 2.0.0
+	 * @param int $number The number of fake data that will be generated.
+	 * @throws \Exception In case of failures, an exception is thrown.
+	 */
+	public function generate_fake_broadcast($number = 1) {
+
+		$faker = $this->get_faker();
+
+		$notice_type_optinos = array(
+			'info',
+			'success',
+			'warning',
+			'error',
+		);
+
+		$type_optinos = array(
+			'broadcast_email',
+			'broadcast_notice',
+		);
+
+		for ($i = 0; $i < $number; $i++) {
+
+			$broadcast_data = array(
+				'notice_type' => $faker->randomElement($notice_type_optinos),
+				'status'      => 'publish',
+				'name'        => rtrim($faker->sentence(3), '.'),
+				'title'       => rtrim($faker->sentence(3), '.'),
+				'content'     => rtrim($faker->sentence(8), '.'),
+				'type'        => $faker->randomElement($type_optinos),
+			);
+
+			$broadcast = wu_create_broadcast($broadcast_data);
+
+			if (is_wp_error($broadcast)) {
+
+				throw new \Exception($broadcast->get_error_message());
+
+			} else {
+
+				$this->set_fake_data_generated('broadcasts', $broadcast);
+
+			} // end if;
+
+		} // end for;
+
+	} // end generate_fake_broadcast;
 
 	/**
 	 * Generate a fake webhook.
@@ -752,16 +875,22 @@ class Faker {
 
 		for ($i = 0; $i < $number; $i++) {
 
-			$webhook = wu_create_webhook(array(
-				'name'        => rtrim($faker->sentence(2), '.'),
-				'webhook_url' => 'https://' . $faker->domainName,
-				'event'       => $faker->randomElement($event_options),
-				'active'      => $faker->boolean(75)
-			));
+			$webhook_data = array(
+				'name'           => rtrim($faker->sentence(2), '.'),
+				'webhook_url'    => 'https://' . $faker->domainName,
+				'event'          => $faker->randomElement($event_options),
+				'event_count'    => 0,
+				'active'         => $faker->boolean(75),
+				'hidden'         => 0,
+				'integration'    => rtrim($faker->sentence(3), '.'),
+				'date_last_fail' => ''
+			);
+
+			$webhook = wu_create_webhook($webhook_data);
 
 			if (is_wp_error($webhook)) {
 
-				throw new \Exception('Error webhook');
+				throw new \Exception($webhook->get_error_message());
 
 			} else {
 
@@ -772,5 +901,136 @@ class Faker {
 		} // end for;
 
 	} // end generate_fake_webhook;
+
+	/**
+	 * Generate a fake payment.
+	 *
+	 * @since 2.0.0
+	 * @param int $number The number of fake data that will be generated.
+	 * @throws \Exception In case of failures, an exception is thrown.
+	 */
+	public function generate_fake_payment($number = 1) {
+
+		$faker          = $this->get_faker();
+		$type_options   = array(
+			'percentage',
+			'absolute',
+		);
+		$status_options = array(
+			'pending',
+			'completed',
+			'refunded',
+			'partially-refunded',
+			'partially-paid',
+			'failed',
+			'cancelled',
+		);
+
+		$type_options_percentage = $type_options[0];
+		$status_options_pending  = $status_options[0];
+		$memberships             = $this->get_fake_data_generated('memberships');
+
+		for ($i = 0; $i < $number; $i++) {
+
+			$membership = $this->get_random_membership();
+
+			$payment_data = array(
+				'description'        => $faker->sentence(),
+				'parent_id'          => 0,
+				'status'             => $faker->randomElement($status_options),
+				'customer_id'        => $membership ? $membership->get_customer_id() : false,
+				'membership_id'      => $membership ? $membership->get_id() : false,
+				'product_id'         => $membership ? $membership->get_plan_id() : false,
+				'currency'           => $membership ? $membership->get_currency() : false,
+				'quantity'           => 1,
+				'unit_price'         => $membership ? $membership->get_amount() : false,
+				'tax_type'           => $faker->optional(0.2, $type_options_percentage)->randomElement($type_options),
+				'tax'                => 0.00,
+				'credits'            => 0.00,
+				'fees'               => 0.00,
+				'discounts'          => 0.00,
+				'discount_code'      => '',
+				'gateway'            => '',
+				'gateway_payment_id' => '',
+				'date_created'       => $faker->dateTimeThisYear()->format('Y-m-d H:i:s'),
+			);
+
+			$payment = wu_create_payment($payment_data);
+
+			if (is_wp_error($payment)) {
+
+				throw new \Exception($payment->get_error_message());
+
+			} else {
+
+				$payment->recalculate_totals()->save();
+
+				$this->set_fake_data_generated('payments', $payment);
+
+			} // end if;
+
+		} // end for;
+
+	} // end generate_fake_payment;
+
+	/**
+	 * Generate a faker site.
+	 *
+	 * @since 2.0.0
+	 * @param int    $number The number of fake data that will be generated.
+	 * @param string $type The type of site to favor.
+	 * @throws \Exception In case of failures, an exception is thrown.
+	 */
+	public function generate_fake_site($number = 1, $type = 'customer_owned') {
+
+		$faker = $this->get_faker();
+
+		$type_options = array(
+			'default',
+			'site_template',
+			'customer_owned',
+		);
+
+		$type_customer_owned = $type_options[2];
+
+		for ($i = 0; $i < $number; $i++) {
+			$site_data = array();
+
+			$title = rtrim($faker->sentence(2), '.');
+			$path  = strtolower(implode('-', explode(' ', $title)));
+			$type  = $faker->optional(0.2, $type)->randomElement($type_options);
+
+			$site_data['title']  = $title;
+			$site_data['path']   = $path;
+			$site_data['type']   = $type;
+			$site_data['public'] = $faker->boolean(75);
+
+			if ($type_customer_owned === $type) {
+
+				$membership = $this->get_random_membership();
+
+				if ($membership) {
+
+					$site_data['customer_id']   = $membership->get_customer_id();
+					$site_data['membership_id'] = $membership->get_id();
+
+				} // end if;
+			} // end if;
+
+			$site = wu_create_site($site_data);
+
+			if (is_wp_error($site)) {
+
+				throw new \Exception($site->get_error_message());
+
+			} else {
+
+				$this->set_fake_data_generated('sites', $site);
+
+			} // end if;
+
+		} // end for;
+
+	} // end generate_fake_site;
 
 } // end class Faker;

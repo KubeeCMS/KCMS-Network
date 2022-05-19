@@ -19,6 +19,7 @@ use WP_Ultimo\Dependencies\Carbon\Exceptions\UnitException;
 use Closure;
 use DateTime;
 use DateTimeImmutable;
+use WP_Ultimo\Dependencies\ReturnTypeWillChange;
 /**
  * Trait Converter.
  *
@@ -36,7 +37,7 @@ trait Converter
      *
      * @var string|Closure|null
      */
-    protected static $toStringFormat = null;
+    protected static $toStringFormat;
     /**
      * Reset the format used to the default when type juggling a Carbon instance to a string
      *
@@ -71,6 +72,7 @@ trait Converter
      *
      * @return string
      */
+    #[ReturnTypeWillChange]
     public function format($format)
     {
         $function = $this->localFormatFunction ?: static::$formatFunction;
@@ -106,7 +108,7 @@ trait Converter
     public function __toString()
     {
         $format = $this->localToStringFormat ?? static::$toStringFormat;
-        return $format instanceof \Closure ? $format($this) : $this->rawFormat($format ?: (\defined('static::DEFAULT_TO_STRING_FORMAT') ? static::DEFAULT_TO_STRING_FORMAT : \WP_Ultimo\Dependencies\Carbon\CarbonInterface::DEFAULT_TO_STRING_FORMAT));
+        return $format instanceof Closure ? $format($this) : $this->rawFormat($format ?: (\defined('static::DEFAULT_TO_STRING_FORMAT') ? static::DEFAULT_TO_STRING_FORMAT : CarbonInterface::DEFAULT_TO_STRING_FORMAT));
     }
     /**
      * Format the instance as date
@@ -189,7 +191,7 @@ trait Converter
             case 'microsecond':
                 return 'H:i:s.u';
         }
-        throw new \WP_Ultimo\Dependencies\Carbon\Exceptions\UnitException('Precision unit expected among: minute, second, millisecond and microsecond.');
+        throw new UnitException('Precision unit expected among: minute, second, millisecond and microsecond.');
     }
     /**
      * Format the instance as date and time T-separated with no timezone
@@ -235,7 +237,7 @@ trait Converter
      */
     public function toAtomString()
     {
-        return $this->rawFormat(\DateTime::ATOM);
+        return $this->rawFormat(DateTime::ATOM);
     }
     /**
      * Format the instance as COOKIE
@@ -249,7 +251,7 @@ trait Converter
      */
     public function toCookieString()
     {
-        return $this->rawFormat(\DateTime::COOKIE);
+        return $this->rawFormat(DateTime::COOKIE);
     }
     /**
      * Format the instance as ISO8601
@@ -277,7 +279,7 @@ trait Converter
      */
     public function toRfc822String()
     {
-        return $this->rawFormat(\DateTime::RFC822);
+        return $this->rawFormat(DateTime::RFC822);
     }
     /**
      * Convert the instance to UTC and return as Zulu ISO8601
@@ -293,7 +295,7 @@ trait Converter
      */
     public function toIso8601ZuluString($unitPrecision = 'second')
     {
-        return $this->copy()->utc()->rawFormat('Y-m-d\\T' . static::getTimeFormatByPrecision($unitPrecision) . '\\Z');
+        return $this->avoidMutation()->utc()->rawFormat('Y-m-d\\T' . static::getTimeFormatByPrecision($unitPrecision) . '\\Z');
     }
     /**
      * Format the instance as RFC850
@@ -307,7 +309,7 @@ trait Converter
      */
     public function toRfc850String()
     {
-        return $this->rawFormat(\DateTime::RFC850);
+        return $this->rawFormat(DateTime::RFC850);
     }
     /**
      * Format the instance as RFC1036
@@ -321,7 +323,7 @@ trait Converter
      */
     public function toRfc1036String()
     {
-        return $this->rawFormat(\DateTime::RFC1036);
+        return $this->rawFormat(DateTime::RFC1036);
     }
     /**
      * Format the instance as RFC1123
@@ -335,7 +337,7 @@ trait Converter
      */
     public function toRfc1123String()
     {
-        return $this->rawFormat(\DateTime::RFC1123);
+        return $this->rawFormat(DateTime::RFC1123);
     }
     /**
      * Format the instance as RFC2822
@@ -349,7 +351,7 @@ trait Converter
      */
     public function toRfc2822String()
     {
-        return $this->rawFormat(\DateTime::RFC2822);
+        return $this->rawFormat(DateTime::RFC2822);
     }
     /**
      * Format the instance as RFC3339
@@ -366,9 +368,9 @@ trait Converter
      */
     public function toRfc3339String($extended = \false)
     {
-        $format = \DateTime::RFC3339;
+        $format = DateTime::RFC3339;
         if ($extended) {
-            $format = \DateTime::RFC3339_EXTENDED;
+            $format = DateTime::RFC3339_EXTENDED;
         }
         return $this->rawFormat($format);
     }
@@ -384,7 +386,7 @@ trait Converter
      */
     public function toRssString()
     {
-        return $this->rawFormat(\DateTime::RSS);
+        return $this->rawFormat(DateTime::RSS);
     }
     /**
      * Format the instance as W3C
@@ -398,7 +400,7 @@ trait Converter
      */
     public function toW3cString()
     {
-        return $this->rawFormat(\DateTime::W3C);
+        return $this->rawFormat(DateTime::W3C);
     }
     /**
      * Format the instance as RFC7231
@@ -412,7 +414,7 @@ trait Converter
      */
     public function toRfc7231String()
     {
-        return $this->copy()->setTimezone('GMT')->rawFormat(\defined('static::RFC7231_FORMAT') ? static::RFC7231_FORMAT : \WP_Ultimo\Dependencies\Carbon\CarbonInterface::RFC7231_FORMAT);
+        return $this->avoidMutation()->setTimezone('GMT')->rawFormat(\defined('static::RFC7231_FORMAT') ? static::RFC7231_FORMAT : CarbonInterface::RFC7231_FORMAT);
     }
     /**
      * Get default array representation.
@@ -426,7 +428,7 @@ trait Converter
      */
     public function toArray()
     {
-        return ['year' => $this->year, 'month' => $this->month, 'day' => $this->day, 'dayOfWeek' => $this->dayOfWeek, 'dayOfYear' => $this->dayOfYear, 'hour' => $this->hour, 'minute' => $this->minute, 'second' => $this->second, 'micro' => $this->micro, 'timestamp' => $this->timestamp, 'formatted' => $this->rawFormat(\defined('static::DEFAULT_TO_STRING_FORMAT') ? static::DEFAULT_TO_STRING_FORMAT : \WP_Ultimo\Dependencies\Carbon\CarbonInterface::DEFAULT_TO_STRING_FORMAT), 'timezone' => $this->timezone];
+        return ['year' => $this->year, 'month' => $this->month, 'day' => $this->day, 'dayOfWeek' => $this->dayOfWeek, 'dayOfYear' => $this->dayOfYear, 'hour' => $this->hour, 'minute' => $this->minute, 'second' => $this->second, 'micro' => $this->micro, 'timestamp' => $this->timestamp, 'formatted' => $this->rawFormat(\defined('static::DEFAULT_TO_STRING_FORMAT') ? static::DEFAULT_TO_STRING_FORMAT : CarbonInterface::DEFAULT_TO_STRING_FORMAT), 'timezone' => $this->timezone];
     }
     /**
      * Get default object representation.
@@ -454,7 +456,7 @@ trait Converter
      */
     public function toString()
     {
-        return $this->copy()->locale('en')->isoFormat('ddd MMM DD YYYY HH:mm:ss [GMT]ZZ');
+        return $this->avoidMutation()->locale('en')->isoFormat('ddd MMM DD YYYY HH:mm:ss [GMT]ZZ');
     }
     /**
      * Return the ISO-8601 string (ex: 1977-04-22T06:00:00Z, if $keepOffset truthy, offset will be kept:
@@ -477,7 +479,7 @@ trait Converter
         }
         $yearFormat = $this->year < 0 || $this->year > 9999 ? 'YYYYYY' : 'YYYY';
         $tzFormat = $keepOffset ? 'Z' : '[Z]';
-        $date = $keepOffset ? $this : $this->copy()->utc();
+        $date = $keepOffset ? $this : $this->avoidMutation()->utc();
         return $date->isoFormat("{$yearFormat}-MM-DD[T]HH:mm:ss.SSSSSS{$tzFormat}");
     }
     /**
@@ -506,7 +508,7 @@ trait Converter
      */
     public function toDateTime()
     {
-        return new \DateTime($this->rawFormat('Y-m-d H:i:s.u'), $this->getTimezone());
+        return new DateTime($this->rawFormat('Y-m-d H:i:s.u'), $this->getTimezone());
     }
     /**
      * Return native toDateTimeImmutable PHP object matching the current instance.
@@ -520,7 +522,7 @@ trait Converter
      */
     public function toDateTimeImmutable()
     {
-        return new \DateTimeImmutable($this->rawFormat('Y-m-d H:i:s.u'), $this->getTimezone());
+        return new DateTimeImmutable($this->rawFormat('Y-m-d H:i:s.u'), $this->getTimezone());
     }
     /**
      * @alias toDateTime
@@ -550,9 +552,9 @@ trait Converter
     public function toPeriod($end = null, $interval = null, $unit = null)
     {
         if ($unit) {
-            $interval = \WP_Ultimo\Dependencies\Carbon\CarbonInterval::make("{$interval} " . static::pluralUnit($unit));
+            $interval = CarbonInterval::make("{$interval} " . static::pluralUnit($unit));
         }
-        $period = (new \WP_Ultimo\Dependencies\Carbon\CarbonPeriod())->setDateClass(static::class)->setStartDate($this);
+        $period = (new CarbonPeriod())->setDateClass(static::class)->setStartDate($this);
         if ($interval) {
             $period->setDateInterval($interval);
         }

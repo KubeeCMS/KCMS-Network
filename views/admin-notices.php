@@ -11,11 +11,19 @@ foreach ($notices as $key => $notice) : ?>
 
 <div class="notice wu-hidden wu-admin-notice wu-styling hover:wu-styling notice-<?php echo esc_attr($notice['type']); ?> <?php echo $notice['dismissible_key'] ? esc_attr('is-dismissible') : ''; ?>">
 
-  <p class="wu-py-2"><?php echo $notice['message']; // phpcs:ignore ?></p>
+  <?php if (strpos($notice['message'], '<p>') !== false) : ?>
+    
+    <?php echo $notice['message']; ?>
+    
+  <?php else : ?>
+  
+    <p class="wu-py-2"><?php echo $notice['message']; // phpcs:ignore ?></p>
+
+  <?php endif; ?>
 
   <?php if (isset($notice['actions']) && !empty($notice['actions'])) : ?>
 
-    <div class="wu-border wu-border-solid wu-border-gray-300 wu-border-r-0 wu-border-l-0 wu-border-b-0 wu-bg-gray-100 wu--mr-3 wu--ml-3 wu--mb-px">
+    <div class="wu-border wu-border-solid wu-border-gray-300 wu-border-r-0 wu-border-l-0 wu-border-b-0 wu-bg-gray-100 wu--ml-2 wu--mb-1 wu--mr-2 sm:wu--mr-7.5 sm:wu--ml-3 sm:wu--mb-px">
 
       <ul class="wu-text-right wu-p-0 wu-m-0 wu-flex wu-justify-end">
 

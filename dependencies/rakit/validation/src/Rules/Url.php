@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class Url extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class Url extends Rule
 {
     /** @var string */
     protected $message = "The :attribute is not valid url";
@@ -13,7 +13,7 @@ class Url extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
      * @param array $params
      * @return self
      */
-    public function fillParameters(array $params) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function fillParameters(array $params) : Rule
     {
         if (\count($params) == 1 and \is_array($params[0])) {
             $params = $params[0];
@@ -26,7 +26,7 @@ class Url extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
      * @param array $schemes
      * @return self
      */
-    public function forScheme($schemes) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function forScheme($schemes) : Rule
     {
         $this->params['schemes'] = (array) $schemes;
         return $this;

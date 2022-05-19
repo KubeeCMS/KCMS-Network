@@ -51,6 +51,14 @@ class My_Sites_Admin_Page extends Base_Customer_Facing_Admin_Page {
 	protected $badge_count = 0;
 
 	/**
+	 * Should we hide admin notices on this page?
+	 *
+	 * @since 2.0.0
+	 * @var boolean
+	 */
+	protected $hide_admin_notices = true;
+
+	/**
 	 * Holds the admin panels where this page should be displayed, as well as which capability to require.
 	 *
 	 * To add a page to the regular admin (wp-admin/), use: 'admin_menu' => 'capability_here'
@@ -83,6 +91,8 @@ class My_Sites_Admin_Page extends Base_Customer_Facing_Admin_Page {
 		$this->current_site = wu_get_current_site();
 
 		$this->current_membership = $this->current_site->get_membership();
+
+		$this->register_page_settings();
 
 		if ($this->current_site->get_type() === 'customer_owned') {
 

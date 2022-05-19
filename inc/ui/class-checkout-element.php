@@ -10,8 +10,8 @@
 namespace WP_Ultimo\UI;
 
 use \WP_Ultimo\UI\Base_Element;
-use \WP_Ultimo\Checkout\Checkout;
 use \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Compiler;
+use \WP_Ultimo\Dependencies\Arrch\Arrch as Array_Search;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -22,6 +22,8 @@ defined('ABSPATH') || exit;
  * @since 2.0.0
  */
 class Checkout_Element extends Base_Element {
+
+	use \WP_Ultimo\Traits\Singleton;
 
 	/**
 	 * The id of the element.
@@ -120,7 +122,7 @@ class Checkout_Element extends Base_Element {
 
 		$fields['slug'] = array(
 			'title' => __('Slug', 'wp-ultimo'),
-			'desc'  => __('Slug', 'wp-ultimo'),
+			'desc'  => __('The checkout form slug.', 'wp-ultimo'),
 			'type'  => 'text',
 		);
 
@@ -228,11 +230,15 @@ class Checkout_Element extends Base_Element {
 
 		$custom_css = $checkout_form->get_custom_css();
 
-		$custom_css = $scss->compile(".wu_checkout_form_{$slug} {
-			{$custom_css}
-		}");
+		if ($custom_css) {
 
-		echo sprintf('<style>%s</style>', $custom_css);
+			$custom_css = $scss->compileString(".wu_checkout_form_{$slug} {
+				{$custom_css}
+			}")->getCss();
+
+			echo sprintf('<style>%s</style>', $custom_css);
+
+		} // end if;
 
 	} // end print_custom_css;
 
@@ -253,16 +259,9 @@ class Checkout_Element extends Base_Element {
 
 		$atts = $checkout_form->get_meta('wu_thank_you_settings');
 
-		/*
-		 * Deal with conversion tracking
-		 */
-		$conversion_snippets = $checkout_form->get_conversion_snippets();
+		$atts['checkout_form'] = $checkout_form;
 
-		add_action('wp_print_footer_scripts', function() use ($conversion_snippets) {
-
-			echo $conversion_snippets;
-
-		});
+		\WP_Ultimo\UI\Thank_You_Element::get_instance()->register_scripts();
 
 		return \WP_Ultimo\UI\Thank_You_Element::get_instance()->output($atts, $content);
 
@@ -291,6 +290,12 @@ class Checkout_Element extends Base_Element {
 
 		} // end if;
 
+		if (!$checkout_form->is_active() || !wu_get_setting('enable_registration')) {
+
+			return sprintf('<p>%s</p>', __('Registration is not available at this time.', 'wp-ultimo'));
+
+		} // end if;
+
 		if ($checkout_form->has_country_lock()) {
 
 			$geolocation = \WP_Ultimo\Geolocation::geolocate_ip('', true);
@@ -303,12 +308,6 @@ class Checkout_Element extends Base_Element {
 
 		} // end if;
 
-		if (!$checkout_form->is_active()) {
-
-			return sprintf('<p>%s</p>', __('Registration is not available at this time.', 'wp-ultimo'));
-
-		} // end if;
-
 		$checkout = \WP_Ultimo\Checkout\Checkout::get_instance();
 
 		$this->steps = $checkout->maybe_hide_steps($checkout_form->get_settings());
@@ -316,6 +315,10 @@ class Checkout_Element extends Base_Element {
 		$step = $checkout_form->get_step($atts['step']);
 
 		$this->step = $step ? $step : current($this->steps);
+
+		$this->step = wp_parse_args($this->step, array(
+			'classes' => '',
+		));
 
 		$this->step_name = $this->step['id'];
 
@@ -326,11 +329,102 @@ class Checkout_Element extends Base_Element {
 
 		$signup = new Mocked_Signup($this->step_name, $this->steps); // phpcs:ignore
 
+		$this->signup = $signup;
+
 		add_action('wp_print_footer_scripts', function() use ($checkout_form) {
 
 			$this->print_custom_css($checkout_form);
 
 		});
+
+		/*
+		 * Load the checkout class with the parameters
+		 * so we can access them inside the layouts.
+		 */
+		$checkout->checkout_form = $checkout_form;
+		$checkout->steps         = $this->steps;
+		$checkout->step          = $this->step;
+		$checkout->step_name     = $this->step['id'];
+		$auto_submittable_field  = $checkout->contains_auto_submittable_field($this->step['fields']);
+
+		/*
+		 * By default we shouldn't,
+		 * but that might happen if we only have
+		 * certain skippable fields on a step
+		 * and other conditions are met, for example,
+		 * being pre-selected.
+		 */
+		$should_skip_step = false;
+
+		/*
+		 * Keeps a copy of the current step
+		 * in case we need to copy their fields over.
+		 */
+		$old_step_fields = $this->step['fields'];
+
+		/**
+		 * Let's deal with the scenario where we need to skip an step
+		 * because of the plan being passed over from the URL.
+		 *
+		 * @since 2.0.4
+		 */
+		if ($auto_submittable_field === 'products' && wu_request('wu_preselected') === 'products') {
+
+			$should_skip_step = Array_Search::find($old_step_fields, array(
+				'where' => array(
+					array('type', 'pricing_table'),
+					array('hide_pricing_table_when_pre_selected', '1'),
+				),
+			));
+
+		} elseif ($auto_submittable_field === 'template_id' && wu_request('wu_preselected') === 'template_id') {
+
+			/**
+			 * Adds the same logic as the above for the template_id field.
+			 *
+			 * @since 2.0.8
+			 */
+			$should_skip_step = Array_Search::find($old_step_fields, array(
+				'where' => array(
+					array('type', 'template_selection'),
+					array('hide_template_selection_when_pre_selected', '1'),
+				),
+			));
+
+		} // end if;
+
+		/*
+		 * If we get to this point, we should skip the step.
+		 */
+		if ($should_skip_step) {
+
+			array_shift($this->steps); // Remove the current step from the step list.
+
+			$this->step             = current($this->steps);
+			$this->step_name        = $this->step['id'];
+			$auto_submittable_field = $checkout->contains_auto_submittable_field($this->step['fields']);
+
+			$this->step['fields'] = array_merge($old_step_fields, $this->step['fields']);
+
+		} // end if;
+
+		$final_fields = wu_create_checkout_fields($this->step['fields']);
+
+		/*
+		 * Adds the product fields to keep them.
+		 */
+		$final_fields['products[]'] = array(
+			'type'      => 'hidden',
+			'html_attr' => array(
+				'v-for'     => '(product, index) in unique_products',
+				'v-model'   => 'products[index]',
+				'v-bind:id' => '"products-" + index',
+			),
+		);
+
+		$this->inject_inline_auto_submittable_field($auto_submittable_field);
+
+		$final_fields = apply_filters('wu_checkout_form_final_fields', $final_fields, $this);
 
 		return wu_get_template_contents('checkout/form', array(
 			'step'               => $this->step,
@@ -338,9 +432,45 @@ class Checkout_Element extends Base_Element {
 			'checkout_form_name' => $atts['slug'],
 			'errors'             => $checkout->errors,
 			'display_title'      => $atts['display_title'],
+			'final_fields'       => $final_fields,
 		));
 
 	} // end output_form;
+
+	/**
+	 * Injects the auto-submittable field inline snippet.
+	 *
+	 * @since 2.0.11
+	 *
+	 * @param string $auto_submittable_field The auto-submittable field.
+	 * @return void
+	 */
+	public function inject_inline_auto_submittable_field($auto_submittable_field) {
+
+		$callback = function() use ($auto_submittable_field) {
+
+			wp_add_inline_script('wu-checkout', sprintf('
+
+				/**
+				 * Set the auto-submittable field, if one exists.
+				 */
+				window.wu_auto_submittable_field = %s;
+
+			', json_encode($auto_submittable_field)), 'after');
+
+		};
+
+		if (wu_is_block_theme() && !is_admin()) {
+
+			add_action('wu_checkout_scripts', $callback, 100);
+
+		} else {
+
+			call_user_func($callback);
+
+		} // end if;
+
+	} // end inject_inline_auto_submittable_field;
 
 	/**
 	 * The content to be output on the screen.

@@ -8,7 +8,6 @@
  */
 
 ?>
-
 <div id="wu-jumper" style="display: none;" class="wu-styling">
 
   <div class="wu-jumper-icon-container wu-relative wu-w-full wu-bg-gray-100 wu-rounded">
@@ -36,7 +35,7 @@
       <?php foreach ($menu_groups as $optgroup => $menus) : ?>
 
         <optgroup label="<?php esc_attr_e('Menu', 'wp-ultimo'); ?> - <?php echo esc_attr($optgroup); ?>" value="<?php esc_attr_e('Menu', 'wp-ultimo'); ?> - <?php echo esc_attr($optgroup); ?>">
-          
+
           <?php foreach ($menus as $url => $menu) : ?>
 
             <option value="<?php echo esc_attr($url); ?>">
@@ -51,17 +50,16 @@
 
       <?php endforeach; ?>
 
-      
       <optgroup label="<?php esc_attr_e('Settings', 'wp-ultimo'); ?>" value="setting"></optgroup>
-      
+
       <optgroup label="<?php esc_attr_e('Users', 'wp-ultimo'); ?>" value="user"></optgroup>
-      
+
       <optgroup label="<?php esc_attr_e('Customers', 'wp-ultimo'); ?>" value="customer"></optgroup>
-      
+
       <optgroup label="<?php esc_attr_e('Products', 'wp-ultimo'); ?>" value="product"></optgroup>
-      
+
       <optgroup label="<?php esc_attr_e('Domains', 'wp-ultimo'); ?>" value="domain"></optgroup>
-      
+
       <optgroup label="<?php esc_attr_e('Sites', 'wp-ultimo'); ?>" value="site"></optgroup>
 
       <optgroup label="<?php esc_attr_e('Memberships', 'wp-ultimo'); ?>" value="membership"></optgroup>
@@ -76,7 +74,16 @@
 
       <optgroup label="<?php esc_attr_e('Checkout Forms', 'wp-ultimo'); ?>" value="checkout-form"></optgroup>
 
-      <optgroup label="<?php esc_attr_e('Support Agents', 'wp-ultimo'); ?>" value="support-agent"></optgroup>
+      <?php 
+      
+      /**
+       * Allow plugin developers to add new opt-groups.
+       * 
+       * @since 2.0.0
+       */
+      do_action('wu_jumper_options'); 
+      
+      ?>
 
     </select>
 

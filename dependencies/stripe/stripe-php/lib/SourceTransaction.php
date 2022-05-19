@@ -14,7 +14,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property string $currency
  * @property string $type
  */
-class SourceTransaction extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class SourceTransaction extends ApiResource
 {
     const OBJECT_NAME = 'source_transaction';
 }

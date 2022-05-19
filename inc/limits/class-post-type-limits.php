@@ -31,6 +31,17 @@ class Post_Type_Limits {
 	public function init() {
 
 		/**
+		 * Emulated post types.
+		 *
+		 * @since 2.0.6
+		 */
+		if (is_main_site() && is_network_admin()) {
+
+			add_action('init', array($this, 'register_emulated_post_types'), 999);
+
+		} // end if;
+
+		/**
 		 * Allow plugin developers to short-circuit the limitations.
 		 *
 		 * You can use this filter to run arbitrary code before any of the limits get initiated.
@@ -38,8 +49,7 @@ class Post_Type_Limits {
 		 * the code will return and none of the hooks below will run.
 		 *
 		 * @since 1.7.0
-		 * @param WU_Plan|false Current plan object
-		 * @param integer User ID
+		 * @return bool
 		 */
 		if (!apply_filters('wu_apply_plan_limits', wu_get_current_site()->has_limitations())) {
 
@@ -64,6 +74,46 @@ class Post_Type_Limits {
 		add_filter('wp_insert_post_data', array($this, 'limit_draft_publishing'), 10, 2);
 
 	} // end init;
+
+	/**
+	 * Emulates post types to avoid having to have plugins active on the main site.
+	 *
+	 * @since 2.0.6
+	 * @return void
+	 */
+	public function register_emulated_post_types() {
+
+		$emulated_post_types = wu_get_setting('emulated_post_types', array());
+
+		if (is_array($emulated_post_types) && !empty($emulated_post_types)) {
+
+			foreach ($emulated_post_types as $pt) {
+
+				$pt = (object) $pt;
+
+				$existing_pt = get_post_type_object($pt->post_type);
+
+				if ($existing_pt) {
+
+					continue;
+
+				} // end if;
+
+				register_post_type($pt->post_type, array(
+					'label'               => $pt->label,
+					'exclude_from_search' => true,
+					'public'              => true,
+					'show_in_menu'        => false,
+					'has_archive'         => false,
+					'can_export'          => false,
+					'delete_with_user'    => false,
+				));
+
+			} // end foreach;
+
+		} // end if;
+
+	} // end register_emulated_post_types;
 
 	/**
 	 * Prevents users from trashing posts and restoring them later to bypass the limitation.
@@ -97,20 +147,22 @@ class Post_Type_Limits {
 
 		$screen = get_current_screen();
 
-		if (!wu_get_current_site()->is_post_type_supported($screen->post_type)) {
+		if (!wu_get_current_site()->get_limitations()->post_types->{$screen->post_type}->enabled) {
+
+			$upgrade_message = __('Your plan does not support this post type.', 'wp-ultimo');
 
 			// translators: %s is the URL.
-			wp_die(sprintf(__('Your plan does not support this post type.', 'wp-ultimo'), '#'), __('Limit Reached', 'wp-ultimo'), array('back_link' => true));
+			wp_die($upgrade_message, __('Limit Reached', 'wp-ultimo'), array('back_link' => true));
 
 		} // end if;
 
 		// Check if that is more than our limit
-		if (wu_get_current_site()->is_post_above_limit($screen->post_type)) {
+		if (wu_get_current_site()->get_limitations()->post_types->is_post_above_limit($screen->post_type)) {
 
-			// Display Errors Message
-			// TODO: display a better error message
+			$upgrade_message = __('You reached your plan\'s post limit.', 'wp-ultimo');
+
 			// translators: %s is the URL
-			wp_die(sprintf(__('You reached your plan\'s post limit.', 'wp-ultimo'), '#'), __('Limit Reached', 'wp-ultimo'), array('back_link' => true));
+			wp_die($upgrade_message, __('Limit Reached', 'wp-ultimo'), array('back_link' => true));
 
 		} // end if;
 
@@ -128,6 +180,14 @@ class Post_Type_Limits {
 	 */
 	public function limit_draft_publishing($data, $modified_data) {
 
+		global $current_screen;
+
+		if (empty($current_screen)) {
+
+			return $data;
+
+		} // end if;
+
 		if (get_post_status($modified_data['ID']) === 'publish') {
 
 			return $data; // If the post is already published, no need to make changes
@@ -142,7 +202,9 @@ class Post_Type_Limits {
 
 		$post_type = isset($data['post_type']) ? $data['post_type'] : 'post';
 
-		if (!wu_get_current_site()->is_post_type_supported($post_type) || wu_get_current_site()->is_post_above_limit($post_type)) {
+		$post_type_limits = wu_get_current_site()->get_limitations()->post_types;
+
+		if (!$post_type_limits->{$current_screen->post_type}->enabled || $post_type_limits->is_post_above_limit($post_type)) {
 
 			$data['post_status'] = 'draft';
 
@@ -162,11 +224,19 @@ class Post_Type_Limits {
 	 */
 	public function limit_media($file) {
 
+		if (!wu_get_current_site()->get_limitations()->post_types->attachment->enabled) {
+
+			$file['error'] = __('Your plan does not support media upload.', 'wp-ultimo');
+
+			return $file;
+
+		} // end if;
+
 		$post_count = wp_count_posts('attachment');
 
 		$post_count = $post_count->inherit;
 
-		$quota = wu_get_current_site()->get_quota('attachment');
+		$quota = wu_get_current_site()->get_limitations()->post_types->attachment->number;
 
 		// This bit is for the flash uploader
 		if ($file['type'] === 'application/octet-stream' && isset($file['tmp_name'])) {
@@ -212,7 +282,7 @@ class Post_Type_Limits {
 
 		$post_count = $post_count->inherit;
 
-		$quota = wu_get_current_site()->get_quota('attachment');
+		$quota = wu_get_current_site()->get_limitations()->post_types->attachment->number;
 
 		if ($quota > 0 && $post_count > $quota) {
 

@@ -26,7 +26,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property bool $livemode Has the value <code>true</code> if the object exists in live mode or the value <code>false</code> if the object exists in test mode.
  * @property \Stripe\StripeObject[] $pending Funds that are not yet available in the balance, due to the 7-day rolling pay cycle. The pending balance for each currency, and for each payment type, can be found in the <code>source_types</code> property.
  */
-class Balance extends \WP_Ultimo\Dependencies\Stripe\SingletonApiResource
+class Balance extends SingletonApiResource
 {
     const OBJECT_NAME = 'balance';
     /**

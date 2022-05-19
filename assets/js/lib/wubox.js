@@ -235,10 +235,12 @@ function wutb_show(caption, url, imageGroup) {//function called when the user cl
         wutb_position();
         jQuery("#WUB_load").remove();
         jQuery("#WUB_window").css({ 'visibility': 'visible' });
+        jQuery('body').trigger('wubox:load');
       } else if (url.indexOf('WUB_iframe') != -1) {
         wutb_position();
         jQuery("#WUB_load").remove();
         jQuery("#WUB_window").css({ 'visibility': 'visible' });
+        jQuery('body').trigger('wubox:load');
       } else {
         var load_url = url;
         load_url += -1 === url.indexOf('?') ? '?' : '&';
@@ -247,6 +249,7 @@ function wutb_show(caption, url, imageGroup) {//function called when the user cl
           jQuery("#WUB_load").remove();
           wutb_init("#WUB_ajaxContent a.wubox");
           jQuery("#WUB_window").css({ 'visibility': 'visible' });
+          jQuery('body').trigger('wubox:load');
         });
       }
 

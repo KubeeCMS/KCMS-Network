@@ -3,7 +3,6 @@
 }
 .wu-legacy-options-panel .hndle span {
   display: block;
-  vertical-align: middle;
   line-height: 24px;
 }
 .wu-legacy-options-panel .hndle span span {
@@ -37,11 +36,14 @@
   margin: 0;
 }
 
+.wu-legacy-options-panel,
+#wu-coupon-data {
+  /* stylelint-disable-next-line selector-class-pattern */
+}
 .wu-legacy-options-panel .panel-wrap,
 #wu-coupon-data .panel-wrap {
   background: #ffffff;
 }
-
 .wu-legacy-options-panel .wu_options_panel .wc-radios,
 .wu-legacy-options-panel .wc-metaboxes-wrapper .wc-radios,
 #wu-coupon-data .wu_options_panel .wc-radios,
@@ -55,7 +57,7 @@
 #wu-coupon-data .wu_options_panel .wc-radios li,
 #wu-coupon-data .wc-metaboxes-wrapper .wc-radios li {
   display: block;
-  padding: 0 0 10px 0;
+  padding: 0 0 10px;
 }
 .wu-legacy-options-panel .wu_options_panel .wc-radios li input,
 .wu-legacy-options-panel .wc-metaboxes-wrapper .wc-radios li input,
@@ -125,6 +127,7 @@
 /**
 * Shipping
 */
+/* stylelint-disable-next-line selector-class-pattern */
 .wu_page_wc-settings .shippingrows th.check-column {
   padding-top: 20px;
 }
@@ -146,12 +149,15 @@
   padding: 0;
 }
 
+/* stylelint-disable-next-line selector-class-pattern */
 .wu_options_panel,
 .panel {
   padding: 9px;
   color: #555555;
+  display: block !important;
 }
 
+/* stylelint-disable-next-line selector-class-pattern */
 .wu_page_settings .wu_options_panel,
 .panel {
   padding: 0;
@@ -163,9 +169,11 @@
   padding: 9px;
 }
 
+/* stylelint-disable-next-line selector-class-pattern */
 .wu_options_panel p,
 #wu-product-type-options .panel p,
 .wu_options_panel fieldset.form-field {
+  /* stylelint-disable-line selector-class-pattern */
   margin: 0 0 9px;
   font-size: 12px;
   padding: 5px 9px;
@@ -181,15 +189,17 @@
   visibility: hidden;
 }
 
+/* stylelint-disable-next-line selector-class-pattern */
 .wu_options_panel .checkbox,
 .wu_variable_attributes .checkbox {
+  /* stylelint-disable-line selector-class-pattern */
   width: auto;
   margin: 3px 0;
   vertical-align: middle;
 }
 
 .wu_options_panel {
-  min-height: 175px;
+  /* stylelint-disable-line selector-class-pattern */
   box-sizing: border-box;
 }
 .wu_options_panel p {
@@ -199,6 +209,9 @@
 .wu_options_panel fieldset.form-field {
   padding: 5px 20px 5px 162px !important;
   /** Padding for aligning labels left - 12px + 150 label width **/
+}
+.wu_options_panel .sale_price_dates_fields {
+  /* stylelint-disable-line selector-class-pattern */
 }
 .wu_options_panel .sale_price_dates_fields .short:first-of-type {
   margin-bottom: 1em;
@@ -220,7 +233,6 @@
   padding: 0;
   margin: 0 0 0 7px;
   clear: none;
-  display: block;
 }
 .wu_options_panel .description-block {
   margin-left: 0;
@@ -263,6 +275,7 @@
   margin-right: 6px;
 }
 .wu_options_panel .options_group {
+  /* stylelint-disable-line selector-class-pattern */
   border-top: 1px solid #ffffff;
   border-bottom: 1px solid #eeeeee;
 }
@@ -300,6 +313,9 @@
 .wu_options_panel .options_group fieldset ul.wc-radios label {
   margin-left: 0;
 }
+.wu_options_panel .dimensions_field {
+  /* stylelint-disable-line selector-class-pattern */
+}
 .wu_options_panel .dimensions_field .wrap {
   display: block;
   width: 50%;
@@ -322,9 +338,11 @@
   float: left;
 }
 
-#grouped_product_options,
+/* stylelint-disable-next-line selector-id-pattern */
 #virtual_product_options,
+#grouped_product_options,
 #simple_product_options {
+  /* stylelint-disable-line selector-id-pattern */
   padding: 12px;
   font-style: italic;
   color: #666666;

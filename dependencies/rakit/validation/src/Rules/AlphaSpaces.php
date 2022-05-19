@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class AlphaSpaces extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class AlphaSpaces extends Rule
 {
     /** @var string */
     protected $message = "The :attribute may only allows alphabet and spaces";

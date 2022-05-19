@@ -1,6 +1,6 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Dns;
+namespace React\Dns;
 
 final class RecordNotFoundException extends \Exception
 {

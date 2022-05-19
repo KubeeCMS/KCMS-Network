@@ -10,6 +10,7 @@
  */
 namespace WP_Ultimo\Dependencies\Carbon\Exceptions;
 
-interface RuntimeException extends \WP_Ultimo\Dependencies\Carbon\Exceptions\Exception
+interface RuntimeException extends Exception
 {
+    //
 }

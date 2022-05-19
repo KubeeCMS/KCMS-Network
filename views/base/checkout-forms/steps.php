@@ -64,22 +64,31 @@
   <!-- /Add new Step Section -->
 
   <!-- Editor -->
-  <div v-cloak class="wu-px-4 wu-py-1 wu-bg-gray-200 wu-border wu-border-solid wu-border-gray-400 wu-border-t-0 wu-border-b-0">
+  <div 
+    v-cloak 
+    class="wu-px-4 wu-py-1 wu-bg-gray-200 wu-border wu-border-solid wu-border-gray-400 wu-border-t-0 wu-border-b-0"
+    :class="dragging ? 'is-dragging' : ''"
+  >
 
     <!-- Editor Proper -->
     <draggable
       :list="steps"
-      :element="'div'"
+      :tag="'div'"
       group="step"
       handle=".hndle"
-      ghost-class="wu-bg-white"
+      ghost-class="wu-draggable-ghost"
       drag-class="wu-hide-inside"
       @start="dragging = true"
       @end="dragging = false"
       v-show="!preview"
     >
 
-      <div :id="'wp-ultimo-list-table-' + step.id" class="postbox wu-my-4" v-cloak v-for="(step, idx) in steps">
+      <div 
+        :id="'wp-ultimo-list-table-' + step.id" 
+        class="postbox wu-my-4"
+        v-cloak 
+        v-for="(step, idx) in steps"
+      >
 
         <div class="postbox-header">
           <h2 class="hndle ui-sortable-handle">
@@ -170,6 +179,7 @@
                 <a title="<?php _e('Add new Field', 'wp-ultimo'); ?>"
                   :href="'<?php echo wu_get_form_url('add_new_form_field', array(
                     'checkout_form' => $checkout_form,
+                    'width'         => 600,
                     'step'          => '',
                   )); ?>=' + step.id"
                   type="button" class="wu-uppercase wu-text-2xs wu-font-semibold wu-no-underline wu-outline-none hover:wu-shadow-none focus:wu-shadow-none wu-text-gray-600 hover:wu-text-gray-800 wubox wu-p-4 md:wu-p-0 wu-inline-block">
@@ -226,7 +236,14 @@
       <!-- /Error -->
 
       <!-- Preview Proper -->
-      <div v-show="!loading_preview && !preview_error" class="wu-block wu-p-8 wu-bg-white wu-my-4 wu-border wu-border-solid wu-rounded wu-border-gray-400" v-html="preview_content"></div>
+      <!-- <div v-show="!loading_preview && !preview_error" class="wu-block wu-p-8 wu-bg-white wu-my-4 wu-border wu-border-solid wu-rounded wu-border-gray-400" v-html="preview_content"></div> -->
+      <div v-show="!loading_preview && !preview_error" id="wu-iframe-content" class="wu-w-full wu-relative">
+
+        <iframe id="wp-ultimo-checkout-preview" v-bind:src="iframe_preview_url" class="wu-w-full wu-h-full wu-m-0 wu-mt-4 wu-mb-2 wu-p-0 wu-overflow-hidden wu-border-radius wu-border wu-border-solid wu-rounded wu-border-gray-400">
+          <?php _e('Your browser doesn\'t support iframes', 'wp-ultimo'); ?>
+        </iframe>
+
+      </div>
       <!-- /Preview Proper -->
 
     </div>
@@ -260,7 +277,7 @@
               href="#"
               type="button"
               class="wu-uppercase wu-text-2xs wu-font-semibold wu-no-underline wu-outline-none hover:wu-shadow-none focus:wu-shadow-none wu-text-gray-600 hover:wu-text-gray-800"
-              @click.prevent="get_preview()"
+              @click.prevent="get_preview('user')"
             >
               <span class="dashicons-wu-eye wu-align-middle"></span>
               <span v-show="!preview"><?php _e('Preview', 'wp-ultimo'); ?></span>

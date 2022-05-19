@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\CouldNotDownloadCertificate;
 
 use WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\CouldNotDownloadCertificate;
-class NoCertificateInstalled extends \WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\CouldNotDownloadCertificate
+class NoCertificateInstalled extends CouldNotDownloadCertificate
 {
     public function __construct(string $hostName)
     {

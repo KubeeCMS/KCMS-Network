@@ -1,29 +1,25 @@
 <?php
 /**
- * Groupd field view.
+ * Group field view.
  *
  * @since 2.0.0
  */
 ?>
-<li class="<?php echo esc_attr($field->wrapper_classes); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
+<li class="<?php echo esc_attr(trim($field->wrapper_classes)); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
   <div class="wu-block wu-w-full <?php echo esc_attr($field->classes); ?>">
 
-  	<?php if ($field->title) : ?>
+    <?php
 
-      <h3 class="wu-my-1 wu-text-2xs wu-uppercase">
+    /**
+     * Adds the partial title template.
+     * @since 2.0.0
+     */
+    wu_get_template('admin-pages/fields/partials/field-title', array(
+      'field' => $field,
+    ));
 
-		<?php echo $field->title; ?>
-
-		<?php if ($field->tooltip) : ?>
-
-			<?php echo wu_tooltip($field->tooltip); ?>
-
-      <?php endif; ?>
-
-      </h3>
-
-    <?php endif; ?>
+    ?>
 
     <?php
 
@@ -33,9 +29,9 @@
      * @since 2.0.0
      */
     $form = new \WP_Ultimo\UI\Form($field->id, $field->fields, array(
-		'views'                 => 'admin-pages/fields',
-		'classes'               => 'wu-flex',
-		'field_wrapper_classes' => 'wu-bg-transparent',
+      'views'                 => 'admin-pages/fields',
+      'classes'               => trim('wu-flex '.esc_attr($field->classes)),
+      'field_wrapper_classes' => 'wu-bg-transparent',
     ));
 
     $form->render();
@@ -44,11 +40,11 @@
 
     <?php if ($field->desc) : ?>
 
-      <span class="wu-mt-2 wu-block wu-bg-gray-100 wu-rounded wu-border-solid wu-border-gray-400 wu-border-t wu-border-l wu-border-b wu-border-r wu-text-xs wu-py-2 wu-p-2">
+      <div class="wu-mt-2 wu-block wu-bg-gray-100 wu-rounded wu-border-solid wu-border-gray-400 wu-border-t wu-border-l wu-border-b wu-border-r wu-text-2xs wu-py-2 wu-p-2">
 
         <?php echo $field->desc; ?>
 
-      </span>
+      </div>
 
 		<?php endif; ?>
 

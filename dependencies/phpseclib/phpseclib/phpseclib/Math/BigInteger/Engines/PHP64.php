@@ -5,8 +5,6 @@
  *
  * PHP version 5 and 7
  *
- * @category  Math
- * @package   BigInteger
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -14,15 +12,12 @@
  */
 namespace phpseclib3\Math\BigInteger\Engines;
 
-use WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Hex;
 /**
  * Pure-PHP 64-bit Engine.
  *
  * Uses 64-bit integers if int size is 8 bits
  *
- * @package PHP
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
 class PHP64 extends \phpseclib3\Math\BigInteger\Engines\PHP
 {
@@ -42,43 +37,6 @@ class PHP64 extends \phpseclib3\Math\BigInteger\Engines\PHP
      */
     const MAX10LEN = 9;
     const MAX_DIGIT2 = 4611686018427387904;
-    /**#@-*/
-    /**
-     * Modular Exponentiation Engine
-     *
-     * @var string
-     */
-    protected static $modexpEngine;
-    /**
-     * Engine Validity Flag
-     *
-     * @var bool
-     */
-    protected static $isValidEngine;
-    /**
-     * Primes > 2 and < 1000
-     *
-     * @var array
-     */
-    protected static $primes;
-    /**
-     * BigInteger(0)
-     *
-     * @var \phpseclib3\Math\BigInteger\Engines\PHP64
-     */
-    protected static $zero;
-    /**
-     * BigInteger(1)
-     *
-     * @var \phpseclib3\Math\BigInteger\Engines\PHP64
-     */
-    protected static $one;
-    /**
-     * BigInteger(2)
-     *
-     * @var \phpseclib3\Math\BigInteger\Engines\PHP64
-     */
-    protected static $two;
     /**
      * Initialize a PHP64 BigInteger Engine instance
      *
@@ -182,7 +140,7 @@ class PHP64 extends \phpseclib3\Math\BigInteger\Engines\PHP
      * and the divisor (basically, the "common residue" is the first positive modulo).
      *
      * @param PHP64 $y
-     * @return PHP64
+     * @return array{PHP64, PHP64}
      */
     public function divide(\phpseclib3\Math\BigInteger\Engines\PHP64 $y)
     {
@@ -268,7 +226,6 @@ class PHP64 extends \phpseclib3\Math\BigInteger\Engines\PHP
      *
      * @param PHP64 $y
      * @return int in case < 0 if $this is less than $y; > 0 if $this is greater than $y, and 0 if they are equal.
-     * @access public
      * @see self::equals()
      */
     public function compare(\phpseclib3\Math\BigInteger\Engines\PHP64 $y)
@@ -305,7 +262,7 @@ class PHP64 extends \phpseclib3\Math\BigInteger\Engines\PHP
      *
      * @param PHP64 $e
      * @param PHP64 $n
-     * @return PHP64
+     * @return PHP64|false
      */
     public function powMod(\phpseclib3\Math\BigInteger\Engines\PHP64 $e, \phpseclib3\Math\BigInteger\Engines\PHP64 $n)
     {

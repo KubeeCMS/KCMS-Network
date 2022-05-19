@@ -31,7 +31,7 @@ namespace WP_Ultimo\Dependencies\ParagonIE\ConstantTime;
  *
  * @package ParagonIE\ConstantTime
  */
-abstract class Base32 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\EncoderInterface
+abstract class Base32 implements EncoderInterface
 {
     /**
      * Decode a Base32-encoded string into raw binary
@@ -58,13 +58,13 @@ abstract class Base32 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\
     /**
      * Encode into Base32 (RFC 4648)
      *
-     * @param string $src
+     * @param string $binString
      * @return string
      * @throws \TypeError
      */
-    public static function encode(string $src) : string
+    public static function encode(string $binString) : string
     {
-        return static::doEncode($src, \false, \true);
+        return static::doEncode($binString, \false, \true);
     }
     /**
      * Encode into Base32 (RFC 4648)
@@ -178,7 +178,7 @@ abstract class Base32 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\
         // We do this to reduce code duplication:
         $method = $upper ? 'decode5BitsUpper' : 'decode5Bits';
         // Remove padding
-        $srcLen = \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeStrlen($src);
+        $srcLen = Binary::safeStrlen($src);
         if ($srcLen === 0) {
             return '';
         }
@@ -197,14 +197,14 @@ abstract class Base32 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\
             }
         } else {
             $src = \rtrim($src, '=');
-            $srcLen = \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeStrlen($src);
+            $srcLen = Binary::safeStrlen($src);
         }
         $err = 0;
         $dest = '';
         // Main loop (no padding):
         for ($i = 0; $i + 8 <= $srcLen; $i += 8) {
             /** @var array<int, int> $chunk */
-            $chunk = \unpack('C*', \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeSubstr($src, $i, 8));
+            $chunk = \unpack('C*', Binary::safeSubstr($src, $i, 8));
             /** @var int $c0 */
             $c0 = static::$method($chunk[1]);
             /** @var int $c1 */
@@ -227,7 +227,7 @@ abstract class Base32 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\
         // The last chunk, which may have padding:
         if ($i < $srcLen) {
             /** @var array<int, int> $chunk */
-            $chunk = \unpack('C*', \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeSubstr($src, $i, $srcLen - $i));
+            $chunk = \unpack('C*', Binary::safeSubstr($src, $i, $srcLen - $i));
             /** @var int $c0 */
             $c0 = static::$method($chunk[1]);
             if ($i + 6 < $srcLen) {
@@ -295,7 +295,6 @@ abstract class Base32 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\
                 $err |= $c0 >> 8;
             }
         }
-        /** @var bool $check */
         $check = $err === 0;
         if (!$check) {
             throw new \RangeException('Base32::doDecode() only expects characters in the correct base32 alphabet');
@@ -316,11 +315,11 @@ abstract class Base32 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\
         // We do this to reduce code duplication:
         $method = $upper ? 'encode5BitsUpper' : 'encode5Bits';
         $dest = '';
-        $srcLen = \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeStrlen($src);
+        $srcLen = Binary::safeStrlen($src);
         // Main loop (no padding):
         for ($i = 0; $i + 5 <= $srcLen; $i += 5) {
             /** @var array<int, int> $chunk */
-            $chunk = \unpack('C*', \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeSubstr($src, $i, 5));
+            $chunk = \unpack('C*', Binary::safeSubstr($src, $i, 5));
             $b0 = $chunk[1];
             $b1 = $chunk[2];
             $b2 = $chunk[3];
@@ -331,7 +330,7 @@ abstract class Base32 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\
         // The last chunk, which may have padding:
         if ($i < $srcLen) {
             /** @var array<int, int> $chunk */
-            $chunk = \unpack('C*', \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeSubstr($src, $i, $srcLen - $i));
+            $chunk = \unpack('C*', Binary::safeSubstr($src, $i, $srcLen - $i));
             $b0 = $chunk[1];
             if ($i + 3 < $srcLen) {
                 $b1 = $chunk[2];

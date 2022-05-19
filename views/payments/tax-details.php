@@ -19,6 +19,13 @@
           </tr>
         <?php endforeach; ?>
 
+        <?php if (!empty($payment)) : ?>
+          <tr>
+            <td><span class="wu-font-bold wu-uppercase wu-text-xs wu-text-gray-700"><?php _e('Total', 'wp-ultimo'); ?></span></td>
+            <td><?php echo wu_format_currency($payment->get_tax_total()); ?></td>
+          </tr>
+        <?php endif; ?>
+
       <?php else : ?>
 
         <tr>

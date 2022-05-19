@@ -83,9 +83,23 @@ class Signup_Field_Site_Url extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('Site URL Description', 'wp-ultimo');
+		return __('Adds a Site URL field. This is used to set the URL of the site being created.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Adds a Site URL field. This is used to set the URL of the site being created.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -97,7 +111,7 @@ class Signup_Field_Site_Url extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-wu-globe';
+		return 'dashicons-wu-globe1';
 
 	} // end get_icon;
 
@@ -115,9 +129,11 @@ class Signup_Field_Site_Url extends Base_Signup_Field {
 		global $current_site;
 
 		return array(
-			'display_url_preview'     => true,
-			'enable_domain_selection' => false,
-			'available_domains'       => $current_site->domain . PHP_EOL,
+			'auto_generate_site_url'    => false,
+			'display_url_preview'       => true,
+			'enable_domain_selection'   => false,
+			'display_field_attachments' => true,
+			'available_domains'         => $current_site->domain . PHP_EOL,
 		);
 
 	} // end defaults;
@@ -164,54 +180,73 @@ class Signup_Field_Site_Url extends Base_Signup_Field {
 		global $current_site;
 
 		return array(
-			'auto_generate'           => array(
+			'auto_generate_site_url'    => array(
+				'order'     => 12,
 				'type'      => 'toggle',
-				'title'     => __('Auto-generate?', 'wp-ultimo'),
+				'title'     => __('Auto-generate', 'wp-ultimo'),
 				'desc'      => __('Check this option to auto-generate this field based on the username of the customer.', 'wp-ultimo'),
 				'tooltip'   => '',
 				'value'     => 0,
 				'html_attr' => array(
-					'v-model' => 'auto_generate',
+					'v-model' => 'auto_generate_site_url',
 				),
 			),
-			'display_url_preview'     => array(
-				'type'      => 'toggle',
-				'title'     => __('Display URL preview block?', 'wp-ultimo'),
-				'desc'      => __('Set as the primary domain.', 'wp-ultimo'),
-				'tooltip'   => __('Setting this as the primary domain will remove any other domain mapping marked as the primary domain for this site.', 'wp-ultimo'),
-				'value'     => 1,
-				'html_attr' => array(
+			'display_field_attachments' => array(
+				'order'             => 18,
+				'type'              => 'toggle',
+				'title'             => __('Display URL field attachments', 'wp-ultimo'),
+				'desc'              => __('Adds the prefix and suffix blocks to the URL field.', 'wp-ultimo'),
+				'tooltip'           => '',
+				'value'             => 1,
+				'tab'               => 'content',
+				'wrapper_html_attr' => array(
+					'v-show' => '!auto_generate_site_url',
+				),
+				'html_attr'         => array(
+					'v-model' => 'display_field_attachments',
+				),
+			),
+			'display_url_preview'       => array(
+				'order'             => 19,
+				'type'              => 'toggle',
+				'title'             => __('Display URL preview block', 'wp-ultimo'),
+				'desc'              => __('Adds a preview block that shows the final URL.', 'wp-ultimo'),
+				'tooltip'           => '',
+				'value'             => 1,
+				'tab'               => 'content',
+				'wrapper_html_attr' => array(
+					'v-show' => '!auto_generate_site_url',
+				),
+				'html_attr'         => array(
 					'v-model' => 'display_url_preview',
 				),
 			),
-			'url_preview_template'    => array(
-				'type'              => 'select',
-				'title'             => __('Pricing Table Template', 'wp-ultimo'),
-				'placeholder'       => __('Select your Template', 'wp-ultimo'),
-				'options'           => array($this, 'get_url_preview_templates'),
+			'enable_domain_selection'   => array(
+				'order'             => 20,
+				'type'              => 'toggle',
+				'title'             => __('Enable Domain Selection', 'wp-ultimo'),
+				'desc'              => __('Offer different domain options to your customers to choose from.', 'wp-ultimo'),
+				'tooltip'           => '',
+				'value'             => 0,
+				'tab'               => 'content',
 				'wrapper_html_attr' => array(
-					'v-show' => 'display_url_preview',
+					'v-show' => '!auto_generate_site_url',
 				),
-			),
-			'enable_domain_selection' => array(
-				'type'      => 'toggle',
-				'title'     => __('Enable Domain Selection?', 'wp-ultimo'),
-				'desc'      => __('Set as the primary domain.', 'wp-ultimo'),
-				'tooltip'   => __('Setting this as the primary domain will remove any other domain mapping marked as the primary domain for this site.', 'wp-ultimo'),
-				'value'     => 0,
-				'html_attr' => array(
+				'html_attr'         => array(
 					'v-model' => 'enable_domain_selection',
 					'rows'    => 5,
 				),
 			),
-			'available_domains'       => array(
+			'available_domains'         => array(
+				'order'             => 30,
 				'type'              => 'textarea',
-				'title'             => __('Enable Domain Selection?', 'wp-ultimo'),
-				'desc'              => __('Set as the primary domain.', 'wp-ultimo'),
-				'tooltip'           => __('Setting this as the primary domain will remove any other domain mapping marked as the primary domain for this site.', 'wp-ultimo'),
+				'title'             => __('Available Domains', 'wp-ultimo'),
+				'desc'              => '',
+				'desc'              => __('Enter one domain option per line.', 'wp-ultimo'),
 				'value'             => $current_site->domain . PHP_EOL,
+				'tab'               => 'content',
 				'wrapper_html_attr' => array(
-					'v-show' => 'enable_domain_selection',
+					'v-show' => '!auto_generate_site_url && enable_domain_selection',
 				),
 				'html_attr'         => array(
 					'rows' => 4,
@@ -230,8 +265,8 @@ class Signup_Field_Site_Url extends Base_Signup_Field {
 	public function get_url_preview_templates() {
 
 		$templates = array(
-			'checkout/partials/pricing-table-list'        => __('URL Preview', 'wp-ultimo'),
-			'legacy/signup/steps/step-domain-url-preview' => __('Legacy Template', 'wp-ultimo'),
+			'legacy/signup/steps/step-domain-url-preview' => __('New URL Preview', 'wp-ultimo'),
+			// 'legacy/signup/steps/step-domain-url-preview' => __('Legacy Template', 'wp-ultimo'),
 		);
 
 		return apply_filters('wu_get_pricing_table_templates', $templates);
@@ -250,12 +285,18 @@ class Signup_Field_Site_Url extends Base_Signup_Field {
 		/*
 		 * If we should auto-generate, add as hidden.
 		 */
-		if ($attributes['auto_generate']) {
+		if ($attributes['auto_generate_site_url']) {
 
 			return array(
-				'site_url' => array(
-					'type' => 'hidden',
-					'id'   => 'site_url',
+				'auto_generate_site_url' => array(
+					'type'  => 'hidden',
+					'id'    => 'auto_generate_site_url',
+					'value' => 'username',
+				),
+				'site_url'               => array(
+					'type'  => 'hidden',
+					'id'    => 'site_url',
+					'value' => uniqid(),
 				),
 			);
 
@@ -264,42 +305,84 @@ class Signup_Field_Site_Url extends Base_Signup_Field {
 		$checkout_fields = array();
 
 		$checkout_fields['site_url'] = array(
-			'type'        => 'text',
-			'id'          => 'site_url',
-			'name'        => $attributes['name'],
-			'placeholder' => $attributes['placeholder'],
-			'tooltip'     => $attributes['tooltip'],
-			'required'    => true,
-			'html_attr'   => array(
+			'type'            => 'text',
+			'id'              => 'site_url',
+			'wrapper_classes' => 'wu-flex-grow wu-my-0',
+			'classes'         => 'disabled sm:wu-my-0',
+			'name'            => $attributes['name'],
+			'placeholder'     => $attributes['placeholder'],
+			'tooltip'         => $attributes['tooltip'],
+			'required'        => true,
+			'wrapper_classes' => wu_get_isset($attributes, 'wrapper_element_classes', 'wu-my-1'),
+			'classes'         => wu_get_isset($attributes, 'element_classes', ''),
+			'html_attr'       => array(
 				'autocomplete' => 'off',
+				'v-on:input'   => 'site_url = $event.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, "")',
+				'v-bind:value' => 'site_url',
 			),
 		);
+
+		if ($attributes['display_field_attachments']) {
+
+			$checkout_fields['site_url']['classes'] .= ' xs:wu-rounded-none';
+
+			$checkout_fields['site_url']['prefix'] = ' ';
+
+			$checkout_fields['site_url']['prefix_html_attr'] = array(
+				'class'   => 'wu-flex wu-items-center wu-px-3 wu-mt-1 sm:wu-mb-1 wu-border-box wu-font-mono wu-justify-center sm:wu-border-r-0',
+				'style'   => 'background-color: rgba(0, 0, 0, 0.008); border: 1px solid #eee; margin-right: -1px; font-size: 90%;',
+				'v-html'  => 'is_subdomain ? "https://" : "https://" + site_domain + "/"',
+				'v-cloak' => 1,
+			);
+
+			$checkout_fields['site_url']['suffix'] = ' ';
+
+			$checkout_fields['site_url']['suffix_html_attr'] = array(
+				'class'   => 'wu-flex wu-items-center wu-px-3 sm:wu-mt-1 wu-mb-1 wu-border-box wu-font-mono wu-justify-center sm:wu-border-l-0',
+				'style'   => 'background-color: rgba(0, 0, 0, 0.008); border: 1px solid #eee; margin-left: -1px; font-size: 90%;',
+				'v-html'  => '"." + site_domain',
+				'v-cloak' => 1,
+				'v-show'  => 'is_subdomain',
+			);
+
+		} // end if;
 
 		if ($attributes['available_domains'] && $attributes['enable_domain_selection']) {
 
 			$options = $this->get_domain_options($attributes['available_domains']);
 
 			$checkout_fields['site_domain'] = array(
-				'name'     => __('Domain', 'wp-ultimo'),
-				'options'  => $options,
-				'order'    => 25,
-				'id'       => 'site_domain',
-				'type'     => 'select',
-				'required' => true,
-				'classes'  => 'input',
+				'name'              => __('Domain', 'wp-ultimo'),
+				'options'           => $options,
+				'wrapper_classes'   => wu_get_isset($attributes, 'wrapper_element_classes', ''),
+				'classes'           => wu_get_isset($attributes, 'element_classes', ''),
+				'order'             => 25,
+				'required'          => true,
+				'id'                => 'site_domain',
+				'type'              => 'select',
+				'classes'           => 'input',
+				'html_attr'         => array(
+					'v-model' => 'site_domain',
+				),
+				'wrapper_html_attr' => array(
+					'style' => $this->calculate_style_attr(),
+				),
 			);
 
 		} // end if;
 
 		if ($attributes['display_url_preview']) {
 
-			wp_enqueue_script('wu-url-preview', wu_get_asset('url-preview.js', 'js'), false, wu_get_version());
-
-			$content = wu_get_template_contents($attributes['url_preview_template']);
+			$content = wu_get_template_contents('legacy/signup/steps/step-domain-url-preview');
 
 			$checkout_fields['site_url_preview'] = array(
-				'type' => 'note',
-				'desc' => $content,
+				'type'              => 'note',
+				'desc'              => $content,
+				'wrapper_classes'   => wu_get_isset($attributes, 'wrapper_element_classes', ''),
+				'classes'           => wu_get_isset($attributes, 'element_classes', ''),
+				'wrapper_html_attr' => array(
+					'style' => $this->calculate_style_attr(),
+				),
 			);
 
 		} // end if;

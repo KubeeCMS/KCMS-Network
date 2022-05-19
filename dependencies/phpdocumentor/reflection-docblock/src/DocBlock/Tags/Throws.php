@@ -1,13 +1,12 @@
 <?php
 
+declare (strict_types=1);
 /**
  * This file is part of phpDocumentor.
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @copyright 2010-2015 Mike van Riel<mike@phpdoc.org>
- * @license   http://www.opensource.org/licenses/mit-license.php MIT
  * @link      http://phpdoc.org
  */
 namespace WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Tags;
@@ -21,28 +20,31 @@ use WP_Ultimo\Dependencies\Webmozart\Assert\Assert;
 /**
  * Reflection class for a {@}throws tag in a Docblock.
  */
-final class Throws extends \WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Tags\TagWithType implements \WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Tags\Factory\StaticMethod
+final class Throws extends TagWithType implements Factory\StaticMethod
 {
-    public function __construct(\WP_Ultimo\Dependencies\phpDocumentor\Reflection\Type $type, \WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Description $description = null)
+    public function __construct(Type $type, ?Description $description = null)
     {
         $this->name = 'throws';
         $this->type = $type;
         $this->description = $description;
     }
-    /**
-     * {@inheritdoc}
-     */
-    public static function create($body, \WP_Ultimo\Dependencies\phpDocumentor\Reflection\TypeResolver $typeResolver = null, \WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\DescriptionFactory $descriptionFactory = null, \WP_Ultimo\Dependencies\phpDocumentor\Reflection\Types\Context $context = null)
+    public static function create(string $body, ?TypeResolver $typeResolver = null, ?DescriptionFactory $descriptionFactory = null, ?TypeContext $context = null) : self
     {
-        \WP_Ultimo\Dependencies\Webmozart\Assert\Assert::string($body);
-        \WP_Ultimo\Dependencies\Webmozart\Assert\Assert::allNotNull([$typeResolver, $descriptionFactory]);
-        list($type, $description) = self::extractTypeFromBody($body);
+        Assert::notNull($typeResolver);
+        Assert::notNull($descriptionFactory);
+        [$type, $description] = self::extractTypeFromBody($body);
         $type = $typeResolver->resolve($type, $context);
         $description = $descriptionFactory->create($description, $context);
         return new static($type, $description);
     }
-    public function __toString()
+    public function __toString() : string
     {
-        return $this->type . ' ' . $this->description;
+        if ($this->description) {
+            $description = $this->description->render();
+        } else {
+            $description = '';
+        }
+        $type = (string) $this->type;
+        return $type . ($description !== '' ? ($type !== '' ? ' ' : '') . $description : '');
     }
 }

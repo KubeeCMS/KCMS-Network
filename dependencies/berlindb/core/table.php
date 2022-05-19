@@ -30,7 +30,7 @@ namespace WP_Ultimo\Dependencies\BerlinDB\Database;
  *
  * @since 1.0.0
  */
-abstract class Table extends \WP_Ultimo\Dependencies\BerlinDB\Database\Base
+abstract class Table extends Base
 {
     /**
      * Table name, without the global table prefix.

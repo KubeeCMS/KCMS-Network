@@ -23,6 +23,8 @@ defined('ABSPATH') || exit;
  */
 class Domain_Mapping_Element extends Base_Element {
 
+	use \WP_Ultimo\Traits\Singleton;
+
 	/**
 	 * The id of the element.
 	 *
@@ -198,66 +200,35 @@ class Domain_Mapping_Element extends Base_Element {
 
 		$this->site = wu_get_current_site();
 
-		if (!$this->site) {
+		$maybe_limit_domain_mapping = true;
+
+		if ($this->site->has_limitations()) {
+
+			$maybe_limit_domain_mapping = $this->site->get_limitations()->domain_mapping->is_enabled();
+
+		} // end if;
+
+		if (!$this->site || !wu_get_setting('enable_domain_mapping') || !wu_get_setting('custom_domains') || !$maybe_limit_domain_mapping) {
 
 			$this->set_display(false);
 
 		} // end if;
 
-		add_action('admin_init', array($this, 'register_forms'));
-
-		add_action('wp_ajax_wu_toggle_primary', array($this, 'toggle_primary_status'));
+		add_action('plugins_loaded', array($this, 'register_forms'));
 
 	} // end init;
 
 	/**
-	 * Registers scripts and styles necessary to render this.
+	 * Loads the required scripts.
 	 *
 	 * @since 2.0.0
 	 * @return void
 	 */
 	public function register_scripts() {
 
-		wp_enqueue_script('wu-domain-mapping', wu_get_asset('domain-mapping.js', 'js'), array('wubox'), wu_get_version());
+		add_wubox();
 
 	} // end register_scripts;
-
-	/**
-	 * Toggles the primary status of a domain.
-	 *
-	 * @since 2.0.0
-	 * @return void
-	 */
-	public function toggle_primary_status() {
-
-		$domain_id = wu_request('id');
-
-		$value = wu_string_to_bool(wu_request('value'));
-
-		$domain = wu_get_domain($domain_id);
-
-		if ($domain) {
-
-			$domain->set_primary_domain($value);
-
-			// TODO: check for permissions..
-
-			$domain->save();
-
-			$domain = wu_get_domain($domain_id);
-
-			wp_send_json_success(array(
-				'message' => __('Status changed', 'wp-ultimo'),
-				'status'  => $domain->is_primary_domain(),
-			));
-
-			return;
-
-		} // end if;
-
-		wp_send_json_error(new \WP_Error('error', __('Something wrong happenned.', 'wp-ultimo')));
-
-	} // end toggle_primary_status;
 
 	/**
 	 * Register ajax forms used to add a new domain.
@@ -272,6 +243,12 @@ class Domain_Mapping_Element extends Base_Element {
 		wu_register_form('user_add_new_domain', array(
 			'render'     => array($this, 'render_user_add_new_domain_modal'),
 			'handler'    => array($this, 'handle_user_add_new_domain_modal'),
+			'capability' => 'exist',
+		));
+
+		wu_register_form('user_make_domain_primary', array(
+			'render'     => array($this, 'render_user_make_domain_primary_modal'),
+			'handler'    => array($this, 'handle_user_make_domain_primary_modal'),
 			'capability' => 'exist',
 		));
 
@@ -404,7 +381,7 @@ class Domain_Mapping_Element extends Base_Element {
 
 		$current_site = wu_get_site($current_site_id);
 
-		if (!$current_site && $current_user_id !== abs($current_site->get_customer()->get_user_id())) {
+		if (!$current_site && $current_user_id !== absint($current_site->get_customer()->get_user_id())) {
 
 			wp_send_json_error(
 				new \WP_Error('no-permissions', __('You do not have permissions to perform this action.', 'wp-ultimo'))
@@ -419,7 +396,7 @@ class Domain_Mapping_Element extends Base_Element {
 		*/
 		$domain = wu_create_domain(array(
 			'domain'         => wu_request('domain'),
-			'blog_id'        => abs($current_site_id),
+			'blog_id'        => absint($current_site_id),
 			'primary_domain' => (bool) wu_request('primary_domain'),
 		));
 
@@ -441,7 +418,7 @@ class Domain_Mapping_Element extends Base_Element {
 			/*
 			 * Trigger async action to update the old primary domains.
 			 */
-			wu_enqueue_async_action('wu_async_remove_old_primary_domains', array($old_primary_domains), 'domains');
+			do_action_ref_array('wu_async_remove_old_primary_domains', array($old_primary_domains));
 
 		} // end if;
 
@@ -453,7 +430,7 @@ class Domain_Mapping_Element extends Base_Element {
 		do_action('wu_domain_created', $domain, $domain->get_site(), $domain->get_site()->get_membership());
 
 		wp_send_json_success(array(
-			'redirect_url' => get_admin_url($current_site_id),
+			'redirect_url' => wu_get_current_url(),
 		));
 
 		exit;
@@ -511,7 +488,7 @@ class Domain_Mapping_Element extends Base_Element {
 	} // end render_user_delete_domain_modal;
 
 	/**
-	 * Handles deletation of the selected domain
+	 * Handles deletion of the selected domain
 	 *
 	 * @since 2.0.0
 	 * @return void
@@ -537,10 +514,108 @@ class Domain_Mapping_Element extends Base_Element {
 		} // end if;
 
 		wp_send_json_success(array(
-			'redirect_url' => get_admin_url($current_site),
+			'redirect_url' => wu_get_current_url(),
 		));
 
 	} // end handle_user_delete_domain_modal;
+
+	/**
+	 * Renders the domain delete action.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function render_user_make_domain_primary_modal() {
+
+		$fields = array(
+			'confirm'       => array(
+				'type'      => 'toggle',
+				'title'     => __('Confirm Action', 'wp-ultimo'),
+				'desc'      => __('This action will also convert the previous primary domain (if any) to an alias to prevent unexpected behavior.', 'wp-ultimo'),
+				'html_attr' => array(
+					'v-model' => 'confirmed',
+				),
+			),
+			'domain_id'     => array(
+				'type'  => 'hidden',
+				'value' => wu_request('domain_id'),
+			),
+			'submit_button' => array(
+				'type'            => 'submit',
+				'title'           => __('Make it Primary', 'wp-ultimo'),
+				'placeholder'     => __('Make it Primary', 'wp-ultimo'),
+				'value'           => 'save',
+				'classes'         => 'button button-primary wu-w-full',
+				'wrapper_classes' => 'wu-items-end',
+				'html_attr'       => array(
+					'v-bind:disabled' => '!confirmed',
+				),
+			),
+		);
+
+		$form = new \WP_Ultimo\UI\Form('user_delete_domain_modal', $fields, array(
+			'views'                 => 'admin-pages/fields',
+			'classes'               => 'wu-modal-form wu-widget-list wu-striped wu-m-0 wu-mt-0',
+			'field_wrapper_classes' => 'wu-w-full wu-box-border wu-items-center wu-flex wu-justify-between wu-p-4 wu-m-0 wu-border-t wu-border-l-0 wu-border-r-0 wu-border-b-0 wu-border-gray-300 wu-border-solid',
+			'html_attr'             => array(
+				'data-wu-app' => 'user_delete_domain_modal',
+				'data-state'  => json_encode(array(
+					'confirmed' => false,
+				)),
+			),
+		));
+
+		$form->render();
+
+	} // end render_user_make_domain_primary_modal;
+
+	/**
+	 * Handles conversion to primary domain.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function handle_user_make_domain_primary_modal() {
+
+		$current_site = wu_request('current_site');
+
+		$domain_id = wu_request('domain_id');
+
+		$domain = wu_get_domain($domain_id);
+
+		if ($domain) {
+
+			$domain->set_primary_domain(true);
+
+			$status = $domain->save();
+
+			if (is_wp_error($status)) {
+
+				wp_send_json_error($status);
+
+			} // end if;
+
+			$old_primary_domains = wu_get_domains(array(
+				'primary_domain' => true,
+				'blog_id'        => $domain->get_blog_id(),
+				'id__not_in'     => array($domain->get_id()),
+				'fields'         => 'ids',
+			));
+
+			/*
+			 * Trigger async action to update the old primary domains.
+			 */
+			do_action_ref_array('wu_async_remove_old_primary_domains', array($old_primary_domains));
+
+			wp_send_json_success(array(
+				'redirect_url' => get_admin_url($current_site),
+			));
+
+		} // end if;
+
+		wp_send_json_error(new \WP_Error('error', __('Something wrong happenned.', 'wp-ultimo')));
+
+	} // end handle_user_make_domain_primary_modal;
 
 	/**
 	 * Runs early on the request lifecycle as soon as we detect the shortcode is present.
@@ -597,8 +672,8 @@ class Domain_Mapping_Element extends Base_Element {
 
 		$all_domains = wu_get_domains(array(
 			'blog_id' => $current_site->get_id(),
-			'orderby' => 'primary',
-			'order'   => 'ASC',
+			'orderby' => 'primary_domain',
+			'order'   => 'DESC',
 		));
 
 		$domains = array();
@@ -624,10 +699,12 @@ class Domain_Mapping_Element extends Base_Element {
 				'domain_id'    => $domain->get_id(),
 			);
 
-			$delete_url = wu_get_form_url('user_delete_domain_modal', $url_atts);
+			$delete_url  = wu_get_form_url('user_delete_domain_modal', $url_atts);
+			$primary_url = wu_get_form_url('user_make_domain_primary', $url_atts);
 
 			$domains[$key] = array(
 				'id'             => $domain->get_id(),
+				'domain_object'  => $domain,
 				'domain'         => $domain->get_domain(),
 				'stage'          => $stage->get_label(),
 				'primary'        => $domain->is_primary_domain(),
@@ -635,6 +712,7 @@ class Domain_Mapping_Element extends Base_Element {
 				'secure_class'   => $secure,
 				'secure_message' => $secure_message,
 				'delete_link'    => $delete_url,
+				'primary_link'   => $primary_url,
  			);
 
 		} // end foreach;

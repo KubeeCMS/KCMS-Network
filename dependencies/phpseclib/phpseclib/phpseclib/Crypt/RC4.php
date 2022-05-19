@@ -34,8 +34,6 @@
  * ?>
  * </code>
  *
- * @category  Crypt
- * @package   RC4
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2007 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -47,19 +45,15 @@ use phpseclib3\Crypt\Common\StreamCipher;
 /**
  * Pure-PHP implementation of RC4.
  *
- * @package RC4
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
+class RC4 extends StreamCipher
 {
     /**
-     * @access private
      * @see \phpseclib3\Crypt\RC4::_crypt()
      */
     const ENCRYPT = 0;
     /**
-     * @access private
      * @see \phpseclib3\Crypt\RC4::_crypt()
      */
     const DECRYPT = 1;
@@ -68,7 +62,6 @@ class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
      *
      * @see \phpseclib3\Crypt\RC4::setKeyLength()
      * @var int
-     * @access private
      */
     protected $key_length = 128;
     // = 1024 bits
@@ -77,7 +70,6 @@ class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
      *
      * @see \phpseclib3\Crypt\Common\SymmetricKey::cipher_name_mcrypt
      * @var string
-     * @access private
      */
     protected $cipher_name_mcrypt = 'arcfour';
     /**
@@ -85,7 +77,6 @@ class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
      *
      * @see self::setKey()
      * @var string
-     * @access private
      */
     protected $key;
     /**
@@ -93,7 +84,6 @@ class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
      *
      * @see self::setKey()
      * @var array
-     * @access private
      */
     private $stream;
     /**
@@ -103,7 +93,6 @@ class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
      *
      * @see \phpseclib3\Crypt\Common\SymmetricKey::__construct()
      * @param int $engine
-     * @access protected
      * @return bool
      */
     protected function isValidEngineHelper($engine)
@@ -137,7 +126,6 @@ class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
      *
      * Keys can be between 1 and 256 bytes long.
      *
-     * @access public
      * @param int $length
      * @throws \LengthException if the key length is invalid
      */
@@ -154,7 +142,6 @@ class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
      *
      * Keys can be between 1 and 256 bytes long.
      *
-     * @access public
      * @param string $key
      */
     public function setKey($key)
@@ -170,7 +157,6 @@ class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
      *
      * @see \phpseclib3\Crypt\Common\SymmetricKey::decrypt()
      * @see self::crypt()
-     * @access public
      * @param string $plaintext
      * @return string $ciphertext
      */
@@ -189,7 +175,6 @@ class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
      *
      * @see \phpseclib3\Crypt\Common\SymmetricKey::encrypt()
      * @see self::crypt()
-     * @access public
      * @param string $ciphertext
      * @return string $plaintext
      */
@@ -203,7 +188,6 @@ class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
     /**
      * Encrypts a block
      *
-     * @access private
      * @param string $in
      */
     protected function encryptBlock($in)
@@ -213,7 +197,6 @@ class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
     /**
      * Decrypts a block
      *
-     * @access private
      * @param string $in
      */
     protected function decryptBlock($in)
@@ -224,7 +207,6 @@ class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
      * Setup the key (expansion)
      *
      * @see \phpseclib3\Crypt\Common\SymmetricKey::_setupKey()
-     * @access private
      */
     protected function setupKey()
     {
@@ -252,7 +234,6 @@ class RC4 extends \phpseclib3\Crypt\Common\StreamCipher
      *
      * @see self::encrypt()
      * @see self::decrypt()
-     * @access private
      * @param string $text
      * @param int $mode
      * @return string $text

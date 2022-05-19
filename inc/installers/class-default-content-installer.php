@@ -31,15 +31,17 @@ class Default_Content_Installer extends Base_Installer {
 	 */
 	public function init() {
 
-		require_once WP_Ultimo()->helper->path('inc/functions/email.php');
+		require_once wu_path('inc/functions/email.php');
 
-		require_once WP_Ultimo()->helper->path('inc/functions/site.php');
+		require_once wu_path('inc/functions/tax.php');
 
-		require_once WP_Ultimo()->helper->path('inc/functions/customer.php');
+		require_once wu_path('inc/functions/site.php');
 
-		require_once WP_Ultimo()->helper->path('inc/functions/product.php');
+		require_once wu_path('inc/functions/customer.php');
 
-		require_once WP_Ultimo()->helper->path('inc/functions/checkout-form.php');
+		require_once wu_path('inc/functions/product.php');
+
+		require_once wu_path('inc/functions/checkout-form.php');
 
 	} // end init;
 
@@ -126,6 +128,28 @@ class Default_Content_Installer extends Base_Installer {
 	} // end done_creating_emails;
 
 	/**
+	 * Checks if we already created the custom login page.
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	protected function done_creating_login_page() {
+
+		$page_id = wu_get_setting('default_login_page');
+
+		if (!$page_id) {
+
+			return false;
+
+		} // end if;
+
+		$page = get_post($page_id);
+
+		return !empty($page);
+
+	} // end done_creating_login_page;
+
+	/**
 	 * Returns the list of migration steps.
 	 *
 	 * @since 2.0.0
@@ -158,7 +182,7 @@ class Default_Content_Installer extends Base_Installer {
 		$steps['create_checkout'] = array(
 			'done'        => $this->done_creating_checkout_forms(),
 			'title'       => __('Create a Checkout Form', 'wp-ultimo'),
-			'description' => __('This action will create an single-step checkout form that your customers will use to place purchases, as well as the page that goes with it.', 'wp-ultimo'),
+			'description' => __('This action will create a single-step checkout form that your customers will use to place purchases, as well as the page that goes with it.', 'wp-ultimo'),
 			'pending'     => __('Pending', 'wp-ultimo'),
 			'installing'  => __('Creating Checkout Form and Registration Page...', 'wp-ultimo'),
 			'success'     => __('Success!', 'wp-ultimo'),
@@ -171,6 +195,16 @@ class Default_Content_Installer extends Base_Installer {
 			'description' => __('This action will create all emails sent by WP Ultimo.', 'wp-ultimo'),
 			'pending'     => __('Pending', 'wp-ultimo'),
 			'installing'  => __('Creating System Emails...', 'wp-ultimo'),
+			'success'     => __('Success!', 'wp-ultimo'),
+			'help'        => wu_get_documentation_url('installation-errors'),
+		);
+
+		$steps['create_login_page'] = array(
+			'done'        => $this->done_creating_login_page(),
+			'title'       => __('Create Custom Login Page', 'wp-ultimo'),
+			'description' => __('This action will create a custom login page and replace the default one.', 'wp-ultimo'),
+			'pending'     => __('Pending', 'wp-ultimo'),
+			'installing'  => __('Creating Custom Login Page...', 'wp-ultimo'),
 			'success'     => __('Success!', 'wp-ultimo'),
 			'help'        => wu_get_documentation_url('installation-errors'),
 		);
@@ -242,66 +276,60 @@ class Default_Content_Installer extends Base_Installer {
 		 * Free Plan
 		 */
 		$products[] = array(
-			'name'                => __('Free', 'wp-ultimo'),
-			'description'         => __('This is an example of a free plan.', 'wp-ultimo'),
-			'currency'            => wu_get_setting('currency_symbol', 'USD'),
-			'pricing_type'        => 'free',
-			'slug'                => 'free',
-			'type'                => 'plan',
-			'setup_fee'           => 0,
-			'recurring'           => false,
-			'trial_duration'      => false,
-			'trial_duration_unit' => false,
-			'duration'            => false,
-			'duration_unit'       => false,
-			'amount'              => 0,
-			'billing_cycles'      => false,
-			'list_order'          => false,
-			'active'              => 1,
+			'name'           => __('Free', 'wp-ultimo'),
+			'description'    => __('This is an example of a free plan.', 'wp-ultimo'),
+			'currency'       => wu_get_setting('currency_symbol', 'USD'),
+			'pricing_type'   => 'free',
+			'duration'       => 1,
+			'duration_unit'  => 'month',
+			'slug'           => 'free',
+			'type'           => 'plan',
+			'setup_fee'      => 0,
+			'recurring'      => false,
+			'amount'         => 0,
+			'billing_cycles' => false,
+			'list_order'     => false,
+			'active'         => 1,
 		);
 
 		/*
 		 * Premium Plan
 		 */
 		$products[] = array(
-			'name'                => __('Premium', 'wp-ultimo'),
-			'description'         => __('This is an example of a paid plan.', 'wp-ultimo'),
-			'currency'            => wu_get_setting('currency_symbol', 'USD'),
-			'pricing_type'        => 'paid',
-			'type'                => 'plan',
-			'slug'                => 'premium',
-			'setup_fee'           => 99,
-			'recurring'           => true,
-			'trial_duration'      => false,
-			'trial_duration_unit' => false,
-			'duration'            => 1,
-			'duration_unit'       => 'month',
-			'amount'              => 29.99,
-			'billing_cycles'      => false,
-			'list_order'          => false,
-			'active'              => 1,
+			'name'           => __('Premium', 'wp-ultimo'),
+			'description'    => __('This is an example of a paid plan.', 'wp-ultimo'),
+			'currency'       => wu_get_setting('currency_symbol', 'USD'),
+			'pricing_type'   => 'paid',
+			'type'           => 'plan',
+			'slug'           => 'premium',
+			'setup_fee'      => 99,
+			'recurring'      => true,
+			'duration'       => 1,
+			'duration_unit'  => 'month',
+			'amount'         => 29.99,
+			'billing_cycles' => false,
+			'list_order'     => false,
+			'active'         => 1,
 		);
 
 		/*
 		 * Service
 		 */
 		$products[] = array(
-			'name'                => __('SEO Consulting', 'wp-ultimo'),
-			'description'         => __('This is an example of a service that you can create and charge customers for.', 'wp-ultimo'),
-			'currency'            => wu_get_setting('currency_symbol', 'USD'),
-			'pricing_type'        => 'paid',
-			'type'                => 'service',
-			'slug'                => 'seo',
-			'setup_fee'           => 0,
-			'recurring'           => true,
-			'trial_duration'      => false,
-			'trial_duration_unit' => false,
-			'duration'            => 1,
-			'duration_unit'       => 'month',
-			'amount'              => 9.99,
-			'billing_cycles'      => false,
-			'list_order'          => false,
-			'active'              => 1,
+			'name'           => __('SEO Consulting', 'wp-ultimo'),
+			'description'    => __('This is an example of a service that you can create and charge customers for.', 'wp-ultimo'),
+			'currency'       => wu_get_setting('currency_symbol', 'USD'),
+			'pricing_type'   => 'paid',
+			'type'           => 'service',
+			'slug'           => 'seo',
+			'setup_fee'      => 0,
+			'recurring'      => true,
+			'duration'       => 1,
+			'duration_unit'  => 'month',
+			'amount'         => 9.99,
+			'billing_cycles' => false,
+			'list_order'     => false,
+			'active'         => 1,
 		);
 
 		foreach ($products as $product_data) {
@@ -373,7 +401,7 @@ class Default_Content_Installer extends Base_Installer {
 
 		if (is_wp_error($page_id)) {
 
-			throw new \Exception($status->get_error_message());
+			throw new \Exception($page_id->get_error_message());
 
 		} // end if;
 
@@ -393,8 +421,51 @@ class Default_Content_Installer extends Base_Installer {
 	 */
 	public function _install_create_emails() {
 
-		\WP_Ultimo\Managers\Email_Manager::get_instance()->default_system_emails();
+		\WP_Ultimo\Managers\Email_Manager::get_instance()->create_all_system_emails();
 
 	} // end _install_create_emails;
+
+	/**
+	 * Creates custom login page.
+	 *
+	 * @since 2.0.0
+	 * @throws \Exception When the content is already present.
+	 * @return void
+	 */
+	public function _install_create_login_page() {
+
+		$page_content = '
+		<!-- wp:shortcode -->
+			[wu_login_form]
+		<!-- /wp:shortcode -->
+	  ';
+
+		$page_args = array(
+			'post_title'   => __('Login', 'wp-ultimo'),
+			'post_content' => $page_content,
+			'post_status'  => 'publish',
+			'post_author'  => get_current_user_id(),
+			'post_type'    => 'page',
+		);
+
+		$page_id = wp_insert_post($page_args);
+
+		if (is_wp_error($page_id)) {
+
+			throw new \Exception($page_id->get_error_message());
+
+		} // end if;
+
+		/*
+		 * Enable a custom login page.
+		 */
+		wu_save_setting('enable_custom_login_page', true);
+
+		/*
+		 * Set page as the default login page.
+		 */
+		wu_save_setting('default_login_page', $page_id);
+
+	} // end _install_create_login_page;
 
 } // end class Default_Content_Installer;

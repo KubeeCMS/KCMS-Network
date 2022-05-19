@@ -1,11 +1,9 @@
 <?php
 /**
- * Checkout Functions
+ * Legacy Functions and Classes
  *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Checkout
- * @version     2.0.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
 
 // Exit if accessed directly
@@ -432,7 +430,7 @@ function wu_print_signup_field($field_slug, $field, $results) {
  * @param array $user_data
  * @param array $plan_data
  * @param array $user_meta
- * @return integer/boolean
+ * @return integer|boolean
  */
 function wu_create_user(array $user_data, array $plan_data, array $user_meta = array()) {
 

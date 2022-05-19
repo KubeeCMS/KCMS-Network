@@ -141,6 +141,20 @@ class Jobs_List_Admin_Page extends Base_Admin_Page {
 	} // end get_submenu_title;
 
 	/**
+	 * Runs the hooks for the admin list table.
+	 *
+	 * Required for searched to work as intended.
+	 *
+	 * @since 2.0.10
+	 * @return void
+	 */
+	public function page_loaded() {
+
+		\ActionScheduler_AdminView::instance()->process_admin_ui();
+
+	} // end page_loaded;
+
+	/**
 	 * Calls the Action Scheduler renderer.
 	 *
 	 * @since 2.0.0

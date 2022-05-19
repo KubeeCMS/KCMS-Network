@@ -53,14 +53,37 @@
 
       });
 
-      _.each(tour, function(step) {
+      _.each(tour, function(step, step_index) {
+
+        const last_step = (step_index + 1) === tour.length;
+
+        const action_url = function(url, target = '_blank') {
+
+          return () => {
+
+            window.open(url, target);
+
+          };
+
+        };
+
+        step.buttons = _.isArray(step.buttons) ? step.buttons : [];
+
+        step.buttons = _.map(step.buttons, function(item) {
+
+          item.action = action_url(item.url, item.target);
+
+          return item;
+
+        });
 
         window[tour_id].addStep({
           ...step,
           buttons: [
+            ...step.buttons,
             {
               classes: 'button button-primary wu-text-xs sm:wu-normal-case',
-              text: wu_tours_vars.i18n.next,
+              text: last_step ? wu_tours_vars.i18n.finish : wu_tours_vars.i18n.next,
               action: window[tour_id].next,
             },
           ],

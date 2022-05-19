@@ -157,7 +157,7 @@ if ( !class_exists( 'MUCD_Option' ) ) {
                 'links'              => array('link_url', 'link_image'),
                 'options'            => array('option_name', 'option_value'),
                 'postmeta'           => array('meta_value'),
-                'posts'              => array('post_content', 'guid'),
+                'posts'              => array('post_content', 'guid', 'post_title', 'post_name'),
                 'terms'              => array(),
                 'term_relationships' => array(),
                 'term_taxonomy'      => array(),

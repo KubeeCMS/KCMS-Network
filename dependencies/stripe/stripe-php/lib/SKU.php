@@ -13,9 +13,6 @@ namespace WP_Ultimo\Dependencies\Stripe;
  *
  * Can also be used to manage inventory.
  *
- * Related guide: <a href="https://stripe.com/docs/orders">Tax, Shipping, and
- * Inventory</a>.
- *
  * @property string $id Unique identifier for the object.
  * @property string $object String representing the object's type. Objects of the same type share the same value.
  * @property bool $active Whether the SKU is available for purchase.
@@ -31,7 +28,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property string|\Stripe\Product $product The ID of the product this SKU is associated with. The product must be currently active.
  * @property int $updated Time at which the object was last updated. Measured in seconds since the Unix epoch.
  */
-class SKU extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class SKU extends ApiResource
 {
     const OBJECT_NAME = 'sku';
     use ApiOperations\All;

@@ -93,7 +93,8 @@ class System_Info_Admin_Page extends Base_Admin_Page {
 	public function register_scripts() {
 
 		wp_enqueue_script('dashboard');
-		wp_enqueue_script('wu-clipboard');
+
+		wp_enqueue_script('clipboard');
 
 	} // end register_scripts;
 
@@ -220,6 +221,28 @@ class System_Info_Admin_Page extends Base_Admin_Page {
 		$all_options_transients = $this->get_transients_in_options($all_options);
 
 		$array_active_plugins = array();
+
+		$array_constants_options = array(
+			'SAVEQUERIES',
+			'WP_DEBUG',
+			'WP_DEBUG_DISPLAY',
+			'WP_DEBUG_LOG',
+			'WP_DISABLE_FATAL_ERROR_HANDLER',
+			'SCRIPT_DEBUG',
+			'WP_ENV',
+		);
+
+		$array_constants = array();
+
+		foreach ($array_constants_options as $constant) {
+
+			$array_constants[] = array(
+				'tooltip' => '',
+				'title'   => $constant,
+				'value'   => defined($constant) ? (is_bool(constant($constant)) ? __('Enabled', 'wp-ultimo') : constant($constant)) : __('Disabled', 'wp-ultimo'),
+			);
+
+		} // end foreach;
 
 		foreach ($plugins as $plugin_path => $plugin) {
 
@@ -375,9 +398,19 @@ class System_Info_Admin_Page extends Base_Admin_Page {
 					'title'   => 'Multi-Site Active',
 					'value'   => is_multisite() ? __('Yes', 'wp-ultimo') : __('No', 'wp-ultimo')
 				),
+				'php-current-time-gmt'       => array(
+					'tooltip' => '',
+					'title'   => 'PHP Current Time - GMT',
+					'value'   => wu_get_current_time('mysql', true),
+				),
+				'timezone'       => array(
+					'tooltip' => '',
+					'title'   => 'Timezone',
+					'value'   => wp_timezone_string(),
+				),
 				'php-current-time'       => array(
 					'tooltip' => '',
-					'title'   => 'PHP Current Time',
+					'title'   => 'PHP Current Time - with Timezone',
 					'value'   => wu_get_current_time()
 				),
 				'database-current-time'  => array(
@@ -530,6 +563,8 @@ class System_Info_Admin_Page extends Base_Admin_Page {
 					),
 				),
 				$wpultimo_settings),
+
+			'Defined Constants'             => $array_constants,
 
 		)
 		);
@@ -819,6 +854,5 @@ class System_Info_Admin_Page extends Base_Admin_Page {
 		return $transients;
 
 	} // end get_transients_in_options;
-
 
 } // end class System_Info_Admin_Page;

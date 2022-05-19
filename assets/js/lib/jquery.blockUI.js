@@ -75,7 +75,7 @@
 		};
 
 		// plugin method for blocking element content
-		$.fn.block = function(opts) {
+		$.fn.wu_block = function(opts) {
 			if ( this[0] === window ) {
 				$.blockUI( opts );
 				return this;
@@ -85,7 +85,7 @@
 				var $el = $(this);
 				if (fullOpts.ignoreIfBlocked && $el.data('blockUI.isBlocked'))
 					return;
-				$el.unblock({ fadeOut: 0 });
+				$el.wu_unblock({ fadeOut: 0 });
 			});
 
 			return this.each(function() {
@@ -99,7 +99,7 @@
 		};
 
 		// plugin method for unblocking element content
-		$.fn.unblock = function(opts) {
+		$.fn.wu_unblock = function(opts) {
 			if ( this[0] === window ) {
 				$.unblockUI( opts );
 				return this;
@@ -294,17 +294,17 @@
 			// layer3 is the message content that is displayed while blocking
 			var lyr1, lyr2, lyr3, s;
 			if (msie || opts.forceIframe)
-				lyr1 = $('<iframe class="blockUI" style="z-index:'+ (z++) +';display:none;border:none;margin:0;padding:0;position:absolute;width:100%;height:100%;top:0;left:0" src="'+opts.iframeSrc+'"></iframe>');
+				lyr1 = $('<iframe class="wu_blockUI" style="z-index:'+ (z++) +';display:none;border:none;margin:0;padding:0;position:absolute;width:100%;height:100%;top:0;left:0" src="'+opts.iframeSrc+'"></iframe>');
 			else
-				lyr1 = $('<div class="blockUI" style="display:none"></div>');
+				lyr1 = $('<div class="wu_blockUI" style="display:none"></div>');
 
 			if (opts.theme)
-				lyr2 = $('<div class="blockUI blockOverlay ui-widget-overlay" style="z-index:'+ (z++) +';display:none"></div>');
+				lyr2 = $('<div class="wu_blockUI blockOverlay ui-widget-overlay" style="z-index:'+ (z++) +';display:none"></div>');
 			else
-				lyr2 = $('<div class="blockUI blockOverlay" style="z-index:'+ (z++) +';display:none;border:none;margin:0;padding:0;width:100%;height:100%;top:0;left:0"></div>');
+				lyr2 = $('<div class="wu_blockUI blockOverlay" style="z-index:'+ (z++) +';display:none;border:none;margin:0;padding:0;width:100%;height:100%;top:0;left:0"></div>');
 
 			if (opts.theme && full) {
-				s = '<div class="blockUI ' + opts.blockMsgClass + ' blockPage ui-dialog ui-widget ui-corner-all" style="z-index:'+(z+10)+';display:none;position:fixed">';
+				s = '<div class="wu_blockUI ' + opts.blockMsgClass + ' blockPage ui-dialog ui-widget ui-corner-all" style="z-index:'+(z+10)+';display:none;position:fixed">';
 				if ( opts.title ) {
 					s += '<div class="ui-widget-header ui-dialog-titlebar ui-corner-all blockTitle">'+(opts.title || '&nbsp;')+'</div>';
 				}
@@ -312,7 +312,7 @@
 				s += '</div>';
 			}
 			else if (opts.theme) {
-				s = '<div class="blockUI ' + opts.blockMsgClass + ' blockElement ui-dialog ui-widget ui-corner-all" style="z-index:'+(z+10)+';display:none;position:absolute">';
+				s = '<div class="wu_blockUI ' + opts.blockMsgClass + ' blockElement ui-dialog ui-widget ui-corner-all" style="z-index:'+(z+10)+';display:none;position:absolute">';
 				if ( opts.title ) {
 					s += '<div class="ui-widget-header ui-dialog-titlebar ui-corner-all blockTitle">'+(opts.title || '&nbsp;')+'</div>';
 				}
@@ -320,10 +320,10 @@
 				s += '</div>';
 			}
 			else if (full) {
-				s = '<div class="blockUI ' + opts.blockMsgClass + ' blockPage" style="z-index:'+(z+10)+';display:none;position:fixed"></div>';
+				s = '<div class="wu_blockUI ' + opts.blockMsgClass + ' blockPage" style="z-index:'+(z+10)+';display:none;position:fixed"></div>';
 			}
 			else {
-				s = '<div class="blockUI ' + opts.blockMsgClass + ' blockElement" style="z-index:'+(z+10)+';display:none;position:absolute"></div>';
+				s = '<div class="wu_blockUI ' + opts.blockMsgClass + ' blockElement" style="z-index:'+(z+10)+';display:none;position:absolute"></div>';
 			}
 			lyr3 = $(s);
 
@@ -449,7 +449,7 @@
 					if (full)
 						$.unblockUI(opts);
 					else
-						$(el).unblock(opts);
+						$(el).wu_unblock(opts);
 				}, opts.timeout);
 				$(el).data('blockUI.timeout', to);
 			}
@@ -476,9 +476,9 @@
 
 			var els;
 			if (full) // crazy selector to handle odd field errors in ie6/7
-				els = $('body').children().filter('.blockUI').add('body > .blockUI');
+				els = $('body').children().filter('.wu_blockUI').add('body > .wu_blockUI');
 			else
-				els = $el.find('>.blockUI');
+				els = $el.find('> .wu_blockUI');
 
 			// fix cursor issue
 			if ( opts.cursorReset ) {
@@ -586,7 +586,7 @@
 				return true;
 
 			// allow events for content that is not being blocked
-			return target.parents().children().filter('div.blockUI').length === 0;
+			return target.parents().children().filter('div.wu_blockUI').length === 0;
 		}
 
 		function focus(back) {

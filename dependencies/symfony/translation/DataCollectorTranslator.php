@@ -17,23 +17,20 @@ use WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface;
 /**
  * @author Abdellatif Ait boudad <a.aitboudad@gmail.com>
  */
-class DataCollectorTranslator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface, \Symfony\Component\Translation\TranslatorBagInterface, \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\LocaleAwareInterface, \WP_Ultimo\Dependencies\Symfony\Component\HttpKernel\CacheWarmer\WarmableInterface
+class DataCollectorTranslator implements TranslatorInterface, \Symfony\Component\Translation\TranslatorBagInterface, LocaleAwareInterface, WarmableInterface
 {
-    const MESSAGE_DEFINED = 0;
-    const MESSAGE_MISSING = 1;
-    const MESSAGE_EQUALS_FALLBACK = 2;
-    /**
-     * @var TranslatorInterface|TranslatorBagInterface
-     */
+    public const MESSAGE_DEFINED = 0;
+    public const MESSAGE_MISSING = 1;
+    public const MESSAGE_EQUALS_FALLBACK = 2;
     private $translator;
     private $messages = [];
     /**
-     * @param TranslatorInterface $translator The translator must implement TranslatorBagInterface
+     * @param TranslatorInterface&TranslatorBagInterface&LocaleAwareInterface $translator
      */
-    public function __construct(\WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface $translator)
+    public function __construct(TranslatorInterface $translator)
     {
-        if (!$translator instanceof \Symfony\Component\Translation\TranslatorBagInterface || !$translator instanceof \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\LocaleAwareInterface) {
-            throw new \Symfony\Component\Translation\Exception\InvalidArgumentException(\sprintf('The Translator "%s" must implement TranslatorInterface, TranslatorBagInterface and LocaleAwareInterface.', get_debug_type($translator)));
+        if (!$translator instanceof \Symfony\Component\Translation\TranslatorBagInterface || !$translator instanceof LocaleAwareInterface) {
+            throw new InvalidArgumentException(\sprintf('The Translator "%s" must implement TranslatorInterface, TranslatorBagInterface and LocaleAwareInterface.', \get_debug_type($translator)));
         }
         $this->translator = $translator;
     }
@@ -69,12 +66,19 @@ class DataCollectorTranslator implements \WP_Ultimo\Dependencies\Symfony\Contrac
     }
     /**
      * {@inheritdoc}
+     */
+    public function getCatalogues() : array
+    {
+        return $this->translator->getCatalogues();
+    }
+    /**
+     * {@inheritdoc}
      *
      * @return string[]
      */
     public function warmUp(string $cacheDir)
     {
-        if ($this->translator instanceof \WP_Ultimo\Dependencies\Symfony\Component\HttpKernel\CacheWarmer\WarmableInterface) {
+        if ($this->translator instanceof WarmableInterface) {
             return (array) $this->translator->warmUp($cacheDir);
         }
         return [];
@@ -82,7 +86,7 @@ class DataCollectorTranslator implements \WP_Ultimo\Dependencies\Symfony\Contrac
     /**
      * Gets the fallback locales.
      *
-     * @return array The fallback locales
+     * @return array
      */
     public function getFallbackLocales()
     {

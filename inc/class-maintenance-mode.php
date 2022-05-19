@@ -46,7 +46,7 @@ class Maintenance_Mode {
 	 */
 	public function hooks() {
 
-		add_action('wp_ajax_toggle_maintenance_mode', array($this, 'toggle_maintenance_mode'));
+		add_action('wu_ajax_toggle_maintenance_mode', array($this, 'toggle_maintenance_mode'));
 
 		if (!is_main_site()) {
 
@@ -62,7 +62,15 @@ class Maintenance_Mode {
 
 				add_action('wp', array($this, 'render_page'));
 
-				add_action('wp_head', 'wp_no_robots', 20);
+				if (function_exists('wp_robots_no_robots')) {
+
+					add_filter('wp_robots', 'wp_robots_no_robots'); // WordPress 5.7+
+
+				} else {
+
+					add_action('wp_head', 'wp_no_robots', 20);
+
+				} // end if;
 
 			} // end if;
 
@@ -85,18 +93,22 @@ class Maintenance_Mode {
 
 		} // end if;
 
-		$args = array(
-			'id'     => 'wu-maintenance-mode',
-			'parent' => 'top-secondary',
-			'title'  => __('Maintenance Mode - Active', 'wp-ultimo'),
-			'href'   => '#wp-ultimo-site-maintenance-element',
-			'meta'   => array(
-				'class' => 'wu-maintenance-mode ' . (self::check_maintenance_mode() ? '' : 'hidden'),
-				'title' => __('This means that your site is not available for visitors at the moment. Only you and other logged users have access to it. Click here to toggle this option.', 'wp-ultimo'),
-			),
-		);
+		if (is_admin() || self::check_maintenance_mode()) {
 
-		$wp_admin_bar->add_node($args);
+			$args = array(
+				'id'     => 'wu-maintenance-mode',
+				'parent' => 'top-secondary',
+				'title'  => __('Maintenance Mode - Active', 'wp-ultimo'),
+				'href'   => '#wp-ultimo-site-maintenance-element',
+				'meta'   => array(
+					'class' => 'wu-maintenance-mode ' . (self::check_maintenance_mode() ? '' : 'hidden'),
+					'title' => __('This means that your site is not available for visitors at the moment. Only you and other logged users have access to it. Click here to toggle this option.', 'wp-ultimo'),
+				),
+			);
+
+			$wp_admin_bar->add_node($args);
+
+		} // end if;
 
 	} // end add_notice_to_admin_bar;
 

@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class AlphaDash extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class AlphaDash extends Rule
 {
     /** @var string */
     protected $message = "The :attribute only allows a-z, 0-9, _ and -";

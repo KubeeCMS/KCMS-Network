@@ -15,7 +15,7 @@ namespace WP_Ultimo\Apis;
 trait WP_CLI {
 
 	/**
-	 * The base used in the command right after the root: `wp <root> <command_base> <subcommand>`.
+	 * The base used in the command right after the root: `wp <root> <command_base> <sub_command>`.
 	 *
 	 * @since 2.0.0
 	 * @var string
@@ -23,12 +23,12 @@ trait WP_CLI {
 	protected $wp_cli_command_base = '';
 
 	/**
-	 * WP-CLI Subcommand enabled for this entity.
+	 * WP-CLI Sub_command enabled for this entity.
 	 *
 	 * @since 2.0.0
 	 * @var array
 	 */
-	protected $wp_cli_enabled_subcommands = array();
+	protected $wp_cli_enabled_sub_commands = array();
 
 	/**
 	 * Returns the base used right after the root.
@@ -52,20 +52,22 @@ trait WP_CLI {
 	public function enable_wp_cli() {
 
 		if (!defined('WP_CLI')) {
+
 			return;
+
 		} // end if;
 
 		$wp_cli_root = 'wu';
 
-		$this->set_wp_cli_enabled_subcommands();
+		$this->set_wp_cli_enabled_sub_commands();
 
-		foreach ($this->wp_cli_enabled_subcommands as $subcommand => $subcommand_data) {
+		foreach ($this->wp_cli_enabled_sub_commands as $sub_command => $sub_command_data) {
 
 			\WP_CLI::add_command(
-				"{$wp_cli_root} {$this->get_wp_cli_command_base()} {$subcommand}",
-				$subcommand_data['callback'],
+				"{$wp_cli_root} {$this->get_wp_cli_command_base()} {$sub_command}",
+				$sub_command_data['callback'],
 				array(
-					'synopsis' => $subcommand_data['synopsis'],
+					'synopsis' => $sub_command_data['synopsis'],
 				)
 			);
 
@@ -74,11 +76,11 @@ trait WP_CLI {
 	} // end enable_wp_cli;
 
 	/**
-	 * Set wP-CLI Subcommand enabled for this entity.
+	 * Set wP-CLI Sub-command enabled for this entity.
 	 */
-	public function set_wp_cli_enabled_subcommands() {
+	public function set_wp_cli_enabled_sub_commands() {
 
-		$subcommands = array(
+		$sub_commands = array(
 			'get'    => array(
 				'callback' => array($this, 'wp_cli_get_item'),
 			),
@@ -98,12 +100,29 @@ trait WP_CLI {
 
 		$params = array_merge($this->wp_cli_get_fields(), $this->wp_cli_extra_parameters());
 
-		foreach ($subcommands as $subcommand => &$subcommand_data) {
-			$subcommand_data['synopsis'] = array();
+		$params = array_unique($params);
 
-			if (in_array($subcommand, array('get', 'update', 'delete'), true)) {
+		/**
+		 * Unset undesired Params.
+		 */
+		$params_to_remove = apply_filters('wu_cli_params_to_remove', array(
+			'id',
+			'model',
+		));
 
-				$subcommand_data['synopsis'][] = array(
+		$params = array_filter($params, function($param) use ($params_to_remove) {
+
+			return !in_array($param, $params_to_remove, true);
+
+		});
+
+		foreach ($sub_commands as $sub_command => &$sub_command_data) {
+
+			$sub_command_data['synopsis'] = array();
+
+			if (in_array($sub_command, array('get', 'update', 'delete'), true)) {
+
+				$sub_command_data['synopsis'][] = array(
 					'name'        => 'id',
 					'type'        => 'positional',
 					'description' => __('The id for the resource.', 'wp-ultimo'),
@@ -112,25 +131,40 @@ trait WP_CLI {
 
 			} // end if;
 
-			if (in_array($subcommand, array('list', 'update', 'create'), true)) {
+			if (in_array($sub_command, array('list', 'update', 'create'), true)) {
+
+				$explanation_list = wu_rest_get_endpoint_schema($this->model_class, 'update');
 
 				foreach ($params as $name) {
 
+					$explanation = wu_get_isset($explanation_list, $name, array());
+
+					$type = wu_get_isset($explanation, 'type', 'assoc');
+
 					$field = array(
-						'name'     => $name,
-						'type'     => 'assoc',
-						'optional' => true,
+						'name'        => $name,
+						'description' => wu_get_isset($explanation, 'description', __('No description found.', 'wp-ultimo')),
+						'optional'    => !wu_get_isset($explanation, 'required'),
+						'type'        => 'assoc',
 					);
 
-					$subcommand_data['synopsis'][] = $field;
+					$options = wu_get_isset($explanation, 'options', array());
+
+					if ($options) {
+
+						$field['options'] = $options;
+
+					} // end if;
+
+					$sub_command_data['synopsis'][] = $field;
 
 				} // end foreach;
 
 			} // end if;
 
-			if (in_array($subcommand, array('create', 'update'), true)) {
+			if (in_array($sub_command, array('create', 'update'), true)) {
 
-				$subcommand_data['synopsis'][] = array(
+				$sub_command_data['synopsis'][] = array(
 					'name'        => 'porcelain',
 					'type'        => 'flag',
 					'description' => __('Output just the id when the operation is successful.', 'wp-ultimo'),
@@ -139,9 +173,9 @@ trait WP_CLI {
 
 			} // end if;
 
-			if (in_array($subcommand, array('list', 'get'), true)) {
+			if (in_array($sub_command, array('list', 'get'), true)) {
 
-				$subcommand_data['synopsis'][] = array(
+				$sub_command_data['synopsis'][] = array(
 					'name'        => 'format',
 					'type'        => 'assoc',
 					'description' => __('Render response in a particular format.', 'wp-ultimo'),
@@ -157,36 +191,37 @@ trait WP_CLI {
 					),
 				);
 
-				$subcommand_data['synopsis'][] = array(
+				$sub_command_data['synopsis'][] = array(
 					'name'        => 'fields',
 					'type'        => 'assoc',
-					'description' => __('Limit response to specific fields. Defaults to ID, name', 'wp-ultimo'),
+					'description' => __('Limit response to specific fields. Defaults to id, name', 'wp-ultimo'),
 					'optional'    => true,
+					'options'     => array_merge(array('id'), $params),
 				);
 
 			} // end if;
 
 		} // end foreach;
 
-		$this->wp_cli_enabled_subcommands = $subcommands;
+		$this->wp_cli_enabled_sub_commands = $sub_commands;
 
 		/**
-		 * Filters which subcommands are enabled for this entity.
+		 * Filters which sub_commands are enabled for this entity.
 		 *
 		 * @since 2.0.0
 		 *
-		 * @param array        $subcommands  Default subcommands.
+		 * @param array        $sub_commands  Default sub_commands.
 		 * @param string       $command_base The base used in the command right after the root.
 		 * @param Base_Manager $this         The object instance.
 		 */
-		$this->wp_cli_enabled_subcommands = apply_filters(
-			'wu_wp_cli_enabled_subcommands',
-			$this->wp_cli_enabled_subcommands,
+		$this->wp_cli_enabled_sub_commands = apply_filters(
+			'wu_wp_cli_enabled_sub_commands',
+			$this->wp_cli_enabled_sub_commands,
 			$this->get_wp_cli_command_base(),
 			$this
 		);
 
-	} // end set_wp_cli_enabled_subcommands;
+	} // end set_wp_cli_enabled_sub_commands;
 
 	/**
 	 * Allows the additional of additional parameters.
@@ -237,6 +272,7 @@ trait WP_CLI {
 		$fields = (!empty($array_assoc['fields'])) ? $array_assoc['fields'] : $this->wp_cli_get_fields();
 
 		$formatter = new \WP_CLI\Formatter($array_assoc, $fields);
+
 		$formatter->display_item($item->to_array());
 
 	} // end wp_cli_get_item;
@@ -257,12 +293,11 @@ trait WP_CLI {
 
 		$items = $this->model_class::query($array_assoc);
 
-		$items = array_map(
-			function($item) {
-				return $item->to_array();
-			},
-			$items
-		);
+		$items = array_map(function($item) {
+
+			return $item->to_array();
+
+		}, $items);
 
 		\WP_CLI\Utils\format_items($array_assoc['format'], $items, $fields);
 
@@ -286,7 +321,7 @@ trait WP_CLI {
 
 			$item_id = $item->get_id();
 
-			if ($array_assoc['porcelain']) {
+			if (!empty($array_assoc['porcelain'])) {
 
 				\WP_CLI::line($item_id);
 
@@ -325,9 +360,11 @@ trait WP_CLI {
 		} // end if;
 
 		$porcelain = false;
+
 		if (!empty($array_assoc['porcelain'])) {
 
 			$porcelain = true;
+
 			unset($array_assoc['porcelain']);
 
 		} // end if;

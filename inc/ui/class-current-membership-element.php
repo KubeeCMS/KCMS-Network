@@ -21,6 +21,8 @@ defined('ABSPATH') || exit;
  */
 class Current_Membership_Element extends Base_Element {
 
+	use \WP_Ultimo\Traits\Singleton;
+
 	/**
 	 * The id of the element.
 	 *
@@ -51,7 +53,25 @@ class Current_Membership_Element extends Base_Element {
 			'capability' => 'exist',
 		));
 
+		wu_register_form('change_plan', array(
+			'render'     => array($this, 'render_change_plan'),
+			'handler'    => array($this, 'handle_change_plan'),
+			'capability' => 'exist',
+		));
+
 	} // end init;
+
+	/**
+	 * Loads the required scripts.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function register_scripts() {
+
+		add_wubox();
+
+	} // end register_scripts;
 
 	/**
 	 * The icon of the UI element.
@@ -273,8 +293,26 @@ class Current_Membership_Element extends Base_Element {
 		$atts['site']       = $this->site;
 		$atts['membership'] = $this->membership;
 		$atts['plan']       = $this->plan;
+		$atts['element']    = $this;
 
-		return wu_get_template_contents('dashboard-widgets/current-membership', $atts);
+		$atts['pending_change'] = false;
+
+		if ($this->membership) {
+
+			$pending_swap_order = $this->membership->get_scheduled_swap();
+
+			if ($pending_swap_order) {
+
+				$atts['pending_change']      = $pending_swap_order->order->get_cart_descriptor();
+				$atts['pending_change_date'] = wu_date($pending_swap_order->scheduled_date)->format(get_option('date_format'));
+
+			} // end if;
+
+			return wu_get_template_contents('dashboard-widgets/current-membership', $atts);
+
+		} // end if;
+
+		return '';
 
 	} // end output;
 
@@ -299,5 +337,106 @@ class Current_Membership_Element extends Base_Element {
 		wu_get_template('dashboard-widgets/current-membership-product-details', $atts);
 
 	} // end render_product_details;
+
+	/**
+	 * Renders the update billing address form.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function render_change_plan() {
+
+		$membership = wu_get_membership_by_hash(wu_request('membership'));
+
+		if (!$membership) {
+
+			return '';
+
+		} // end if;
+
+		$fields = array();
+
+		$fields['product'] = array(
+			'type'    => 'select',
+			'title'   => 'Title',
+			'desc'    => 'Teste',
+			'options' => 'wu_get_plans_as_options',
+		);
+
+		$fields['submit'] = array(
+			'type'  => 'submit',
+			'title' => 'Title',
+			'desc'  => 'Teste',
+		);
+
+		$fields['membership'] = array(
+			'type'  => 'hidden',
+			'value' => wu_request('membership'),
+		);
+
+		$form = new \WP_Ultimo\UI\Form('edit_site', $fields, array(
+			'views'                 => 'admin-pages/fields',
+			'classes'               => 'wu-modal-form wu-widget-list wu-striped wu-m-0 wu-mt-0',
+			'field_wrapper_classes' => 'wu-w-full wu-box-border wu-items-center wu-flex wu-justify-between wu-p-4 wu-m-0 wu-border-t wu-border-l-0 wu-border-r-0 wu-border-b-0 wu-border-gray-300 wu-border-solid',
+			'html_attr'             => array(
+				'data-wu-app' => 'edit_site',
+				'data-state'  => wu_convert_to_state(),
+			),
+		));
+
+		$form->render();
+
+	} // end render_change_plan;
+
+	/**
+	 * Handles the password reset form.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function handle_change_plan() {
+
+		$membership = wu_get_membership_by_hash(wu_request('membership'));
+
+		if (!$membership) {
+
+			$error = new \WP_Error('membership-dont-exist', __('Something went wrong.', 'wp-ultimo'));
+
+			wp_send_json_error($error);
+
+		} // end if;
+
+		$product = wu_get_product(wu_request('product'));
+
+		$url = $this->get_upgrade_form_url();
+
+		if ($product) {
+
+			$url = add_query_arg(array(
+				'products'    => array($product->get_id()),
+				'action-type' => 'upgrade',
+			), $url);
+
+		} // end if;
+
+		wp_send_json_success(array(
+			'redirect_url' => $url,
+		));
+
+	} // end handle_change_plan;
+
+	/**
+	 * Get upgrade URL.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $membership_hash The membership hash to edit.
+	 * @return string
+	 */
+	public function get_upgrade_form_url($membership_hash) {
+
+		return admin_url('admin.php?page=wu-checkout&membership=' . $membership_hash);
+
+	} // end get_upgrade_form_url;
 
 } // end class Current_Membership_Element;

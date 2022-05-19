@@ -1,24 +1,25 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\EventLoop;
+namespace React\EventLoop;
 
 use BadMethodCallException;
 use Event;
 use EventBase;
-use WP_Ultimo\Dependencies\React\EventLoop\Tick\FutureTickQueue;
-use WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer;
+use React\EventLoop\Tick\FutureTickQueue;
+use React\EventLoop\Timer\Timer;
 use SplObjectStorage;
 /**
  * An `ext-event` based event loop.
  *
- * This uses the [`event` PECL extension](https://pecl.php.net/package/event).
- * It supports the same backends as libevent.
+ * This uses the [`event` PECL extension](https://pecl.php.net/package/event),
+ * that provides an interface to `libevent` library.
+ * `libevent` itself supports a number of system-specific backends (epoll, kqueue).
  *
- * This loop is known to work with PHP 5.4 through PHP 7+.
+ * This loop is known to work with PHP 5.4 through PHP 8+.
  *
  * @link https://pecl.php.net/package/event
  */
-final class ExtEventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInterface
+final class ExtEventLoop implements \React\EventLoop\LoopInterface
 {
     private $eventBase;
     private $futureTickQueue;
@@ -37,7 +38,7 @@ final class ExtEventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
     public function __construct()
     {
         if (!\class_exists('EventBase', \false)) {
-            throw new \BadMethodCallException('Cannot create ExtEventLoop, ext-event extension missing');
+            throw new BadMethodCallException('Cannot create ExtEventLoop, ext-event extension missing');
         }
         // support arbitrary file descriptors and not just sockets
         // Windows only has limited file descriptor support, so do not require this (will fail otherwise)
@@ -46,10 +47,10 @@ final class ExtEventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
         if (\DIRECTORY_SEPARATOR !== '\\') {
             $config->requireFeatures(\EventConfig::FEATURE_FDS);
         }
-        $this->eventBase = new \EventBase($config);
-        $this->futureTickQueue = new \WP_Ultimo\Dependencies\React\EventLoop\Tick\FutureTickQueue();
-        $this->timerEvents = new \SplObjectStorage();
-        $this->signals = new \WP_Ultimo\Dependencies\React\EventLoop\SignalsHandler();
+        $this->eventBase = new EventBase($config);
+        $this->futureTickQueue = new FutureTickQueue();
+        $this->timerEvents = new SplObjectStorage();
+        $this->signals = new \React\EventLoop\SignalsHandler();
         $this->createTimerCallback();
         $this->createStreamCallback();
     }
@@ -68,7 +69,7 @@ final class ExtEventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
         if (isset($this->readListeners[$key])) {
             return;
         }
-        $event = new \Event($this->eventBase, $stream, \Event::PERSIST | \Event::READ, $this->streamCallback);
+        $event = new Event($this->eventBase, $stream, Event::PERSIST | Event::READ, $this->streamCallback);
         $event->add();
         $this->readEvents[$key] = $event;
         $this->readListeners[$key] = $listener;
@@ -84,7 +85,7 @@ final class ExtEventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
         if (isset($this->writeListeners[$key])) {
             return;
         }
-        $event = new \Event($this->eventBase, $stream, \Event::PERSIST | \Event::WRITE, $this->streamCallback);
+        $event = new Event($this->eventBase, $stream, Event::PERSIST | Event::WRITE, $this->streamCallback);
         $event->add();
         $this->writeEvents[$key] = $event;
         $this->writeListeners[$key] = $listener;
@@ -112,17 +113,17 @@ final class ExtEventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
     }
     public function addTimer($interval, $callback)
     {
-        $timer = new \WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer($interval, $callback, \false);
+        $timer = new Timer($interval, $callback, \false);
         $this->scheduleTimer($timer);
         return $timer;
     }
     public function addPeriodicTimer($interval, $callback)
     {
-        $timer = new \WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer($interval, $callback, \true);
+        $timer = new Timer($interval, $callback, \true);
         $this->scheduleTimer($timer);
         return $timer;
     }
-    public function cancelTimer(\WP_Ultimo\Dependencies\React\EventLoop\TimerInterface $timer)
+    public function cancelTimer(\React\EventLoop\TimerInterface $timer)
     {
         if ($this->timerEvents->contains($timer)) {
             $this->timerEvents[$timer]->free();
@@ -137,7 +138,7 @@ final class ExtEventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
     {
         $this->signals->add($signal, $listener);
         if (!isset($this->signalEvents[$signal])) {
-            $this->signalEvents[$signal] = \Event::signal($this->eventBase, $signal, array($this->signals, 'call'));
+            $this->signalEvents[$signal] = Event::signal($this->eventBase, $signal, array($this->signals, 'call'));
             $this->signalEvents[$signal]->add();
         }
     }
@@ -154,9 +155,9 @@ final class ExtEventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
         $this->running = \true;
         while ($this->running) {
             $this->futureTickQueue->tick();
-            $flags = \EventBase::LOOP_ONCE;
+            $flags = EventBase::LOOP_ONCE;
             if (!$this->running || !$this->futureTickQueue->isEmpty()) {
-                $flags |= \EventBase::LOOP_NONBLOCK;
+                $flags |= EventBase::LOOP_NONBLOCK;
             } elseif (!$this->readEvents && !$this->writeEvents && !$this->timerEvents->count() && $this->signals->isEmpty()) {
                 break;
             }
@@ -172,13 +173,13 @@ final class ExtEventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
      *
      * @param TimerInterface $timer
      */
-    private function scheduleTimer(\WP_Ultimo\Dependencies\React\EventLoop\TimerInterface $timer)
+    private function scheduleTimer(\React\EventLoop\TimerInterface $timer)
     {
-        $flags = \Event::TIMEOUT;
+        $flags = Event::TIMEOUT;
         if ($timer->isPeriodic()) {
-            $flags |= \Event::PERSIST;
+            $flags |= Event::PERSIST;
         }
-        $event = new \Event($this->eventBase, -1, $flags, $this->timerCallback, $timer);
+        $event = new Event($this->eventBase, -1, $flags, $this->timerCallback, $timer);
         $this->timerEvents[$timer] = $event;
         $event->add($timer->getInterval());
     }
@@ -212,10 +213,10 @@ final class ExtEventLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
         $write =& $this->writeListeners;
         $this->streamCallback = function ($stream, $flags) use(&$read, &$write) {
             $key = (int) $stream;
-            if (\Event::READ === (\Event::READ & $flags) && isset($read[$key])) {
+            if (Event::READ === (Event::READ & $flags) && isset($read[$key])) {
                 \call_user_func($read[$key], $stream);
             }
-            if (\Event::WRITE === (\Event::WRITE & $flags) && isset($write[$key])) {
+            if (Event::WRITE === (Event::WRITE & $flags) && isset($write[$key])) {
                 \call_user_func($write[$key], $stream);
             }
         };

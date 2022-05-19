@@ -11,7 +11,7 @@
   <div class="wu-mb-2 wu-mt-4">
 
     <!-- Content Element -->
-    <div class="wu-ml-auto entry-content">
+    <div class="wu-ml-auto entry-content wu-pb-3">
 
       <?php echo do_shortcode($simple_text); ?>
 

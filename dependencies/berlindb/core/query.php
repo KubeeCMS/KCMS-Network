@@ -47,7 +47,7 @@ namespace WP_Ultimo\Dependencies\BerlinDB\Database;
  * @property string $request
  * @property int $last_changed
  */
-class Query extends \WP_Ultimo\Dependencies\BerlinDB\Database\Base
+class Query extends Base
 {
     /** Table Properties ******************************************************/
     /**
@@ -575,7 +575,7 @@ class Query extends \WP_Ultimo\Dependencies\BerlinDB\Database\Base
      */
     private function get_meta_query($args = array())
     {
-        return new \WP_Ultimo\Dependencies\BerlinDB\Database\Queries\Meta($args);
+        return new Queries\Meta($args);
     }
     /**
      * Pass-through method to return a new Compare object.
@@ -588,7 +588,7 @@ class Query extends \WP_Ultimo\Dependencies\BerlinDB\Database\Base
      */
     private function get_compare_query($args = array())
     {
-        return new \WP_Ultimo\Dependencies\BerlinDB\Database\Queries\Compare($args);
+        return new Queries\Compare($args);
     }
     /**
      * Pass-through method to return a new Queries\Date object.
@@ -601,7 +601,7 @@ class Query extends \WP_Ultimo\Dependencies\BerlinDB\Database\Base
      */
     private function get_date_query($args = array())
     {
-        return new \WP_Ultimo\Dependencies\BerlinDB\Database\Queries\Date($args);
+        return new Queries\Date($args);
     }
     /**
      * Return the current time as a UTC timestamp
@@ -1971,7 +1971,7 @@ class Query extends \WP_Ultimo\Dependencies\BerlinDB\Database\Base
     private function get_cache_key($group = '')
     {
         // Slice query vars
-        $slice = wp_array_slice_assoc($this->query_vars, \array_keys($this->query_var_defaults));
+        $slice = wp_array_slice_assoc($this->query_var_originals, \array_keys($this->query_var_defaults));
         // Unset `fields` so it does not effect the cache key
         unset($slice['fields']);
         // Setup key & last_changed

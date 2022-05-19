@@ -5,7 +5,7 @@
  * @since 2.0.0
  */
 ?>
-<div id="wu-tax-rates" class="wrap wp-ultimo">
+<div id="wu-tax-rates" class="<?php wu_wrap_use_container(); ?> wrap wp-ultimo">
 
   <h1 class="wp-heading-inline">
 
@@ -21,234 +21,322 @@
 
   <!-- <p class="description"></p> -->
 
-  <hr class="wp-header-end">
+  <hr class="wp-header-end" />
 
   <div class="wu-advanced-filters">
 
-    <form id="posts-filter" method="get">
+    <div class="tablenav top">
 
-      <div class="tablenav top">
+      <div v-cloak class="alignleft actions bulkactions">
 
-        <div v-cloak class="alignleft actions bulkactions">
+        <div v-show="creating">
 
-          <div v-show="creating">
+          <input type="text" style="background: white !important;" class="button wu-bg-white" v-model="create_name" placeholder="<?php _e('Tax Category Name', 'wp-ultimo'); ?>">
 
-            <input type="text" style="background: white !important;" class="button wu-bg-white" v-model="create_name" placeholder="<?php _e('Tax Category Name', 'wp-ultimo'); ?>">
+          <button class="button button-primary" v-on:click.prevent="add_tax_category" v-bind:disabled="create_name.length <= 3">
+            <?php _e('Create', 'wp-ultimo'); ?>
+          </button>
 
-            <button class="button button-primary" v-on:click.prevent="add_tax_category" v-bind:disabled="create_name.length <= 3">
-              <?php _e('Create', 'wp-ultimo'); ?>
-            </button>
-
-            <button class="button action" v-on:click.prevent="creating = false">
-              <?php _e('&larr; Back', 'wp-ultimo'); ?>
-            </button>
-
-          </div>
-
-          <div v-show="switching">
-
-            <button class="button action" v-on:click.prevent="switching = false">
-              <?php _e('&larr; Back', 'wp-ultimo'); ?>
-            </button>
-
-            <select v-model="tax_category" class="wu-bg-white">
-              <option v-for="(tax, slug) in data" :value="slug">
-                {{ tax.name }}
-              </option>
-            </select>
-
-          </div>
-
-          <div v-show="!switching && !creating">
-
-            <input type="text" style="background: white !important;" class="button wu-bg-white" v-model="data[tax_category].name">
-
-            <button class="button action" v-on:click.prevent="switching = true">
-              <?php _e('Switch', 'wp-ultimo'); ?>
-            </button>
-
-            <button class="button action" v-on:click.prevent="delete_tax_category">
-              <?php _e('Delete', 'wp-ultimo'); ?>
-            </button>
-
-            &nbsp;
-
-            <button class="button action wu-ml-3" v-on:click.prevent="creating = true">
-              <?php _e('Add new Tax Category', 'wp-ultimo'); ?>
-            </button>
-
-          </div>
-
-        </div>
-        <div class="tablenav-pages one-page">
-
-          <span v-cloak class="displaying-num">
-
-            {{data.length}} <?php _e('item(s)', 'wp-ultimo'); ?>
-
-          </span>
+          <button class="button action" v-on:click.prevent="creating = false">
+            <?php _e('&larr; Back', 'wp-ultimo'); ?>
+          </button>
 
         </div>
 
-        <br class="clear">
+        <div v-show="switching">
+
+          <button class="button action" v-on:click.prevent="switching = false">
+            <?php _e('&larr; Back', 'wp-ultimo'); ?>
+          </button>
+
+          <select v-model="tax_category" class="wu-bg-white">
+            <option v-cloak v-for="(tax, slug) in data" :value="slug">
+              {{ tax.name }}
+            </option>
+          </select>
+
+        </div>
+
+        <div v-show="!switching && !creating">
+
+          <input type="text" style="background: white !important;" class="button wu-bg-white" v-model="data[tax_category].name">
+
+          <button class="button action" v-on:click.prevent="switching = true">
+            <?php _e('Switch', 'wp-ultimo'); ?>
+          </button>
+
+          <button class="button action" v-on:click.prevent="delete_tax_category">
+            <?php _e('Delete', 'wp-ultimo'); ?>
+          </button>
+
+          &nbsp;
+
+          <button class="button action wu-ml-3" v-on:click.prevent="creating = true">
+            <?php _e('Add new Tax Category', 'wp-ultimo'); ?>
+          </button>
+
+        </div>
+
       </div>
 
-      <table class="wp-list-table widefat fixed striped">
+      <div v-cloak class="tablenav-pages one-page">
 
-        <thead>
+        <span class="displaying-num">
 
-          <tr>
+          {{data[tax_category].rates.length}} <?php _e('item(s)', 'wp-ultimo'); ?>
 
-            <th id="cb" class="manage-column column-cb" style="width: 50px;">
+        </span>
 
-              <label class="screen-reader-text" for="wu-select-2">
-                <?php _e('Select All'); ?>
-              </label>
+      </div>
 
-              <input v-bind:disabled="!data[tax_category].rates" v-model="toggle" v-on:click="select_all" id="wu-select-2"
-                type="checkbox">
+      <br class="clear" />
 
-            </th>
+    </div>
 
-            <?php foreach ($columns as $key => $label) : ?>
+    <table class="wp-list-table widefat fixed striped">
 
-            <th scope="col" id="<?php echo $key; ?>" class="manage-column sortable asc column-<?php echo $key; ?>">
-              <?php echo $label; ?>
-            </th>
+      <thead>
 
-            <?php endforeach; ?>
+        <tr>
 
-          </tr>
+          <th id="cb" class="manage-column column-cb" style="width: 50px;">
 
-        </thead>
+            <label class="screen-reader-text" for="wu-select-2">
+              <?php _e('Select All'); ?>
+            </label>
 
-        <tbody id="the-list">
+            <input v-bind:disabled="!data[tax_category].rates" v-model="toggle" v-on:click="select_all" id="wu-select-2"
+              type="checkbox">
 
-          <tr v-if="loading && !data[tax_category].rates.length" class="wu-text-center">
+          </th>
 
-            <td colspan="<?php echo count($columns) + 1; ?>">
+          <?php foreach ($columns as $key => $label) : ?>
 
-              <div class="wu-p-4">
+          <th scope="col" id="<?php echo $key; ?>" class="manage-column sortable asc column-<?php echo $key; ?>">
+				<?php echo $label; ?>
+          </th>
 
-                <?php _e('Loading Tax Rates...', 'wp-ultimo'); ?>
+          <?php endforeach; ?>
+
+        </tr>
+
+      </thead>
+
+      <tbody id="the-list">
+
+        <tr v-if="loading && !data[tax_category].rates.length" class="wu-text-center">
+
+          <td colspan="<?php echo count($columns) + 1; ?>">
+
+            <div class="wu-p-4">
+
+              <?php _e('Loading Tax Rates...', 'wp-ultimo'); ?>
+
+            </div>
+
+          </td>
+
+        </tr>
+
+        <tr v-cloak v-if="!loading && !data[tax_category].rates.length" class="wu-text-center">
+
+          <td colspan="<?php echo count($columns) + 1; ?>">
+
+            <div class="wu-p-4">
+
+              <?php _e('No items to display', 'wp-ultimo'); ?>
+
+            </div>
+
+          </td>
+
+        </tr>
+
+      </tbody>
+
+      <tbody
+        v-cloak
+        :list="data[tax_category].rates"
+        :element="'tbody'"
+        handle=".wu-placeholder-sortable"
+        ghost-class="wu-bg-white"
+        drag-class="wu-bg-white"
+        is="draggable"
+      >
+
+        <tr v-for="item in data[tax_category].rates" :id="'tax-rate' + item.id" v-bind:class="{selected: item.selected}">
+
+          <th scope="row" class="check-column">
+
+            <label class="screen-reader-text" for="wu-select-1">
+
+              <?php _e('Select'); ?> {{item.title}}
+
+            </label>
+
+            <input type="checkbox" v-model="item.selected" />
+
+          </th>
+
+          <?php foreach ($columns as $key => $label) : ?>
+
+          <td class="date column-<?php echo $key; ?>" data-colname="<?php echo $key; ?>">
+
+				<?php
+
+				/**
+				 * Switch for some of the fields
+				 */
+				switch ($key) :
+					case 'compound':
+						?>
+
+            <input type="checkbox" v-model="item.compound" />
+
+            <?php break; ?>
+
+					<?php
+                    case 'type':
+						?>
+
+            <select v-model="item.<?php echo $key; ?>" style="width: 100%;">
+
+						<?php foreach ($types as $tax_rate_type => $tax_rate_type_label) : ?>
+
+              <option value="<?php echo $tax_rate_type; ?>">
+
+							<?php echo $tax_rate_type_label; ?>
+
+              </option>
+
+              <?php endforeach; ?>
+
+            </select>
+
+            <?php break; ?>
+
+					<?php
+                    case 'country':
+						?>
+
+            <select v-cloak v-model="item.<?php echo $key; ?>" style="width: 100%;">
+
+						<?php foreach (wu_get_countries_as_options() as $country_code => $country_name) : ?>
+
+              <option value="<?php echo $country_code; ?>">
+
+							<?php echo $country_name; ?>
+
+              </option>
+
+              <?php endforeach; ?>
+
+            </select>
+
+            <?php break; ?>
+
+					<?php
+                    case 'state':
+						?>
+
+              <selectizer 
+                v-cloak
+                v-model="item.state" 
+                :country="item.country" 
+                :options="item.state_options" 
+                model="state" 
+                style="width: 100%;"
+                placeholder="<?php esc_attr_e('Leave blank to apply to all', 'wp-ultimo'); ?>"
+              ></selectizer>
+
+            <?php break; ?>
+
+					<?php
+                    case 'city':
+						?>
+
+              <selectizer 
+                v-model="item.city" 
+                :state="item.state" 
+                :country="item.country" 
+                model="city" 
+                style="width: 100%;"
+                placeholder="<?php esc_attr_e('Leave blank to apply to all', 'wp-ultimo'); ?>"
+                v-cloak
+              ></selectizer>
+
+            <?php break; ?>
+
+					<?php
+                    case 'move':
+						?>
+
+              <div class="wu-text-right">
+
+                <span class="wu-placeholder-sortable dashicons-wu-menu"></span>
 
               </div>
 
-            </td>
+            <?php break; ?>
 
-          </tr>
+					<?php
+                    default:
+						?>
+                
+            <input
+              class="form-control"
+              name="" 
+              type="text"
+              placeholder="*"
+              v-model="item.<?php echo $key; ?>" 
+              v-cloak
+            />
 
-          <tr v-cloak v-if="!loading && !data[tax_category].rates.length" class="wu-text-center">
+            <?php break; ?>
 
-            <td colspan="<?php echo count($columns) + 1; ?>">
+            <?php endswitch; ?>
 
-              <div class="wu-p-4">
+          </td>
 
-                <?php _e('No items to display', 'wp-ultimo'); ?>
+          <?php endforeach; ?>
 
-              </div>
+        </tr>
 
-            </td>
+      </tbody>
 
-          </tr>
+      <tfoot>
 
-          <tr v-if="data" v-cloak v-for="item in data[tax_category].rates" :id="'tax-rate' + item.id" v-bind:class="{selected: item.selected}">
+        <tr>
 
-            <th scope="row" class="check-column">
+          <th id="cb" class="manage-column column-cb">
 
-              <label class="screen-reader-text" for="wu-select-1">
+            <label class="screen-reader-text" for="wu-select">
 
-                <?php _e('Select'); ?> {{item.title}}
+              <?php _e('Select All'); ?>
 
-              </label>
+            </label>
 
-              <input type="checkbox" v-model="item.selected">
+            <input v-bind:disabled="!data[tax_category].rates.length" v-model="toggle" v-on:click="select_all" id="wu-select"
+              type="checkbox">
 
-            </th>
+          </th>
 
-            <?php foreach ($columns as $key => $label) : ?>
+          <?php foreach ($columns as $key => $label) : ?>
 
-            <td class="date column-<?php echo $key; ?>" data-colname="<?php echo $key; ?>">
+          <th scope="col" id="<?php echo $key; ?>" class="manage-column sortable asc column-<?php echo $key; ?>">
 
-              <?php
+				<?php echo $label; ?>
 
-              /**
-               * Switch for some of the fields
-               */
-              switch ($key) : case 'compound': ?>
+          </th>
 
-              <input type="checkbox" v-model="item.compound">
+          <?php endforeach; ?>
 
-              <?php break; ?>
+        </tr>
 
-              <?php case 'type': ?>
+      </tfoot>
 
-              <select v-model="item.<?php echo $key; ?>" style="width: 100%;">
+    </table>
 
-                <?php foreach ($types as $tax_rate_type => $tax_rate_type_label) : ?>
-
-                <option value="<?php echo $tax_rate_type; ?>">
-
-                  <?php echo $tax_rate_type_label; ?>
-
-                </option>
-
-                <?php endforeach; ?>
-
-              </select>
-
-              <?php break; ?>
-
-              <?php default: ?>
-
-              <input
-                class="wu-bg-transparent wu-p-4 wu-border-none wu-w-full hover:wu-bg-gray-200 hover:wu-border hover:wu-border-solid hover:wu-border-gray-400 hover:wu-cursor-pointer"
-                name="" placeholder="*" v-model="item.<?php echo $key; ?>">
-
-              <?php break; ?>
-
-              <?php endswitch; ?>
-
-            </td>
-
-            <?php endforeach; ?>
-
-          </tr>
-
-        </tbody>
-
-        <tfoot>
-
-          <tr>
-
-            <th id="cb" class="manage-column column-cb">
-
-              <label class="screen-reader-text" for="wu-select">
-
-                <?php _e('Select All'); ?>
-
-              </label>
-
-              <input v-bind:disabled="!data[tax_category].rates.length" v-model="toggle" v-on:click="select_all" id="wu-select"
-                type="checkbox">
-
-            </th>
-
-            <?php foreach ($columns as $key => $label) : ?>
-
-            <th scope="col" id="<?php echo $key; ?>" class="manage-column sortable asc column-<?php echo $key; ?>">
-
-              <?php echo $label; ?>
-
-            </th>
-
-            <?php endforeach; ?>
-
-          </tr>
-
-        </tfoot>
-
-      </table>
   </div>
 
   <div class="tablenav bottom wu-bg-gray-100 wu-p-4" v-cloak v-show="!creating">
@@ -302,13 +390,14 @@
       </span>
 
       <button v-on:click.prevent="save" v-bind:disabled="saving" class="button button-primary">
+
         <?php _e('Save Tax Rates'); ?>
+
       </button>
+
     </div>
 
-    <br class="clear">
-
-    </form>
+    <br class="clear" />
 
   </div>
 

@@ -277,6 +277,8 @@ class Dashboard_Admin_Page extends Base_Admin_Page {
 
 		add_meta_box('wp-ultimo-countries', __('Signups by Countries', 'wp-ultimo'), array($this, 'output_widget_countries'), $screen->id, 'side', 'high');
 
+		add_meta_box('wp-ultimo-signups', __('Signups by Form', 'wp-ultimo'), array($this, 'output_widget_forms'), $screen->id, 'side', 'high');
+
 		add_meta_box('wp-ultimo-most-visited-sites', __('Most Visited Sites', 'wp-ultimo'), array($this, 'output_widget_most_visited_sites'), $screen->id, 'side', 'low');
 
 		add_meta_box('wp-ultimo-new-accounts', __('New Memberships', 'wp-ultimo'), array($this, 'output_widget_new_accounts'), $screen->id, 'normal', 'low');
@@ -291,7 +293,7 @@ class Dashboard_Admin_Page extends Base_Admin_Page {
 	 */
 	public function output_widget_mrr_growth() {
 
-		WP_Ultimo()->helper->render('dashboard-statistics/widget-mrr-growth');
+		wu_get_template('dashboard-statistics/widget-mrr-growth');
 
 	} // end output_widget_mrr_growth;
 
@@ -303,11 +305,27 @@ class Dashboard_Admin_Page extends Base_Admin_Page {
 	 */
 	public function output_widget_countries() {
 
-		WP_Ultimo()->helper->render('dashboard-statistics/widget-countries', array(
+		wu_get_template('dashboard-statistics/widget-countries', array(
 			'countries' => wu_get_countries_of_customers(10, $this->start_date, $this->end_date),
+			'page'      => $this,
 		));
 
 	} // end output_widget_countries;
+
+	/**
+	 * Output the statistics filter widget
+	 *
+	 * @return void
+	 * @since 2.0.0
+	 */
+	public function output_widget_forms() {
+
+		wu_get_template('dashboard-statistics/widget-forms', array(
+			'forms' => wu_calculate_signups_by_form($this->start_date, $this->end_date),
+			'page'  => $this,
+		));
+
+	} // end output_widget_forms;
 
 	/**
 	 * Output the statistics filter widget
@@ -338,8 +356,9 @@ class Dashboard_Admin_Page extends Base_Admin_Page {
 
 		} // end foreach;
 
-		WP_Ultimo()->helper->render('dashboard-statistics/widget-most-visited-sites', array(
+		wu_get_template('dashboard-statistics/widget-most-visited-sites', array(
 			'sites' => $sites,
+			'page'  => $this,
 		));
 
 	} // end output_widget_most_visited_sites;
@@ -353,12 +372,13 @@ class Dashboard_Admin_Page extends Base_Admin_Page {
 	 * @param array  $metabox With the metabox arguments passed when registered.
 	 * @return void.
 	 */
-	public function output_widget_revenues($unknown = null, $metabox) {
+	public function output_widget_revenues($unknown = null, $metabox = null) {
 
-		WP_Ultimo()->helper->render('dashboard-statistics/widget-revenue', array(
+		wu_get_template('dashboard-statistics/widget-revenue', array(
 			'mrr'           => wu_calculate_mrr(),
 			'gross_revenue' => wu_calculate_revenue($this->start_date, $this->end_date),
 			'refunds'       => wu_calculate_refunds($this->start_date, $this->end_date),
+			'product_stats' => wu_calculate_financial_data_by_product($this->start_date, $this->end_date),
 		));
 
 	} // end output_widget_revenues;
@@ -372,7 +392,7 @@ class Dashboard_Admin_Page extends Base_Admin_Page {
 	 * @param array  $metabox With the metabox arguments passed when registered.
 	 * @return void.
 	 */
-	public function output_widget_new_accounts($unknown = null, $metabox) {
+	public function output_widget_new_accounts($unknown = null, $metabox = array()) {
 
 		$new_accounts = wu_get_memberships(array(
 			'fields'     => array('plan_id'),
@@ -423,7 +443,7 @@ class Dashboard_Admin_Page extends Base_Admin_Page {
 
 		} // end foreach;
 
-		WP_Ultimo()->helper->render('dashboard-statistics/widget-new-accounts', array(
+		wu_get_template('dashboard-statistics/widget-new-accounts', array(
 			'new_accounts' => count($new_accounts),
 			'products'     => $products,
 		));
@@ -464,7 +484,7 @@ class Dashboard_Admin_Page extends Base_Admin_Page {
 
 		wp_register_script('wu-vue-apex-charts', wu_get_asset('vue-apexcharts.js', 'js/lib'), array(), wu_get_version(), true);
 
-		wp_register_script('wu-dashboard-stats', wu_get_asset('dashboard-statistics.js', 'js'), array('jquery', 'wu-functions', 'wu-ajax-list-table', 'wu-moment', 'wu-block-ui', 'dashboard', 'wu-apex-charts', 'wu-vue-apex-charts'), wu_get_version(), true);
+		wp_register_script('wu-dashboard-stats', wu_get_asset('dashboard-statistics.js', 'js'), array('jquery', 'wu-functions', 'wu-ajax-list-table', 'moment', 'wu-block-ui', 'dashboard', 'wu-apex-charts', 'wu-vue-apex-charts'), wu_get_version(), true);
 
 		wp_localize_script('wu-dashboard-stats', 'wu_dashboard_statistics_vars', array(
 			'mrr_array'  => $data['mrr_growth'],
@@ -481,6 +501,8 @@ class Dashboard_Admin_Page extends Base_Admin_Page {
 		wp_enqueue_script('wu-dashboard-stats');
 
 		wp_enqueue_style('wu-apex-charts', wu_get_asset('apexcharts.css', 'css'), array(), wu_get_version());
+
+		wp_enqueue_style('wu-flags');
 
 	} // end register_scripts;
 
@@ -537,5 +559,46 @@ class Dashboard_Admin_Page extends Base_Admin_Page {
 		));
 
 	} // end output;
+
+	/**
+	 * Render an export CSV button.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $args Data array to convert to CSV.
+	 * @return void
+	 */
+	public function render_csv_button($args) {
+
+		$args = wp_parse_args($args, array(
+			'slug'    => 'csv',
+			'headers' => array(),
+			'data'    => array(),
+			'action'  => apply_filters('wu_export_data_table_action', 'wu_generate_csv'),
+		));
+
+		$slug = $args['slug'];
+
+		$header_strings = json_encode($args['headers']);
+
+		$data_strings = json_encode($args['data']);
+
+		$html = "<div class='wu-bg-gray-100 wu-p-2 wu-text-right wu-border-0 wu-border-b wu-border-solid wu-border-gray-400'>
+
+			<a href='#' attr-slug-csv='{$slug}' class='wu-export-button wu-no-underline wu-text-gray-800 wu-text-xs'>
+				<span class='dashicons-wu-download wu-mr-1'></span> %s
+			</a>
+
+			<input type='hidden' id='csv_headers_{$slug}' value='{$header_strings}' />
+			<input type='hidden' id='csv_data_{$slug}' value='{$data_strings}' />
+			<input type='hidden' id='csv_action_{$slug}' value='{$args['action']}' />
+
+		</div>";
+
+		$html = apply_filters('wu_export_html_render', $html, $html);
+
+		echo sprintf($html, apply_filters('wu_export_data_table_label', __('CSV', 'wp-ultimo')));
+
+	}  // end render_csv_button;
 
 } // end class Dashboard_Admin_Page;

@@ -4,6 +4,11 @@
  *
  * @since 2.0.0
  */
+
+$current_site = wu_get_current_site();
+
+$add_new_url = $current_site->get_membership() &&  $current_site->get_membership()->has_remaining_sites() ? admin_url('admin.php?page=add-new-site') : wu_get_registration_url();
+
 ?>
 <div class="wu-styling <?php echo esc_attr($className); ?>">
 
@@ -58,9 +63,10 @@
               <?php if ($display_images) : ?>
               
                 <img 
-                  class="wu-h-48 wu-w-full wu-object-cover"
+                  class="wu-h-48 wu-w-full wu-object-cover wu-block"
                   src="<?php echo $site->get_featured_image(); ?>" 
                   alt="<?php printf(esc_attr__('Site Image: %s', 'wp-ultimo'), $site->get_title()); ?>"
+                  style="background-color: rgba(255, 255, 255, 0.5)"
                 >
 
               <?php else : ?>
@@ -77,11 +83,11 @@
 
                 <a href="<?php echo esc_attr($site->get_active_site_url()); ?>" class="wu-block wu-no-underline">
 
-                  <span class="wu-text-xl wu-font-semibold wu-text-gray-800 wu-block">
+                  <span class="wu-text-base wu-font-semibold wu-text-gray-800 wu-block" <?php echo wu_tooltip_text(__('Visit Site', 'wp-ultimo')); ?>>
                     <?php echo $site->get_title(); ?> <span class="wu-text-sm dashicons-wu-popup"></span>
                   </span>
 
-                  <span class="wu-text-sm wu-text-gray-600 wu-block wu-mt-2">
+                  <span class="wu-text-xs wu-text-gray-600 wu-block wu-mt-2">
                     <?php echo str_replace(array('http://', 'https://'), '', $site->get_active_site_url()); ?>
                   </span>
 
@@ -93,7 +99,7 @@
             <ul
               class="wu-p-0 wu-m-0 wu-px-4 wu-text-center wu-py-2 wu-my-0 wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-300">
 
-              <?php if (WP_Ultimo()->currents->get_site()->get_id() == $site->get_id()) : ?>
+              <?php if (WP_Ultimo()->currents->get_site() && WP_Ultimo()->currents->get_site()->get_id() == $site->get_id()) : ?>
 
                 <li class="wu-block wu-my-2">
                   <span
@@ -118,9 +124,9 @@
 
         <?php endforeach; ?>
 
-        <a href="<?php echo wu_get_registration_url(); ?>"
+        <a href="<?php echo $add_new_url; ?>"
           class="wu-no-underline wu-text-gray-600 wu-flex wu-flex-col wu-rounded-lg wu-border-2 wu-border-dashed wu-border-gray-400 wu-overflow-hidden wu-items-center wu-justify-center"
-          style="background-color: rgba(0,0,0,.010)">
+          style="background-color: rgba(255, 255, 255, 0.1)">
 
           <span class="wu-text-center wu-p-8">
             <span class="wu-text-3xl dashicons-wu-circle-with-plus"></span>
@@ -136,3 +142,7 @@
   </div>
 
 </div>
+
+<!-- <div class="md:wu-grid-cols-4"></div> -->
+<!-- <div class="md:wu-grid-cols-5"></div> -->
+<!-- <div class="md:wu-grid-cols-6"></div> -->

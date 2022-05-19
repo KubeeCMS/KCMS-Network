@@ -6,7 +6,7 @@ namespace WP_Ultimo\Dependencies\Stripe\Exception;
  * InvalidRequestException is thrown when a request is initiated with invalid
  * parameters.
  */
-class InvalidRequestException extends \WP_Ultimo\Dependencies\Stripe\Exception\ApiErrorException
+class InvalidRequestException extends ApiErrorException
 {
     protected $stripeParam;
     /**

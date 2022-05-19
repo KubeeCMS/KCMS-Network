@@ -7,8 +7,6 @@
  *
  * PHP version 5
  *
- * @category  System
- * @package   SSH\Agent
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2009 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -16,13 +14,15 @@
  */
 namespace phpseclib3\System\SSH\Agent;
 
-use phpseclib3\Crypt\RSA;
-use phpseclib3\Crypt\DSA;
-use phpseclib3\Crypt\EC;
-use phpseclib3\Exception\UnsupportedAlgorithmException;
-use phpseclib3\System\SSH\Agent;
 use phpseclib3\Common\Functions\Strings;
 use phpseclib3\Crypt\Common\PrivateKey;
+use phpseclib3\Crypt\Common\PublicKey;
+use phpseclib3\Crypt\DSA;
+use phpseclib3\Crypt\EC;
+use phpseclib3\Crypt\RSA;
+use phpseclib3\Exception\UnsupportedAlgorithmException;
+use phpseclib3\System\SSH\Agent;
+use phpseclib3\System\SSH\Common\Traits\ReadBytes;
 /**
  * Pure-PHP ssh-agent client identity object
  *
@@ -32,13 +32,12 @@ use phpseclib3\Crypt\Common\PrivateKey;
  * The methods in this interface would be getPublicKey and sign since those are the
  * methods phpseclib looks for to perform public key authentication.
  *
- * @package SSH\Agent
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  internal
+ * @internal
  */
-class Identity implements \phpseclib3\Crypt\Common\PrivateKey
+class Identity implements PrivateKey
 {
-    use \phpseclib3\System\SSH\Common\Traits\ReadBytes;
+    use ReadBytes;
     // Signature Flags
     // See https://tools.ietf.org/html/draft-miller-ssh-agent-00#section-5.3
     const SSH_AGENT_RSA2_256 = 2;
@@ -46,8 +45,7 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
     /**
      * Key Object
      *
-     * @var \phpseclib3\Crypt\RSA
-     * @access private
+     * @var PublicKey
      * @see self::getPublicKey()
      */
     private $key;
@@ -55,7 +53,6 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
      * Key Blob
      *
      * @var string
-     * @access private
      * @see self::sign()
      */
     private $key_blob;
@@ -63,7 +60,6 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
      * Socket Resource
      *
      * @var resource
-     * @access private
      * @see self::sign()
      */
     private $fsock;
@@ -71,7 +67,6 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
      * Signature flags
      *
      * @var int
-     * @access private
      * @see self::sign()
      * @see self::setHash()
      */
@@ -80,15 +75,12 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
      * Curve Aliases
      *
      * @var array
-     * @access private
      */
     private static $curveAliases = ['secp256r1' => 'nistp256', 'secp384r1' => 'nistp384', 'secp521r1' => 'nistp521', 'Ed25519' => 'Ed25519'];
     /**
      * Default Constructor.
      *
      * @param resource $fsock
-     * @return \phpseclib3\System\SSH\Agent\Identity
-     * @access private
      */
     public function __construct($fsock)
     {
@@ -100,13 +92,12 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
      * Called by \phpseclib3\System\SSH\Agent::requestIdentities()
      *
      * @param \phpseclib3\Crypt\Common\PublicKey $key
-     * @access private
      */
     public function withPublicKey($key)
     {
-        if ($key instanceof \phpseclib3\Crypt\EC) {
+        if ($key instanceof EC) {
             if (\is_array($key->getCurve()) || !isset(self::$curveAliases[$key->getCurve()])) {
-                throw new \phpseclib3\Exception\UnsupportedAlgorithmException('The only supported curves are nistp256, nistp384, nistp512 and Ed25519');
+                throw new UnsupportedAlgorithmException('The only supported curves are nistp256, nistp384, nistp512 and Ed25519');
             }
         }
         $new = clone $this;
@@ -120,7 +111,6 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
      * but this saves a small amount of computation.
      *
      * @param string $key_blob
-     * @access private
      */
     public function withPublicKeyBlob($key_blob)
     {
@@ -135,7 +125,6 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
      *
      * @param string $type optional
      * @return mixed
-     * @access public
      */
     public function getPublicKey($type = 'PKCS8')
     {
@@ -145,13 +134,12 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
      * Sets the hash
      *
      * @param string $hash
-     * @access public
      */
     public function withHash($hash)
     {
         $new = clone $this;
         $hash = \strtolower($hash);
-        if ($this->key instanceof \phpseclib3\Crypt\RSA) {
+        if ($this->key instanceof RSA) {
             $new->flags = 0;
             switch ($hash) {
                 case 'sha1':
@@ -163,10 +151,10 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
                     $new->flags = self::SSH_AGENT_RSA2_512;
                     break;
                 default:
-                    throw new \phpseclib3\Exception\UnsupportedAlgorithmException('The only supported hashes for RSA are sha1, sha256 and sha512');
+                    throw new UnsupportedAlgorithmException('The only supported hashes for RSA are sha1, sha256 and sha512');
             }
         }
-        if ($this->key instanceof \phpseclib3\Crypt\EC) {
+        if ($this->key instanceof EC) {
             switch ($this->key->getCurve()) {
                 case 'secp256r1':
                     $expectedHash = 'sha256';
@@ -180,12 +168,12 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
                     $expectedHash = 'sha512';
             }
             if ($hash != $expectedHash) {
-                throw new \phpseclib3\Exception\UnsupportedAlgorithmException('The only supported hash for ' . self::$curveAliases[$key->getCurve()] . ' is ' . $expectedHash);
+                throw new UnsupportedAlgorithmException('The only supported hash for ' . self::$curveAliases[$this->key->getCurve()] . ' is ' . $expectedHash);
             }
         }
-        if ($this->key instanceof \phpseclib3\Crypt\DSA) {
+        if ($this->key instanceof DSA) {
             if ($hash != 'sha1') {
-                throw new \phpseclib3\Exception\UnsupportedAlgorithmException('The only supported hash for DSA is sha1');
+                throw new UnsupportedAlgorithmException('The only supported hash for DSA is sha1');
             }
         }
         return $new;
@@ -196,15 +184,14 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
      * Only PKCS1 padding is supported
      *
      * @param string $padding
-     * @access public
      */
     public function withPadding($padding)
     {
-        if (!$this->key instanceof \phpseclib3\Crypt\RSA) {
-            throw new \phpseclib3\Exception\UnsupportedAlgorithmException('Only RSA keys support padding');
+        if (!$this->key instanceof RSA) {
+            throw new UnsupportedAlgorithmException('Only RSA keys support padding');
         }
-        if ($padding != \phpseclib3\Crypt\RSA::SIGNATURE_PKCS1 && $padding != \phpseclib3\Crypt\RSA::SIGNATURE_RELAXED_PKCS1) {
-            throw new \phpseclib3\Exception\UnsupportedAlgorithmException('ssh-agent can only create PKCS1 signatures');
+        if ($padding != RSA::SIGNATURE_PKCS1 && $padding != RSA::SIGNATURE_RELAXED_PKCS1) {
+            throw new UnsupportedAlgorithmException('ssh-agent can only create PKCS1 signatures');
         }
         return $this;
     }
@@ -213,16 +200,15 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
      *
      * Valid values are: ASN1, SSH2, Raw
      *
-     * @access public
      * @param string $format
      */
     public function withSignatureFormat($format)
     {
-        if ($this->key instanceof \phpseclib3\Crypt\RSA) {
-            throw new \phpseclib3\Exception\UnsupportedAlgorithmException('Only DSA and EC keys support signature format setting');
+        if ($this->key instanceof RSA) {
+            throw new UnsupportedAlgorithmException('Only DSA and EC keys support signature format setting');
         }
         if ($format != 'SSH2') {
-            throw new \phpseclib3\Exception\UnsupportedAlgorithmException('Only SSH2-formatted signatures are currently supported');
+            throw new UnsupportedAlgorithmException('Only SSH2-formatted signatures are currently supported');
         }
         return $this;
     }
@@ -231,13 +217,12 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
      *
      * Returns a string if it's a named curve, an array if not
      *
-     * @access public
      * @return string|array
      */
     public function getCurve()
     {
-        if (!$this->key instanceof \phpseclib3\Crypt\EC) {
-            throw new \phpseclib3\Exception\UnsupportedAlgorithmException('Only EC keys have curves');
+        if (!$this->key instanceof EC) {
+            throw new UnsupportedAlgorithmException('Only EC keys have curves');
         }
         return $this->key->getCurve();
     }
@@ -250,26 +235,25 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
      * @return string
      * @throws \RuntimeException on connection errors
      * @throws \phpseclib3\Exception\UnsupportedAlgorithmException if the algorithm is unsupported
-     * @access public
      */
     public function sign($message)
     {
         // the last parameter (currently 0) is for flags and ssh-agent only defines one flag (for ssh-dss): SSH_AGENT_OLD_SIGNATURE
-        $packet = \phpseclib3\Common\Functions\Strings::packSSH2('CssN', \phpseclib3\System\SSH\Agent::SSH_AGENTC_SIGN_REQUEST, $this->key_blob, $message, $this->flags);
-        $packet = \phpseclib3\Common\Functions\Strings::packSSH2('s', $packet);
+        $packet = Strings::packSSH2('CssN', Agent::SSH_AGENTC_SIGN_REQUEST, $this->key_blob, $message, $this->flags);
+        $packet = Strings::packSSH2('s', $packet);
         if (\strlen($packet) != \fputs($this->fsock, $packet)) {
             throw new \RuntimeException('Connection closed during signing');
         }
         $length = \current(\unpack('N', $this->readBytes(4)));
         $packet = $this->readBytes($length);
-        list($type, $signature_blob) = \phpseclib3\Common\Functions\Strings::unpackSSH2('Cs', $packet);
-        if ($type != \phpseclib3\System\SSH\Agent::SSH_AGENT_SIGN_RESPONSE) {
+        list($type, $signature_blob) = Strings::unpackSSH2('Cs', $packet);
+        if ($type != Agent::SSH_AGENT_SIGN_RESPONSE) {
             throw new \RuntimeException('Unable to retrieve signature');
         }
-        if (!$this->key instanceof \phpseclib3\Crypt\RSA) {
+        if (!$this->key instanceof RSA) {
             return $signature_blob;
         }
-        list($type, $signature_blob) = \phpseclib3\Common\Functions\Strings::unpackSSH2('ss', $signature_blob);
+        list($type, $signature_blob) = Strings::unpackSSH2('ss', $signature_blob);
         return $signature_blob;
     }
     /**
@@ -286,8 +270,8 @@ class Identity implements \phpseclib3\Crypt\Common\PrivateKey
     /**
      * Sets the password
      *
-     * @access public
-     * @param string|boolean $password
+     * @param string|bool $password
+     * @return never
      */
     public function withPassword($password = \false)
     {

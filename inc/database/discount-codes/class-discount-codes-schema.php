@@ -132,7 +132,7 @@ class Discount_Codes_Schema extends Schema {
 		array(
 			'name'       => 'date_start',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'date_query' => true,
 			'sortable'   => true,
 			'transition' => true,
@@ -141,7 +141,7 @@ class Discount_Codes_Schema extends Schema {
 		array(
 			'name'       => 'date_expiration',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'date_query' => true,
 			'sortable'   => true,
 			'transition' => true,
@@ -150,7 +150,7 @@ class Discount_Codes_Schema extends Schema {
 		array(
 			'name'       => 'date_created',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'created'    => true,
 			'date_query' => true,
 			'sortable'   => true,
@@ -159,7 +159,7 @@ class Discount_Codes_Schema extends Schema {
 		array(
 			'name'       => 'date_modified',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'modified'   => true,
 			'date_query' => true,
 			'sortable'   => true,

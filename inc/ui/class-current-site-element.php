@@ -21,6 +21,8 @@ defined('ABSPATH') || exit;
  */
 class Current_Site_Element extends Base_Element {
 
+	use \WP_Ultimo\Traits\Singleton;
+
 	/**
 	 * The id of the element.
 	 *
@@ -297,14 +299,14 @@ class Current_Site_Element extends Base_Element {
 	} // end setup_preview;
 
 	/**
-	 * Loads the necessary scripts and styles for this element.
+	 * Loads the required scripts.
 	 *
 	 * @since 2.0.0
 	 * @return void
 	 */
 	public function register_scripts() {
 
-		wp_enqueue_style('wu-admin');
+		add_wubox();
 
 	} // end register_scripts;
 

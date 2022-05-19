@@ -17,7 +17,6 @@ use Countable;
 use DateTime;
 use DateTimeImmutable;
 use Exception;
-use InvalidArgumentException;
 use ResourceBundle;
 use SimpleXMLElement;
 use Throwable;
@@ -25,14 +24,13 @@ use Traversable;
 /**
  * Efficient assertions to validate the input/output of your methods.
  *
- * @mixin Mixin
- *
  * @since  1.0
  *
  * @author Bernhard Schussek <bschussek@gmail.com>
  */
 class Assert
 {
+    use Mixin;
     /**
      * @psalm-pure
      * @psalm-assert string $value
@@ -94,6 +92,21 @@ class Assert
     }
     /**
      * @psalm-pure
+     * @psalm-assert positive-int $value
+     *
+     * @param mixed  $value
+     * @param string $message
+     *
+     * @throws InvalidArgumentException
+     */
+    public static function positiveInteger($value, $message = '')
+    {
+        if (!(\is_int($value) && $value > 0)) {
+            static::reportInvalidArgument(\sprintf($message ?: 'Expected a positive integer. Got: %s', static::valueToString($value)));
+        }
+    }
+    /**
+     * @psalm-pure
      * @psalm-assert float $value
      *
      * @param mixed  $value
@@ -124,7 +137,7 @@ class Assert
     }
     /**
      * @psalm-pure
-     * @psalm-assert int $value
+     * @psalm-assert positive-int|0 $value
      *
      * @param mixed  $value
      * @param string $message
@@ -245,7 +258,7 @@ class Assert
     public static function isTraversable($value, $message = '')
     {
         @\trigger_error(\sprintf('The "%s" assertion is deprecated. You should stop using it, as it will soon be removed in 2.0 version. Use "isIterable" or "isInstanceOf" instead.', __METHOD__), \E_USER_DEPRECATED);
-        if (!\is_array($value) && !$value instanceof \Traversable) {
+        if (!\is_array($value) && !$value instanceof Traversable) {
             static::reportInvalidArgument(\sprintf($message ?: 'Expected a traversable. Got: %s', static::typeToString($value)));
         }
     }
@@ -260,7 +273,7 @@ class Assert
      */
     public static function isArrayAccessible($value, $message = '')
     {
-        if (!\is_array($value) && !$value instanceof \ArrayAccess) {
+        if (!\is_array($value) && !$value instanceof ArrayAccess) {
             static::reportInvalidArgument(\sprintf($message ?: 'Expected an array accessible. Got: %s', static::typeToString($value)));
         }
     }
@@ -275,7 +288,7 @@ class Assert
      */
     public static function isCountable($value, $message = '')
     {
-        if (!\is_array($value) && !$value instanceof \Countable && !$value instanceof \ResourceBundle && !$value instanceof \SimpleXMLElement) {
+        if (!\is_array($value) && !$value instanceof Countable && !$value instanceof ResourceBundle && !$value instanceof SimpleXMLElement) {
             static::reportInvalidArgument(\sprintf($message ?: 'Expected a countable. Got: %s', static::typeToString($value)));
         }
     }
@@ -290,7 +303,7 @@ class Assert
      */
     public static function isIterable($value, $message = '')
     {
-        if (!\is_array($value) && !$value instanceof \Traversable) {
+        if (!\is_array($value) && !$value instanceof Traversable) {
             static::reportInvalidArgument(\sprintf($message ?: 'Expected an iterable. Got: %s', static::typeToString($value)));
         }
     }
@@ -365,7 +378,7 @@ class Assert
     {
         static::string($class, 'Expected class as a string. Got: %s');
         if (!\is_a($value, $class, \is_string($value))) {
-            static::reportInvalidArgument(\sprintf($message ?: 'Expected an instance of this class or to this class among his parents %2$s. Got: %s', static::typeToString($value), $class));
+            static::reportInvalidArgument(\sprintf($message ?: 'Expected an instance of this class or to this class among its parents "%2$s". Got: %s', static::valueToString($value), $class));
         }
     }
     /**
@@ -385,7 +398,7 @@ class Assert
     {
         static::string($class, 'Expected class as a string. Got: %s');
         if (\is_a($value, $class, \is_string($value))) {
-            static::reportInvalidArgument(\sprintf($message ?: 'Expected an instance of this class or to this class among his parents other than %2$s. Got: %s', static::typeToString($value), $class));
+            static::reportInvalidArgument(\sprintf($message ?: 'Expected an instance of this class or to this class among its parents other than "%2$s". Got: %s', static::valueToString($value), $class));
         }
     }
     /**
@@ -406,7 +419,7 @@ class Assert
                 return;
             }
         }
-        static::reportInvalidArgument(\sprintf($message ?: 'Expected an any of instance of this class or to this class among his parents other than %2$s. Got: %s', static::typeToString($value), \implode(', ', \array_map(array('static', 'valueToString'), $classes))));
+        static::reportInvalidArgument(\sprintf($message ?: 'Expected an instance of any of this classes or any of those classes among their parents "%2$s". Got: %s', static::valueToString($value), \implode(', ', $classes)));
     }
     /**
      * @psalm-pure
@@ -1387,8 +1400,17 @@ class Assert
      */
     public static function isList($array, $message = '')
     {
-        if (!\is_array($array) || $array !== \array_values($array)) {
+        if (!\is_array($array)) {
             static::reportInvalidArgument($message ?: 'Expected list - non-associative array.');
+        }
+        if ($array === \array_values($array)) {
+            return;
+        }
+        $nextKey = -1;
+        foreach ($array as $k => $v) {
+            if ($k !== ++$nextKey) {
+                static::reportInvalidArgument($message ?: 'Expected list - non-associative array.');
+            }
         }
     }
     /**
@@ -1468,18 +1490,18 @@ class Assert
      *
      * @throws InvalidArgumentException
      */
-    public static function throws(\Closure $expression, $class = 'Exception', $message = '')
+    public static function throws(Closure $expression, $class = 'Exception', $message = '')
     {
         static::string($class);
         $actual = 'none';
         try {
             $expression();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $actual = \get_class($e);
             if ($e instanceof $class) {
                 return;
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $actual = \get_class($e);
             if ($e instanceof $class) {
                 return;
@@ -1509,7 +1531,7 @@ class Assert
             }
             return;
         }
-        throw new \BadMethodCallException('No such method: ' . $name);
+        throw new BadMethodCallException('No such method: ' . $name);
     }
     /**
      * @param mixed $value
@@ -1534,7 +1556,7 @@ class Assert
             if (\method_exists($value, '__toString')) {
                 return \get_class($value) . ': ' . self::valueToString($value->__toString());
             }
-            if ($value instanceof \DateTime || $value instanceof \DateTimeImmutable) {
+            if ($value instanceof DateTime || $value instanceof DateTimeImmutable) {
                 return \get_class($value) . ': ' . self::valueToString($value->format('c'));
             }
             return \get_class($value);
@@ -1572,10 +1594,11 @@ class Assert
      * @throws InvalidArgumentException
      *
      * @psalm-pure this method is not supposed to perform side-effects
+     * @psalm-return never
      */
     protected static function reportInvalidArgument($message)
     {
-        throw new \InvalidArgumentException($message);
+        throw new InvalidArgumentException($message);
     }
     private function __construct()
     {

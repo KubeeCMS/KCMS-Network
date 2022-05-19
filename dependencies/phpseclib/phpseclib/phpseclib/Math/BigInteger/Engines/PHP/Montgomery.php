@@ -5,8 +5,6 @@
  *
  * PHP version 5 and 7
  *
- * @category  Math
- * @package   BigInteger
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -14,16 +12,13 @@
  */
 namespace phpseclib3\Math\BigInteger\Engines\PHP;
 
-use phpseclib3\Math\BigInteger\Engines\PHP\Reductions\PowerOfTwo;
-use phpseclib3\Math\BigInteger\Engines\PHP;
-use phpseclib3\Math\BigInteger\Engines\PHP\Base;
 use phpseclib3\Math\BigInteger\Engines\Engine;
+use phpseclib3\Math\BigInteger\Engines\PHP;
+use phpseclib3\Math\BigInteger\Engines\PHP\Reductions\PowerOfTwo;
 /**
  * PHP Montgomery Modular Exponentiation Engine
  *
- * @package PHP
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
 abstract class Montgomery extends \phpseclib3\Math\BigInteger\Engines\PHP\Base
 {
@@ -39,13 +34,14 @@ abstract class Montgomery extends \phpseclib3\Math\BigInteger\Engines\PHP\Base
     /**
      * Performs modular exponentiation.
      *
-     * @param \phpseclib3\Math\BigInteger\Engines\Engine $x
-     * @param \phpseclib3\Math\BigInteger\Engines\Engine $e
-     * @param \phpseclib3\Math\BigInteger\Engines\Engine $n
-     * @param string $class
-     * @return \phpseclib3\Math\BigInteger\Engines\Engine
+     * @template T of Engine
+     * @param Engine $x
+     * @param Engine $e
+     * @param Engine $n
+     * @param class-string<T> $class
+     * @return T
      */
-    protected static function slidingWindow(\phpseclib3\Math\BigInteger\Engines\Engine $x, \phpseclib3\Math\BigInteger\Engines\Engine $e, \phpseclib3\Math\BigInteger\Engines\Engine $n, $class)
+    protected static function slidingWindow(Engine $x, Engine $e, Engine $n, $class)
     {
         // is the modulo odd?
         if ($n->value[0] & 1) {
@@ -68,7 +64,7 @@ abstract class Montgomery extends \phpseclib3\Math\BigInteger\Engines\PHP\Base
         $mod2->value = [1];
         $mod2->lshift($j);
         $part1 = $mod1->value != [1] ? parent::slidingWindow($x, $e, $mod1, $class) : new $class();
-        $part2 = \phpseclib3\Math\BigInteger\Engines\PHP\Reductions\PowerOfTwo::slidingWindow($x, $e, $mod2, $class);
+        $part2 = PowerOfTwo::slidingWindow($x, $e, $mod2, $class);
         $y1 = $mod2->modInverse($mod1);
         $y2 = $mod1->modInverse($mod2);
         $result = $part1->multiply($mod2);

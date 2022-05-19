@@ -87,48 +87,60 @@
     <?php
 
     $key_people = array(
-		'arindo'  => array(
-			'email'     => 'arindo@wpultimo.com',
-			'signature' => 'arindo.png',
-			'name'      => 'Arindo Duque',
-			'position'  => 'Founder and CEO',
-		),
-		'daniel'  => array(
-			'email'     => 'daniel@wpultimo.com',
-			'signature' => '',
-			'name'      => 'Daniel Leal',
-			'position'  => 'Developer',
-		),
-		'felipe'  => array(
-			'email'     => 'felipe@wpultimo.com',
-			'signature' => '',
-			'name'      => 'Felipe Elia',
-			'position'  => '(former) Developer',
-		),
-		'juliana' => array(
-			'email'     => 'juliana@wpultimo.com',
-			'signature' => '',
-			'name'      => 'Juliana Dias Gomes',
-			'position'  => 'Do-it-all',
-		),
-		'ramon'   => array(
-			'email'     => 'ramon@wpultimo.com',
-			'signature' => '',
-			'name'      => '(former) Ramon Ahnert',
-			'position'  => 'Developer',
-		),
-		'ruel'    => array(
-			'email'     => 'ruel@wpultimo.com',
-			'signature' => '',
-			'name'      => 'Ruel Porlas',
-			'position'  => 'Support',
-		),
-		'marcelo' => array(
-			'email'     => 'marcelo@wpultimo.com',
-			'signature' => '',
-			'name'      => 'Marcelo Assis',
-			'position'  => 'Developer',
-		),
+      'arindo'  => array(
+        'email'     => 'arindo@wpultimo.com',
+        'signature' => 'arindo.png',
+        'name'      => 'Arindo Duque',
+        'position'  => 'Founder and CEO',
+      ),
+      'daniel'  => array(
+        'email'     => 'daniel@wpultimo.com',
+        'signature' => '',
+        'name'      => 'Daniel Leal',
+        'position'  => 'Developer',
+      ),
+      'felipe'  => array(
+        'email'     => 'felipe@wpultimo.com',
+        'signature' => '',
+        'name'      => 'Felipe Elia',
+        'position'  => '(former) Developer',
+      ),
+      'gustavo'  => array(
+        'email'     => 'gustavo@wpultimo.com',
+        'signature' => '',
+        'name'      => 'Gustavo Modesto',
+        'position'  => 'Developer',
+      ),
+      'juliana' => array(
+        'email'     => 'juliana@wpultimo.com',
+        'signature' => '',
+        'name'      => 'Juliana Dias Gomes',
+        'position'  => 'Do-it-all',
+      ),
+      'ramon'   => array(
+        'email'     => 'ramon@wpultimo.com',
+        'signature' => '',
+        'name'      => 'Ramon Ahnert',
+        'position'  => '(former) Developer',
+      ),
+      'rodinei'   => array(
+        'email'     => 'rodinei@wpultimo.com',
+        'signature' => '',
+        'name'      => 'Rodinei Costa',
+        'position'  => 'Developer',
+      ),
+      'ruel'    => array(
+        'email'     => 'ruel@wpultimo.com',
+        'signature' => '',
+        'name'      => 'Ruel Porlas',
+        'position'  => 'Support',
+      ),
+      'marcelo' => array(
+        'email'     => 'marcelo@wpultimo.com',
+        'signature' => '',
+        'name'      => 'Marcelo Assis',
+        'position'  => '(former) Developer',
+      ),
     );
 
     ?>

@@ -13,5 +13,5 @@ namespace WP_Ultimo\Dependencies\Carbon;
 use DateTimeInterface;
 interface CarbonConverterInterface
 {
-    public function convertDate(\DateTimeInterface $dateTime, bool $negated = \false) : \WP_Ultimo\Dependencies\Carbon\CarbonInterface;
+    public function convertDate(DateTimeInterface $dateTime, bool $negated = \false) : CarbonInterface;
 }

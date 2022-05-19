@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class After extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class After extends Rule
 {
     use Traits\DateUtilsTrait;
     /** @var string */

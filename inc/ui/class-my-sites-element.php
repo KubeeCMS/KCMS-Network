@@ -21,6 +21,8 @@ defined('ABSPATH') || exit;
  */
 class My_Sites_Element extends Base_Element {
 
+	use \WP_Ultimo\Traits\Singleton;
+
 	/**
 	 * The id of the element.
 	 *

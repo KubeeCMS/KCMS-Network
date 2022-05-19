@@ -43,7 +43,7 @@ class Signup_Field_Billing_Address extends Base_Signup_Field {
 	 */
 	public function is_required() {
 
-		return true;
+		return false;
 
 	} // end is_required;
 
@@ -72,7 +72,7 @@ class Signup_Field_Billing_Address extends Base_Signup_Field {
 	 */
 	public function get_title() {
 
-		return __('Billing Address', 'wp-ultimo');
+		return __('Address', 'wp-ultimo');
 
 	} // end get_title;
 
@@ -86,9 +86,23 @@ class Signup_Field_Billing_Address extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('BA Description', 'wp-ultimo');
+		return __('Adds billing address fields such as country, zip code.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Adds billing address fields such as country, zip code.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -100,7 +114,7 @@ class Signup_Field_Billing_Address extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-wu-address';
+		return 'dashicons-wu-map1';
 
 	} // end get_icon;
 
@@ -170,6 +184,40 @@ class Signup_Field_Billing_Address extends Base_Signup_Field {
 	} // end get_fields;
 
 	/**
+	 * Build a filed alternative.
+	 *
+	 * @since 2.0.11
+	 *
+	 * @param array  $base_field The base field.
+	 * @param string $data_key_name The data key name.
+	 * @param string $label_key_field The field label name.
+	 * @return array
+	 */
+	public function build_select_alternative(&$base_field, $data_key_name, $label_key_field) {
+
+		$base_field['wrapper_html_attr']['v-if'] = "!{$data_key_name}.length";
+
+		$field = $base_field;
+
+		$option_template = sprintf('<option v-for="item in %s" :value="item.code">
+			{{ item.name }}
+		</option>', $data_key_name);
+
+		$field['type']                      = 'select';
+		$field['options_template']          = $option_template;
+		$field['options']                   = array();
+		$field['required']                  = true;
+		$field['wrapper_html_attr']['v-if'] = "{$data_key_name}.length";
+		$field['html_attr']['required']     = 'required';
+		$field['html_attr']['required']     = 'required';
+		$field['html_attr']['v-bind:name']  = "'billing_" . str_replace('_list', '', $data_key_name) . "'";
+		$field['title']                     = sprintf('<span v-html="%s">%s</span>', "labels.$label_key_field", $field['title']);
+
+		return $field;
+
+	} // end build_select_alternative;
+
+	/**
 	 * Returns the field/element actual field array to be used on the checkout form.
 	 *
 	 * @since 2.0.0
@@ -200,30 +248,39 @@ class Signup_Field_Billing_Address extends Base_Signup_Field {
 			'v-model' => 'country',
 		);
 
-		$left_classes  = ' wu-box-border md:wu-w-1/2 md:wu-float-left md:wu-pr-2';
-		$right_classes = ' wu-box-border md:wu-w-1/2 md:wu-float-left md:wu-pl-2';
+		if (!$zip_only) {
 
-		if ($attributes['zip_and_country']) {
+			$fields['billing_state']['html_attr'] = array(
+				'v-model.lazy' => 'state',
+			);
 
-			$fields['billing_zip_code']['wrapper_classes'] .= $left_classes;
-			$fields['billing_country']['wrapper_classes']  .= $right_classes;
+			/**
+			 * Format the state field accordingly.
+			 *
+			 * @since 2.0.11
+			 */
+			$fields['billing_state_select'] = $this->build_select_alternative($fields['billing_state'], 'state_list', 'state_field');
 
-		} else {
+			$fields['billing_city']['html_attr'] = array(
+				'v-model.lazy' => 'city',
+			);
 
-			$fields['company_name']['wrapper_classes']     .= $left_classes;
-			$fields['billing_email']['wrapper_classes']    .= $right_classes;
-			$fields['tax_id']['wrapper_classes']           .= ' wu-clear-both';
-			$fields['billing_city']['wrapper_classes']     .= $left_classes;
-			$fields['billing_zip_code']['wrapper_classes'] .= $right_classes;
-			$fields['billing_state']['wrapper_classes']    .= $left_classes;
-			$fields['billing_country']['wrapper_classes']  .= $right_classes;
+			/**
+			 * Format the city field accordingly.
+			 *
+			 * @since 2.0.11
+			 */
+			$fields['billing_city_select'] = $this->build_select_alternative($fields['billing_city'], 'city_list', 'city_field');
 
 		} // end if;
 
-		$fields['clear'] = array(
-			'type' => 'note',
-			'desc' => '<div class="wu-clear-both"></div>',
-		);
+		foreach ($fields as &$field) {
+
+			$field['wrapper_classes'] = trim(wu_get_isset($field, 'wrapper_classes', '') . ' ' . $attributes['element_classes']);
+
+		} // end foreach;
+
+		uasort($fields, 'wu_sort_by_order');
 
 		return $fields;
 

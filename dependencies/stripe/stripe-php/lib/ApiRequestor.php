@@ -20,6 +20,10 @@ class ApiRequestor
      */
     private static $_httpClient;
     /**
+     * @var HttpClient\StreamingClientInterface
+     */
+    private static $_streamingHttpClient;
+    /**
      * @var RequestTelemetry
      */
     private static $requestTelemetry;
@@ -34,7 +38,7 @@ class ApiRequestor
     {
         $this->_apiKey = $apiKey;
         if (!$apiBase) {
-            $apiBase = \WP_Ultimo\Dependencies\Stripe\Stripe::$apiBase;
+            $apiBase = Stripe::$apiBase;
         }
         $this->_apiBase = $apiBase;
     }
@@ -54,7 +58,7 @@ class ApiRequestor
         if (\false !== $result) {
             return $result;
         }
-        \WP_Ultimo\Dependencies\Stripe\Stripe::getLogger()->error('Serializing telemetry payload failed!');
+        Stripe::getLogger()->error('Serializing telemetry payload failed!');
         return '{}';
     }
     /**
@@ -66,8 +70,8 @@ class ApiRequestor
      */
     private static function _encodeObjects($d)
     {
-        if ($d instanceof \WP_Ultimo\Dependencies\Stripe\ApiResource) {
-            return \WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($d->id);
+        if ($d instanceof ApiResource) {
+            return Util\Util::utf8($d->id);
         }
         if (\true === $d) {
             return 'true';
@@ -82,7 +86,7 @@ class ApiRequestor
             }
             return $res;
         }
-        return \WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($d);
+        return Util\Util::utf8($d);
     }
     /**
      * @param string     $method
@@ -100,8 +104,26 @@ class ApiRequestor
         $headers = $headers ?: [];
         list($rbody, $rcode, $rheaders, $myApiKey) = $this->_requestRaw($method, $url, $params, $headers);
         $json = $this->_interpretResponse($rbody, $rcode, $rheaders);
-        $resp = new \WP_Ultimo\Dependencies\Stripe\ApiResponse($rbody, $rcode, $rheaders, $json);
+        $resp = new ApiResponse($rbody, $rcode, $rheaders, $json);
         return [$resp, $myApiKey];
+    }
+    /**
+     * @param string     $method
+     * @param string     $url
+     * @param callable $readBodyChunkCallable
+     * @param null|array $params
+     * @param null|array $headers
+     *
+     * @throws Exception\ApiErrorException
+     */
+    public function requestStream($method, $url, $readBodyChunkCallable, $params = null, $headers = null)
+    {
+        $params = $params ?: [];
+        $headers = $headers ?: [];
+        list($rbody, $rcode, $rheaders, $myApiKey) = $this->_requestRawStreaming($method, $url, $params, $headers, $readBodyChunkCallable);
+        if ($rcode >= 300) {
+            $this->_interpretResponse($rbody, $rcode, $rheaders);
+        }
     }
     /**
      * @param string $rbody a JSON string
@@ -116,7 +138,7 @@ class ApiRequestor
     {
         if (!\is_array($resp) || !isset($resp['error'])) {
             $msg = "Invalid response object from API: {$rbody} " . "(HTTP response code was {$rcode})";
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException($msg);
+            throw new Exception\UnexpectedValueException($msg);
         }
         $errorData = $resp['error'];
         $error = null;
@@ -151,24 +173,24 @@ class ApiRequestor
                 // 'rate_limit' code is deprecated, but left here for backwards compatibility
                 // for API versions earlier than 2015-09-08
                 if ('rate_limit' === $code) {
-                    return \WP_Ultimo\Dependencies\Stripe\Exception\RateLimitException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code, $param);
+                    return Exception\RateLimitException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code, $param);
                 }
                 if ('idempotency_error' === $type) {
-                    return \WP_Ultimo\Dependencies\Stripe\Exception\IdempotencyException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code);
+                    return Exception\IdempotencyException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code);
                 }
             // no break
             case 404:
-                return \WP_Ultimo\Dependencies\Stripe\Exception\InvalidRequestException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code, $param);
+                return Exception\InvalidRequestException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code, $param);
             case 401:
-                return \WP_Ultimo\Dependencies\Stripe\Exception\AuthenticationException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code);
+                return Exception\AuthenticationException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code);
             case 402:
-                return \WP_Ultimo\Dependencies\Stripe\Exception\CardException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code, $declineCode, $param);
+                return Exception\CardException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code, $declineCode, $param);
             case 403:
-                return \WP_Ultimo\Dependencies\Stripe\Exception\PermissionException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code);
+                return Exception\PermissionException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code);
             case 429:
-                return \WP_Ultimo\Dependencies\Stripe\Exception\RateLimitException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code, $param);
+                return Exception\RateLimitException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code, $param);
             default:
-                return \WP_Ultimo\Dependencies\Stripe\Exception\UnknownApiErrorException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code);
+                return Exception\UnknownApiErrorException::factory($msg, $rcode, $rbody, $resp, $rheaders, $code);
         }
     }
     /**
@@ -187,19 +209,19 @@ class ApiRequestor
         $description = isset($resp['error_description']) ? $resp['error_description'] : $errorCode;
         switch ($errorCode) {
             case 'invalid_client':
-                return \WP_Ultimo\Dependencies\Stripe\Exception\OAuth\InvalidClientException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
+                return Exception\OAuth\InvalidClientException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
             case 'invalid_grant':
-                return \WP_Ultimo\Dependencies\Stripe\Exception\OAuth\InvalidGrantException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
+                return Exception\OAuth\InvalidGrantException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
             case 'invalid_request':
-                return \WP_Ultimo\Dependencies\Stripe\Exception\OAuth\InvalidRequestException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
+                return Exception\OAuth\InvalidRequestException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
             case 'invalid_scope':
-                return \WP_Ultimo\Dependencies\Stripe\Exception\OAuth\InvalidScopeException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
+                return Exception\OAuth\InvalidScopeException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
             case 'unsupported_grant_type':
-                return \WP_Ultimo\Dependencies\Stripe\Exception\OAuth\UnsupportedGrantTypeException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
+                return Exception\OAuth\UnsupportedGrantTypeException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
             case 'unsupported_response_type':
-                return \WP_Ultimo\Dependencies\Stripe\Exception\OAuth\UnsupportedResponseTypeException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
+                return Exception\OAuth\UnsupportedResponseTypeException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
             default:
-                return \WP_Ultimo\Dependencies\Stripe\Exception\OAuth\UnknownOAuthErrorException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
+                return Exception\OAuth\UnknownOAuthErrorException::factory($description, $rcode, $rbody, $resp, $rheaders, $errorCode);
         }
     }
     /**
@@ -252,12 +274,12 @@ class ApiRequestor
      */
     private static function _defaultHeaders($apiKey, $clientInfo = null)
     {
-        $uaString = 'Stripe/v1 PhpBindings/' . \WP_Ultimo\Dependencies\Stripe\Stripe::VERSION;
+        $uaString = 'Stripe/v1 PhpBindings/' . Stripe::VERSION;
         $langVersion = \PHP_VERSION;
         $uname_disabled = static::_isDisabled(\ini_get('disable_functions'), 'php_uname');
         $uname = $uname_disabled ? '(disabled)' : \php_uname();
-        $appInfo = \WP_Ultimo\Dependencies\Stripe\Stripe::getAppInfo();
-        $ua = ['bindings_version' => \WP_Ultimo\Dependencies\Stripe\Stripe::VERSION, 'lang' => 'php', 'lang_version' => $langVersion, 'publisher' => 'stripe', 'uname' => $uname];
+        $appInfo = Stripe::getAppInfo();
+        $ua = ['bindings_version' => Stripe::VERSION, 'lang' => 'php', 'lang_version' => $langVersion, 'publisher' => 'stripe', 'uname' => $uname];
         if ($clientInfo) {
             $ua = \array_merge($clientInfo, $ua);
         }
@@ -267,26 +289,15 @@ class ApiRequestor
         }
         return ['X-Stripe-Client-User-Agent' => \json_encode($ua), 'User-Agent' => $uaString, 'Authorization' => 'Bearer ' . $apiKey];
     }
-    /**
-     * @param string $method
-     * @param string $url
-     * @param array $params
-     * @param array $headers
-     *
-     * @throws Exception\AuthenticationException
-     * @throws Exception\ApiConnectionException
-     *
-     * @return array
-     */
-    private function _requestRaw($method, $url, $params, $headers)
+    private function _prepareRequest($method, $url, $params, $headers)
     {
         $myApiKey = $this->_apiKey;
         if (!$myApiKey) {
-            $myApiKey = \WP_Ultimo\Dependencies\Stripe\Stripe::$apiKey;
+            $myApiKey = Stripe::$apiKey;
         }
         if (!$myApiKey) {
             $msg = 'No API key provided.  (HINT: set your API key using ' . '"Stripe::setApiKey(<API-KEY>)".  You can generate API keys from ' . 'the Stripe web interface.  See https://stripe.com/api for ' . 'details, or email support@stripe.com if you have any questions.';
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\AuthenticationException($msg);
+            throw new Exception\AuthenticationException($msg);
         }
         // Clients can supply arbitrary additional keys to be included in the
         // X-Stripe-Client-User-Agent header via the optional getUserAgentInfo()
@@ -307,13 +318,13 @@ class ApiRequestor
         $absUrl = $this->_apiBase . $url;
         $params = self::_encodeObjects($params);
         $defaultHeaders = $this->_defaultHeaders($myApiKey, $clientUAInfo);
-        if (\WP_Ultimo\Dependencies\Stripe\Stripe::$apiVersion) {
-            $defaultHeaders['Stripe-Version'] = \WP_Ultimo\Dependencies\Stripe\Stripe::$apiVersion;
+        if (Stripe::$apiVersion) {
+            $defaultHeaders['Stripe-Version'] = Stripe::$apiVersion;
         }
-        if (\WP_Ultimo\Dependencies\Stripe\Stripe::$accountId) {
-            $defaultHeaders['Stripe-Account'] = \WP_Ultimo\Dependencies\Stripe\Stripe::$accountId;
+        if (Stripe::$accountId) {
+            $defaultHeaders['Stripe-Account'] = Stripe::$accountId;
         }
-        if (\WP_Ultimo\Dependencies\Stripe\Stripe::$enableTelemetry && null !== self::$requestTelemetry) {
+        if (Stripe::$enableTelemetry && null !== self::$requestTelemetry) {
             $defaultHeaders['X-Stripe-Client-Telemetry'] = self::_telemetryJson(self::$requestTelemetry);
         }
         $hasFile = \false;
@@ -335,10 +346,49 @@ class ApiRequestor
         foreach ($combinedHeaders as $header => $value) {
             $rawHeaders[] = $header . ': ' . $value;
         }
-        $requestStartMs = \WP_Ultimo\Dependencies\Stripe\Util\Util::currentTimeMillis();
+        return [$absUrl, $rawHeaders, $params, $hasFile, $myApiKey];
+    }
+    /**
+     * @param string $method
+     * @param string $url
+     * @param array $params
+     * @param array $headers
+     *
+     * @throws Exception\AuthenticationException
+     * @throws Exception\ApiConnectionException
+     *
+     * @return array
+     */
+    private function _requestRaw($method, $url, $params, $headers)
+    {
+        list($absUrl, $rawHeaders, $params, $hasFile, $myApiKey) = $this->_prepareRequest($method, $url, $params, $headers);
+        $requestStartMs = Util\Util::currentTimeMillis();
         list($rbody, $rcode, $rheaders) = $this->httpClient()->request($method, $absUrl, $rawHeaders, $params, $hasFile);
-        if (isset($rheaders['request-id']) && \is_string($rheaders['request-id']) && \strlen($rheaders['request-id']) > 0) {
-            self::$requestTelemetry = new \WP_Ultimo\Dependencies\Stripe\RequestTelemetry($rheaders['request-id'], \WP_Ultimo\Dependencies\Stripe\Util\Util::currentTimeMillis() - $requestStartMs);
+        if (isset($rheaders['request-id']) && \is_string($rheaders['request-id']) && '' !== $rheaders['request-id']) {
+            self::$requestTelemetry = new RequestTelemetry($rheaders['request-id'], Util\Util::currentTimeMillis() - $requestStartMs);
+        }
+        return [$rbody, $rcode, $rheaders, $myApiKey];
+    }
+    /**
+     * @param string $method
+     * @param string $url
+     * @param array $params
+     * @param array $headers
+     * @param callable $readBodyChunk
+     * @param mixed $readBodyChunkCallable
+     *
+     * @throws Exception\AuthenticationException
+     * @throws Exception\ApiConnectionException
+     *
+     * @return array
+     */
+    private function _requestRawStreaming($method, $url, $params, $headers, $readBodyChunkCallable)
+    {
+        list($absUrl, $rawHeaders, $params, $hasFile, $myApiKey) = $this->_prepareRequest($method, $url, $params, $headers);
+        $requestStartMs = Util\Util::currentTimeMillis();
+        list($rbody, $rcode, $rheaders) = $this->streamingHttpClient()->requestStream($method, $absUrl, $rawHeaders, $params, $hasFile, $readBodyChunkCallable);
+        if (isset($rheaders['request-id']) && \is_string($rheaders['request-id']) && '' !== $rheaders['request-id']) {
+            self::$requestTelemetry = new RequestTelemetry($rheaders['request-id'], Util\Util::currentTimeMillis() - $requestStartMs);
         }
         return [$rbody, $rcode, $rheaders, $myApiKey];
     }
@@ -352,11 +402,11 @@ class ApiRequestor
     private function _processResourceParam($resource)
     {
         if ('stream' !== \get_resource_type($resource)) {
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException('Attempted to upload a resource that is not a stream');
+            throw new Exception\InvalidArgumentException('Attempted to upload a resource that is not a stream');
         }
         $metaData = \stream_get_meta_data($resource);
         if ('plainfile' !== $metaData['wrapper_type']) {
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException('Only plainfile resource streams are supported');
+            throw new Exception\InvalidArgumentException('Only plainfile resource streams are supported');
         }
         // We don't have the filename or mimetype, but the API doesn't care
         return new \CURLFile($metaData['uri']);
@@ -377,7 +427,7 @@ class ApiRequestor
         $jsonError = \json_last_error();
         if (null === $resp && \JSON_ERROR_NONE !== $jsonError) {
             $msg = "Invalid response body from API: {$rbody} " . "(HTTP response code was {$rcode}, json_last_error() was {$jsonError})";
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException($msg, $rcode);
+            throw new Exception\UnexpectedValueException($msg, $rcode);
         }
         if ($rcode < 200 || $rcode >= 300) {
             $this->handleErrorResponse($rbody, $rcode, $rheaders, $resp);
@@ -396,6 +446,15 @@ class ApiRequestor
     /**
      * @static
      *
+     * @param HttpClient\StreamingClientInterface $client
+     */
+    public static function setStreamingHttpClient($client)
+    {
+        self::$_streamingHttpClient = $client;
+    }
+    /**
+     * @static
+     *
      * Resets any stateful telemetry data
      */
     public static function resetTelemetry()
@@ -408,8 +467,18 @@ class ApiRequestor
     private function httpClient()
     {
         if (!self::$_httpClient) {
-            self::$_httpClient = \WP_Ultimo\Dependencies\Stripe\HttpClient\CurlClient::instance();
+            self::$_httpClient = HttpClient\CurlClient::instance();
         }
         return self::$_httpClient;
+    }
+    /**
+     * @return HttpClient\StreamingClientInterface
+     */
+    private function streamingHttpClient()
+    {
+        if (!self::$_streamingHttpClient) {
+            self::$_streamingHttpClient = HttpClient\CurlClient::instance();
+        }
+        return self::$_streamingHttpClient;
     }
 }

@@ -5,8 +5,6 @@
  *
  * PHP version 5 and 7
  *
- * @category  Math
- * @package   BigInteger
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -14,16 +12,14 @@
  */
 namespace phpseclib3\Math\BigInteger\Engines\PHP\Reductions;
 
-use phpseclib3\Math\BigInteger\Engines\PHP\Base;
 use phpseclib3\Math\BigInteger\Engines\PHP;
+use phpseclib3\Math\BigInteger\Engines\PHP\Base;
 /**
  * PHP Dynamic Barrett Modular Exponentiation Engine
  *
- * @package PHP
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-abstract class EvalBarrett extends \phpseclib3\Math\BigInteger\Engines\PHP\Base
+abstract class EvalBarrett extends Base
 {
     /**
      * Custom Reduction Function
@@ -54,12 +50,8 @@ abstract class EvalBarrett extends \phpseclib3\Math\BigInteger\Engines\PHP\Base
      * @param string $class
      * @return callable
      */
-    protected static function generateCustomReduction(\phpseclib3\Math\BigInteger\Engines\PHP $m, $class)
+    protected static function generateCustomReduction(PHP $m, $class)
     {
-        if (isset($n->reduce)) {
-            self::$custom_reduction = $n->reduce;
-            return $n->reduce;
-        }
         $m_length = \count($m->value);
         if ($m_length < 5) {
             $code = '
@@ -235,6 +227,7 @@ abstract class EvalBarrett extends \phpseclib3\Math\BigInteger\Engines\PHP\Base
                 $sum = $' . $result . '[$i] + $_' . $y . '[$i] + $carry;
                 $carry = $sum >= ' . self::float2string($class::BASE_FULL) . ';
                 $' . $result . '[$i] = $carry ? $sum - ' . self::float2string($class::BASE_FULL) . ' : $sum;
+                ++$i;
             }
             if ($carry) {
                 for (; $' . $result . '[$i] == ' . $class::MAX_DIGIT . '; ++$i) {
@@ -404,7 +397,7 @@ abstract class EvalBarrett extends \phpseclib3\Math\BigInteger\Engines\PHP\Base
     private static function float2string($num)
     {
         if (!\is_float($num)) {
-            return $num;
+            return (string) $num;
         }
         if ($num < 0) {
             return '-' . self::float2string(\abs($num));

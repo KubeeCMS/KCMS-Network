@@ -69,7 +69,7 @@ class Payment_List_Admin_Page extends List_Admin_Page {
 		wu_register_form('add_new_payment', array(
 			'render'     => array($this, 'render_add_new_payment_modal'),
 			'handler'    => array($this, 'handle_add_new_payment_modal'),
-			'capability' => 'wu_add_payments',
+			'capability' => 'wu_edit_payments',
 		));
 
 	} // end register_forms;
@@ -86,7 +86,8 @@ class Payment_List_Admin_Page extends List_Admin_Page {
 			'products'       => array(
 				'type'        => 'model',
 				'title'       => __('Products', 'wp-ultimo'),
-				'placeholder' => __('Products', 'wp-ultimo'),
+				'placeholder' => __('Search Products...', 'wp-ultimo'),
+				'desc'        => __('Each product will be added as a line item.', 'wp-ultimo'),
 				'value'       => '',
 				'tooltip'     => '',
 				'html_attr'   => array(
@@ -101,6 +102,7 @@ class Payment_List_Admin_Page extends List_Admin_Page {
 				'type'        => 'select',
 				'title'       => __('Status', 'wp-ultimo'),
 				'placeholder' => __('Status', 'wp-ultimo'),
+				'desc'        => __('The payment status to attach to the newly created payment.', 'wp-ultimo'),
 				'value'       => Payment_Status::COMPLETED,
 				'options'     => Payment_Status::to_array(),
 				'tooltip'     => '',
@@ -108,11 +110,11 @@ class Payment_List_Admin_Page extends List_Admin_Page {
 			'membership_id'  => array(
 				'type'        => 'model',
 				'title'       => __('Membership', 'wp-ultimo'),
-				'placeholder' => __('Membership', 'wp-ultimo'),
+				'placeholder' => __('Search Membership...', 'wp-ultimo'),
+				'desc'        => __('The membership associated with this payment.', 'wp-ultimo'),
 				'value'       => '',
 				'tooltip'     => '',
 				'html_attr'   => array(
-					'v-model'          => 'membership_id',
 					'data-model'       => 'membership',
 					'data-value-field' => 'id',
 					'data-label-field' => 'reference_code',
@@ -122,7 +124,7 @@ class Payment_List_Admin_Page extends List_Admin_Page {
 			),
 			'add_setup_fees' => array(
 				'type'  => 'toggle',
-				'title' => __('Include Setup Fees?', 'wp-ultimo'),
+				'title' => __('Include Setup Fees', 'wp-ultimo'),
 				'desc'  => __('Checking this box will include setup fees attached to the selected products as well.', 'wp-ultimo'),
 				'value' => 1,
 			),
@@ -135,12 +137,12 @@ class Payment_List_Admin_Page extends List_Admin_Page {
 			),
 		);
 
-		$form = new \WP_Ultimo\UI\Form('edit_line_item', $fields, array(
+		$form = new \WP_Ultimo\UI\Form('add_payment', $fields, array(
 			'views'                 => 'admin-pages/fields',
 			'classes'               => 'wu-modal-form wu-widget-list wu-striped wu-m-0 wu-mt-0',
 			'field_wrapper_classes' => 'wu-w-full wu-box-border wu-items-center wu-flex wu-justify-between wu-p-4 wu-m-0 wu-border-t wu-border-l-0 wu-border-r-0 wu-border-b-0 wu-border-gray-300 wu-border-solid',
 			'html_attr'             => array(
-				'data-wu-app' => 'edit_line_item',
+				'data-wu-app' => 'add_payment',
 				'data-state'  => wu_convert_to_state(array(
 					'taxable' => 0,
 					'type'    => 'product',
@@ -160,6 +162,16 @@ class Payment_List_Admin_Page extends List_Admin_Page {
 	 */
 	public function handle_add_new_payment_modal() {
 
+		$membership = wu_get_membership(wu_request('membership_id'));
+
+		if (!$membership) {
+
+			$error = new \WP_Error('invalid-membership', __('Invalid membership.', 'wp-ultimo'));
+
+			return wp_send_json_error($error);
+
+		} // end if;
+
 		$cart = new \WP_Ultimo\Checkout\Cart(array(
 			'products'  => explode(',', wu_request('products')),
 			'cart_type' => wu_request('add_setup_fees') ? 'new' : 'renewal',
@@ -167,7 +179,8 @@ class Payment_List_Admin_Page extends List_Admin_Page {
 
 		$payment_data = array_merge($cart->to_payment_data(), array(
 			'status'        => wu_request('status'),
-			'membership_id' => wu_request('membership_id'),
+			'membership_id' => $membership->get_id(),
+			'customer_id'   => $membership->get_customer_id(),
 		));
 
 		$payment = wu_create_payment($payment_data);
@@ -193,6 +206,21 @@ class Payment_List_Admin_Page extends List_Admin_Page {
 	 * @return void
 	 */
 	public function register_widgets() {} // end register_widgets;
+
+	/**
+	 * Returns an array with the labels for the edit page.
+	 *
+	 * @since 1.8.2
+	 * @return array
+	 */
+	public function get_labels() {
+
+		return array(
+			'deleted_message' => __('Payment removed successfully.', 'wp-ultimo'),
+			'search_label'    => __('Search Payment', 'wp-ultimo'),
+		);
+
+	} // end get_labels;
 
 	/**
 	 * Returns the title of the page.

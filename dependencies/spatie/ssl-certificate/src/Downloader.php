@@ -24,6 +24,8 @@ class Downloader
     protected $verifyPeer = \true;
     /** @var bool */
     protected $verifyPeerName = \true;
+    /** @var int */
+    protected $followLocation = 1;
     public function usingPort(int $port)
     {
         $this->port = $port;
@@ -59,10 +61,15 @@ class Downloader
         $this->timeout = $timeOutInSeconds;
         return $this;
     }
+    public function setFollowLocation(int $followLocation)
+    {
+        $this->followLocation = $followLocation;
+        return $this;
+    }
     public function fromIpAddress(string $ipAddress)
     {
         if (!\filter_var($ipAddress, \FILTER_VALIDATE_IP)) {
-            throw \WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\InvalidIpAddress::couldNotValidate($ipAddress);
+            throw InvalidIpAddress::couldNotValidate($ipAddress);
         }
         $this->ipAddress = $ipAddress;
         $this->usingIpAddress = \true;
@@ -79,24 +86,24 @@ class Downloader
             $certificateFields = \openssl_x509_parse($certificate);
             $fingerprint = \openssl_x509_fingerprint($certificate);
             $fingerprintSha256 = \openssl_x509_fingerprint($certificate, 'sha256');
-            return new \WP_Ultimo\Dependencies\Spatie\SslCertificate\SslCertificate($certificateFields, $fingerprint, $fingerprintSha256, $remoteAddress);
+            return new SslCertificate($certificateFields, $fingerprint, $fingerprintSha256, $remoteAddress);
         }, $fullCertificateChain);
         return \array_unique($certificates);
     }
-    public function forHost(string $hostName) : \WP_Ultimo\Dependencies\Spatie\SslCertificate\SslCertificate
+    public function forHost(string $hostName) : SslCertificate
     {
-        $hostName = (new \WP_Ultimo\Dependencies\Spatie\SslCertificate\Url($hostName))->getHostName();
+        $hostName = (new Url($hostName))->getHostName();
         $certificates = $this->getCertificates($hostName);
         return $certificates[0] ?? \false;
     }
-    public static function downloadCertificateFromUrl(string $url, int $timeout = 30, bool $verifyCertificate = \true) : \WP_Ultimo\Dependencies\Spatie\SslCertificate\SslCertificate
+    public static function downloadCertificateFromUrl(string $url, int $timeout = 30, bool $verifyCertificate = \true) : SslCertificate
     {
         return (new static())->setTimeout($timeout)->withVerifyPeer($verifyCertificate)->withVerifyPeerName($verifyCertificate)->forHost($url);
     }
     protected function fetchCertificates(string $hostName) : array
     {
-        $hostName = (new \WP_Ultimo\Dependencies\Spatie\SslCertificate\Url($hostName))->getHostName();
-        $sslOptions = ['capture_peer_cert' => \true, 'capture_peer_cert_chain' => $this->capturePeerChain, 'SNI_enabled' => $this->enableSni, 'peer_name' => $hostName, 'verify_peer' => $this->verifyPeer, 'verify_peer_name' => $this->verifyPeerName];
+        $hostName = (new Url($hostName))->getHostName();
+        $sslOptions = ['capture_peer_cert' => \true, 'capture_peer_cert_chain' => $this->capturePeerChain, 'SNI_enabled' => $this->enableSni, 'peer_name' => $hostName, 'verify_peer' => $this->verifyPeer, 'verify_peer_name' => $this->verifyPeerName, 'follow_location' => $this->followLocation];
         $streamContext = \stream_context_create(['socket' => $this->socketContextOptions, 'ssl' => $sslOptions]);
         $connectTo = $this->usingIpAddress ? $this->ipAddress : $hostName;
         $client = @\stream_socket_client("ssl://{$connectTo}:{$this->port}", $errorNumber, $errorDescription, $this->timeout, \STREAM_CLIENT_CONNECT, $streamContext);
@@ -105,7 +112,7 @@ class Downloader
         }
         if (!$client) {
             $clientErrorMessage = $this->usingIpAddress ? "Could not connect to `{$connectTo}` or it does not have a certificate matching `{$hostName}`." : "Could not connect to `{$connectTo}`.";
-            throw \WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\CouldNotDownloadCertificate::unknownError($hostName, $clientErrorMessage);
+            throw CouldNotDownloadCertificate::unknownError($hostName, $clientErrorMessage);
         }
         $response = \stream_context_get_params($client);
         $response['remoteAddress'] = \stream_socket_get_name($client, \true);
@@ -114,12 +121,12 @@ class Downloader
     }
     protected function buildFailureException(string $hostName, string $errorDescription)
     {
-        if (str_contains($errorDescription, 'getaddrinfo failed')) {
-            return \WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\CouldNotDownloadCertificate::hostDoesNotExist($hostName);
+        if (\str_contains($errorDescription, 'getaddrinfo failed')) {
+            return CouldNotDownloadCertificate::hostDoesNotExist($hostName);
         }
-        if (str_contains($errorDescription, 'error:14090086')) {
-            return \WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\CouldNotDownloadCertificate::noCertificateInstalled($hostName);
+        if (\str_contains($errorDescription, 'error:14090086')) {
+            return CouldNotDownloadCertificate::noCertificateInstalled($hostName);
         }
-        return \WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\CouldNotDownloadCertificate::unknownError($hostName, $errorDescription);
+        return CouldNotDownloadCertificate::unknownError($hostName, $errorDescription);
     }
 }

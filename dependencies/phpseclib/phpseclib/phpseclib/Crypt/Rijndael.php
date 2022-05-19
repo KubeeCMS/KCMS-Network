@@ -30,7 +30,7 @@
  * <?php
  *    include 'vendor/autoload.php';
  *
- *    $rijndael = new \phpseclib3\Crypt\Rijndael();
+ *    $rijndael = new \phpseclib3\Crypt\Rijndael('ctr');
  *
  *    $rijndael->setKey('abcdefghijklmnop');
  *
@@ -44,8 +44,6 @@
  * ?>
  * </code>
  *
- * @category  Crypt
- * @package   Rijndael
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2008 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -53,19 +51,18 @@
  */
 namespace phpseclib3\Crypt;
 
-use phpseclib3\Crypt\Common\BlockCipher;
 use phpseclib3\Common\Functions\Strings;
-use phpseclib3\Exception\BadModeException;
-use phpseclib3\Exception\InsufficientSetupException;
+use phpseclib3\Crypt\Common\BlockCipher;
 use phpseclib3\Exception\BadDecryptionException;
+use phpseclib3\Exception\BadModeException;
+use phpseclib3\Exception\InconsistentSetupException;
+use phpseclib3\Exception\InsufficientSetupException;
 /**
  * Pure-PHP implementation of Rijndael.
  *
- * @package Rijndael
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
+class Rijndael extends BlockCipher
 {
     /**
      * The mcrypt specific name of the cipher
@@ -79,7 +76,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      * @see \phpseclib3\Crypt\Common\SymmetricKey::engine
      * @see self::isValidEngine()
      * @var string
-     * @access private
      */
     protected $cipher_name_mcrypt = 'rijndael-128';
     /**
@@ -87,7 +83,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      *
      * @see self::setup()
      * @var array
-     * @access private
      */
     private $w;
     /**
@@ -95,7 +90,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      *
      * @see self::setup()
      * @var array
-     * @access private
      */
     private $dw;
     /**
@@ -108,7 +102,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      *
      * @see self::setBlockLength()
      * @var int
-     * @access private
      */
     private $Nb = 4;
     /**
@@ -121,7 +114,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      *
      * @see self::setKeyLength()
      * @var int
-     * @access private
      */
     protected $key_length = 16;
     /**
@@ -129,7 +121,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      *
      * @see self::setKeyLength()
      * @var int
-     * @access private
      * @internal The max value is 256 / 32 = 8, the min value is 128 / 32 = 4
      */
     private $Nk = 4;
@@ -139,35 +130,31 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      * {@internal The max value is 14, the min value is 10.}
      *
      * @var int
-     * @access private
      */
     private $Nr;
     /**
      * Shift offsets
      *
      * @var array
-     * @access private
      */
     private $c;
     /**
      * Holds the last used key- and block_size information
      *
      * @var array
-     * @access private
      */
     private $kl;
     /**
      * Default Constructor.
      *
      * @param string $mode
-     * @access public
      * @throws \InvalidArgumentException if an invalid / unsupported mode is provided
      */
     public function __construct($mode)
     {
         parent::__construct($mode);
         if ($this->mode == self::MODE_STREAM) {
-            throw new \phpseclib3\Exception\BadModeException('Block ciphers cannot be ran in stream mode');
+            throw new BadModeException('Block ciphers cannot be ran in stream mode');
         }
     }
     /**
@@ -186,7 +173,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      *             the mcrypt php extension, even if available.
      *             This results then in slower encryption.
      *
-     * @access public
      * @throws \LengthException if the key length is invalid
      * @param int $length
      */
@@ -211,7 +197,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      * Rijndael supports five different key lengths
      *
      * @see setKeyLength()
-     * @access public
      * @param string $key
      * @throws \LengthException if the key length isn't supported
      */
@@ -234,7 +219,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      *
      * Valid block lengths are 128, 160, 192, 224, and 256.
      *
-     * @access public
      * @param int $length
      */
     public function setBlockLength($length)
@@ -261,7 +245,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      *
      * @see \phpseclib3\Crypt\Common\SymmetricKey::__construct()
      * @param int $engine
-     * @access protected
      * @return bool
      */
     protected function isValidEngineHelper($engine)
@@ -279,7 +262,7 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
                 if ($this->block_size != 16) {
                     return \false;
                 }
-                self::$cipher_name_openssl_ecb = 'aes-' . ($this->key_length << 3) . '-ecb';
+                $this->cipher_name_openssl_ecb = 'aes-' . ($this->key_length << 3) . '-ecb';
                 $this->cipher_name_openssl = 'aes-' . ($this->key_length << 3) . '-' . $this->openssl_translate_mode();
                 break;
             case self::ENGINE_MCRYPT:
@@ -295,7 +278,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
     /**
      * Encrypts a block
      *
-     * @access private
      * @param string $in
      * @return string
      */
@@ -366,7 +348,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
     /**
      * Decrypts a block
      *
-     * @access private
      * @param string $in
      * @return string
      */
@@ -425,10 +406,44 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
         return \pack('N*', ...$temp);
     }
     /**
+     * Setup the self::ENGINE_INTERNAL $engine
+     *
+     * (re)init, if necessary, the internal cipher $engine and flush all $buffers
+     * Used (only) if $engine == self::ENGINE_INTERNAL
+     *
+     * _setup() will be called each time if $changed === true
+     * typically this happens when using one or more of following public methods:
+     *
+     * - setKey()
+     *
+     * - setIV()
+     *
+     * - disableContinuousBuffer()
+     *
+     * - First run of encrypt() / decrypt() with no init-settings
+     *
+     * {@internal setup() is always called before en/decryption.}
+     *
+     * {@internal Could, but not must, extend by the child Crypt_* class}
+     *
+     * @see self::setKey()
+     * @see self::setIV()
+     * @see self::disableContinuousBuffer()
+     */
+    protected function setup()
+    {
+        if (!$this->changed) {
+            return;
+        }
+        parent::setup();
+        if (\is_string($this->iv) && \strlen($this->iv) != $this->block_size) {
+            throw new InconsistentSetupException('The IV length (' . \strlen($this->iv) . ') does not match the block size (' . $this->block_size . ')');
+        }
+    }
+    /**
      * Setup the key (expansion)
      *
      * @see \phpseclib3\Crypt\Common\SymmetricKey::setupKey()
-     * @access private
      */
     protected function setupKey()
     {
@@ -522,7 +537,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      * Performs S-Box substitutions
      *
      * @return array
-     * @access private
      * @param int $word
      */
     private function subWord($word)
@@ -539,7 +553,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      * @see self::encryptBlock()
      * @see self::setupInlineCrypt()
      * @see self::subWord()
-     * @access private
      * @return array &$tables
      */
     protected function &getTables()
@@ -832,7 +845,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      * @see self::decryptBlock()
      * @see self::setupInlineCrypt()
      * @see self::setupKey()
-     * @access private
      * @return array &$tables
      */
     protected function &getInvTables()
@@ -861,7 +873,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      * Setup the performance-optimized function for de/encrypt()
      *
      * @see \phpseclib3\Crypt\Common\SymmetricKey::setupInlineCrypt()
-     * @access private
      */
     protected function setupInlineCrypt()
     {
@@ -979,7 +990,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      *
      * @see self::decrypt()
      * @see parent::encrypt()
-     * @access public
      * @param string $plaintext
      * @return string
      */
@@ -989,7 +999,7 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
         switch ($this->engine) {
             case self::ENGINE_LIBSODIUM:
                 $this->newtag = \sodium_crypto_aead_aes256gcm_encrypt($plaintext, $this->aad, $this->nonce, $this->key);
-                return \phpseclib3\Common\Functions\Strings::shift($this->newtag, \strlen($plaintext));
+                return Strings::shift($this->newtag, \strlen($plaintext));
             case self::ENGINE_OPENSSL_GCM:
                 return \openssl_encrypt($plaintext, 'aes-' . $this->getKeyLength() . '-gcm', $this->key, \OPENSSL_RAW_DATA, $this->nonce, $this->newtag, $this->aad);
         }
@@ -1000,7 +1010,6 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
      *
      * @see self::encrypt()
      * @see parent::decrypt()
-     * @access public
      * @param string $ciphertext
      * @return string
      */
@@ -1010,7 +1019,7 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
         switch ($this->engine) {
             case self::ENGINE_LIBSODIUM:
                 if ($this->oldtag === \false) {
-                    throw new \phpseclib3\Exception\InsufficientSetupException('Authentication Tag has not been set');
+                    throw new InsufficientSetupException('Authentication Tag has not been set');
                 }
                 if (\strlen($this->oldtag) != 16) {
                     break;
@@ -1018,17 +1027,17 @@ class Rijndael extends \phpseclib3\Crypt\Common\BlockCipher
                 $plaintext = \sodium_crypto_aead_aes256gcm_decrypt($ciphertext . $this->oldtag, $this->aad, $this->nonce, $this->key);
                 if ($plaintext === \false) {
                     $this->oldtag = \false;
-                    throw new \phpseclib3\Exception\BadDecryptionException('Error decrypting ciphertext with libsodium');
+                    throw new BadDecryptionException('Error decrypting ciphertext with libsodium');
                 }
                 return $plaintext;
             case self::ENGINE_OPENSSL_GCM:
                 if ($this->oldtag === \false) {
-                    throw new \phpseclib3\Exception\InsufficientSetupException('Authentication Tag has not been set');
+                    throw new InsufficientSetupException('Authentication Tag has not been set');
                 }
                 $plaintext = \openssl_decrypt($ciphertext, 'aes-' . $this->getKeyLength() . '-gcm', $this->key, \OPENSSL_RAW_DATA, $this->nonce, $this->oldtag, $this->aad);
                 if ($plaintext === \false) {
                     $this->oldtag = \false;
-                    throw new \phpseclib3\Exception\BadDecryptionException('Error decrypting ciphertext with OpenSSL');
+                    throw new BadDecryptionException('Error decrypting ciphertext with OpenSSL');
                 }
                 return $plaintext;
         }

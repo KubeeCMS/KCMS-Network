@@ -43,7 +43,7 @@
 
     <div id="preview_content" class="wu-block wu-bg-gray wu-text-center wu-mb-5 wu-border wu-border-t-0 wu-border-solid wu-rounded wu-border-gray-400">
 
-      <iframe id="preview-stage-iframe" class="preview-stage-iframe" width="100%" style="height: 120vh;" frameborder="0" data-src="<?php echo esc_url($preview_iframe_url); ?>" src="<?php echo esc_url($preview_iframe_url); ?>"></iframe>
+      <iframe id="preview-stage-iframe" class="preview-stage-iframe" width="100%" style="height: <?php echo $preview_height; ?>;" frameborder="0" data-src="<?php echo esc_url($preview_iframe_url); ?>" src="<?php echo esc_url($preview_iframe_url); ?>"></iframe>
 
     </div>
 

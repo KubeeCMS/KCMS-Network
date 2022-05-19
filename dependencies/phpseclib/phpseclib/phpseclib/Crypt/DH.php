@@ -16,8 +16,6 @@
  * ?>
  * </code>
  *
- * @category  Crypt
- * @package   DH
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2016 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -25,34 +23,30 @@
  */
 namespace phpseclib3\Crypt;
 
-use phpseclib3\Exception\NoKeyLoadedException;
-use phpseclib3\Exception\UnsupportedOperationException;
 use phpseclib3\Crypt\Common\AsymmetricKey;
+use phpseclib3\Crypt\DH\Parameters;
 use phpseclib3\Crypt\DH\PrivateKey;
 use phpseclib3\Crypt\DH\PublicKey;
-use phpseclib3\Crypt\DH\Parameters;
+use phpseclib3\Exception\NoKeyLoadedException;
+use phpseclib3\Exception\UnsupportedOperationException;
 use phpseclib3\Math\BigInteger;
 /**
  * Pure-PHP (EC)DH implementation
  *
- * @package DH
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-abstract class DH extends \phpseclib3\Crypt\Common\AsymmetricKey
+abstract class DH extends AsymmetricKey
 {
     /**
      * Algorithm Name
      *
      * @var string
-     * @access private
      */
     const ALGORITHM = 'DH';
     /**
      * DH prime
      *
      * @var \phpseclib3\Math\BigInteger
-     * @access private
      */
     protected $prime;
     /**
@@ -61,7 +55,6 @@ abstract class DH extends \phpseclib3\Crypt\Common\AsymmetricKey
      * Prime divisor of p-1
      *
      * @var \phpseclib3\Math\BigInteger
-     * @access private
      */
     protected $base;
     /**
@@ -72,13 +65,12 @@ abstract class DH extends \phpseclib3\Crypt\Common\AsymmetricKey
      *  - an integer representing the size of the prime in bits (the base is assumed to be 2)
      *  - a string (eg. diffie-hellman-group14-sha1)
      *
-     * @access public
-     * @return \phpseclib3\Crypt\DH|bool
+     * @return Parameters
      */
     public static function createParameters(...$args)
     {
-        $params = new \phpseclib3\Crypt\DH\Parameters();
-        if (\count($args) == 2 && $args[0] instanceof \phpseclib3\Math\BigInteger && $args[1] instanceof \phpseclib3\Math\BigInteger) {
+        $params = new Parameters();
+        if (\count($args) == 2 && $args[0] instanceof BigInteger && $args[1] instanceof BigInteger) {
             //if (!$args[0]->isPrime()) {
             //    throw new \InvalidArgumentException('The first parameter should be a prime number');
             //}
@@ -86,8 +78,8 @@ abstract class DH extends \phpseclib3\Crypt\Common\AsymmetricKey
             $params->base = $args[1];
             return $params;
         } elseif (\count($args) == 1 && \is_numeric($args[0])) {
-            $params->prime = \phpseclib3\Math\BigInteger::randomPrime($args[0]);
-            $params->base = new \phpseclib3\Math\BigInteger(2);
+            $params->prime = BigInteger::randomPrime($args[0]);
+            $params->base = new BigInteger(2);
             return $params;
         } elseif (\count($args) != 1 || !\is_string($args[0])) {
             throw new \InvalidArgumentException('Valid parameters are either: two BigInteger\'s (prime and base), a single integer (the length of the prime; base is assumed to be 2) or a string');
@@ -127,8 +119,8 @@ abstract class DH extends \phpseclib3\Crypt\Common\AsymmetricKey
             default:
                 throw new \InvalidArgumentException('Invalid named prime provided');
         }
-        $params->prime = new \phpseclib3\Math\BigInteger($prime, 16);
-        $params->base = new \phpseclib3\Math\BigInteger(2);
+        $params->prime = new BigInteger($prime, 16);
+        $params->base = new BigInteger(2);
         return $params;
     }
     /**
@@ -146,22 +138,21 @@ abstract class DH extends \phpseclib3\Crypt\Common\AsymmetricKey
      *
      * @param Parameters $params
      * @param int $length optional
-     * @access public
      * @return DH\PrivateKey
      */
-    public static function createKey(\phpseclib3\Crypt\DH\Parameters $params, $length = 0)
+    public static function createKey(Parameters $params, $length = 0)
     {
-        $one = new \phpseclib3\Math\BigInteger(1);
+        $one = new BigInteger(1);
         if ($length) {
             $max = $one->bitwise_leftShift($length);
             $max = $max->subtract($one);
         } else {
             $max = $params->prime->subtract($one);
         }
-        $key = new \phpseclib3\Crypt\DH\PrivateKey();
+        $key = new PrivateKey();
         $key->prime = $params->prime;
         $key->base = $params->base;
-        $key->privateKey = \phpseclib3\Math\BigInteger::randomRange($one, $max);
+        $key->privateKey = BigInteger::randomRange($one, $max);
         $key->publicKey = $key->base->powMod($key->privateKey, $key->prime);
         return $key;
     }
@@ -170,22 +161,22 @@ abstract class DH extends \phpseclib3\Crypt\Common\AsymmetricKey
      *
      * @param PrivateKey|EC $private
      * @param PublicKey|BigInteger|string $public
-     * @access public
      * @return mixed
      */
     public static function computeSecret($private, $public)
     {
-        if ($private instanceof \phpseclib3\Crypt\DH\PrivateKey) {
+        if ($private instanceof PrivateKey) {
             // DH\PrivateKey
             switch (\true) {
-                case $public instanceof \phpseclib3\Crypt\DH\PublicKey:
+                case $public instanceof PublicKey:
                     if (!$private->prime->equals($public->prime) || !$private->base->equals($public->base)) {
                         throw new \InvalidArgumentException('The public and private key do not share the same prime and / or base numbers');
                     }
                     return $public->publicKey->powMod($private->privateKey, $private->prime)->toBytes(\true);
                 case \is_string($public):
-                    $public = new \phpseclib3\Math\BigInteger($public, -256);
-                case $public instanceof \phpseclib3\Math\BigInteger:
+                    $public = new BigInteger($public, -256);
+                // fall-through
+                case $public instanceof BigInteger:
                     return $public->powMod($private->privateKey, $private->prime)->toBytes(\true);
                 default:
                     throw new \InvalidArgumentException('$public needs to be an instance of DH\\PublicKey, a BigInteger or a string');
@@ -195,6 +186,7 @@ abstract class DH extends \phpseclib3\Crypt\Common\AsymmetricKey
             switch (\true) {
                 case $public instanceof \phpseclib3\Crypt\EC\PublicKey:
                     $public = $public->getEncodedCoordinates();
+                // fall-through
                 case \is_string($public):
                     $point = $private->multiply($public);
                     switch ($private->getCurve()) {
@@ -228,7 +220,7 @@ abstract class DH extends \phpseclib3\Crypt\Common\AsymmetricKey
     {
         try {
             return \phpseclib3\Crypt\EC::load($key, $password);
-        } catch (\phpseclib3\Exception\NoKeyLoadedException $e) {
+        } catch (NoKeyLoadedException $e) {
         }
         return parent::load($key, $password);
     }
@@ -236,15 +228,14 @@ abstract class DH extends \phpseclib3\Crypt\Common\AsymmetricKey
      * OnLoad Handler
      *
      * @return bool
-     * @access protected
      * @param array $components
      */
     protected static function onLoad($components)
     {
         if (!isset($components['privateKey']) && !isset($components['publicKey'])) {
-            $new = new \phpseclib3\Crypt\DH\Parameters();
+            $new = new Parameters();
         } else {
-            $new = isset($components['privateKey']) ? new \phpseclib3\Crypt\DH\PrivateKey() : new \phpseclib3\Crypt\DH\PublicKey();
+            $new = isset($components['privateKey']) ? new PrivateKey() : new PublicKey();
         }
         $new->prime = $components['prime'];
         $new->base = $components['base'];
@@ -259,21 +250,19 @@ abstract class DH extends \phpseclib3\Crypt\Common\AsymmetricKey
     /**
      * Determines which hashing function should be used
      *
-     * @access public
      * @param string $hash
      */
     public function withHash($hash)
     {
-        throw new \phpseclib3\Exception\UnsupportedOperationException('DH does not use a hash algorithm');
+        throw new UnsupportedOperationException('DH does not use a hash algorithm');
     }
     /**
      * Returns the hash algorithm currently being used
      *
-     * @access public
      */
     public function getHash()
     {
-        throw new \phpseclib3\Exception\UnsupportedOperationException('DH does not use a hash algorithm');
+        throw new UnsupportedOperationException('DH does not use a hash algorithm');
     }
     /**
      * Returns the parameters
@@ -282,7 +271,6 @@ abstract class DH extends \phpseclib3\Crypt\Common\AsymmetricKey
      * value.
      *
      * @see self::getPublicKey()
-     * @access public
      * @return mixed
      */
     public function getParameters()

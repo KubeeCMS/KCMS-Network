@@ -101,7 +101,9 @@ class Domain_Manager extends Base_Manager {
 
 		$this->enable_wp_cli();
 
-		add_action('wp_ultimo_load', array($this, 'load_integrations'));
+		$this->set_cookie_domain();
+
+		add_action('plugins_loaded', array($this, 'load_integrations'));
 
 		add_action('wp_ajax_wu_test_hosting_integration', array($this, 'test_integration'));
 
@@ -115,9 +117,100 @@ class Domain_Manager extends Base_Manager {
 
 		add_action('wu_settings_domain_mapping', array($this, 'add_domain_mapping_settings'));
 
+		add_action('wu_settings_sso', array($this, 'add_sso_settings'));
+
+		/*
+		 * Add and remove mapped domains
+		 */
+
 		add_action('wu_domain_created', array($this, 'handle_domain_created'), 10, 3);
 
+		add_action('wu_domain_post_delete', array($this, 'handle_domain_deleted'), 10, 3);
+
+		/*
+		 * Add and remove sub-domains
+		 */
+
+		add_action('wp_insert_site', array($this, 'handle_site_created'));
+
+		add_action('wp_delete_site', array($this, 'handle_site_deleted'));
+
 	} // end init;
+
+	/**
+	 * Set COOKIE_DOMAIN if not defined in sites with mapped domains.
+	 *
+	 * @since 2.0.12
+	 *
+	 * @return void
+	 */
+	protected function set_cookie_domain() {
+
+		if (!defined('COOKIE_DOMAIN') && !preg_match('/' . DOMAIN_CURRENT_SITE . '$/', '.' . $_SERVER['HTTP_HOST'])) {
+
+			define( 'COOKIE_DOMAIN', '.' . $_SERVER['HTTP_HOST'] );
+
+		} // end if;
+
+	} // end set_cookie_domain;
+
+	/**
+	 * Triggers subdomain mapping events on site creation.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param \WP_Site $site The site being added.
+	 * @return void
+	 */
+	public function handle_site_created($site) {
+
+		global $current_site;
+
+		$has_subdomain = str_replace($current_site->domain, '', $site->domain);
+
+		if (!$has_subdomain) {
+
+			return;
+
+		} // end if;
+
+		$args = array(
+			'subdomain' => $site->domain,
+			'site_id'   => $site->blog_id,
+		);
+
+		wu_enqueue_async_action('wu_add_subdomain', $args, 'domain');
+
+	} // end handle_site_created;
+
+	/**
+	 * Triggers subdomain mapping events on site deletion.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param \WP_Site $site The site being removed.
+	 * @return void
+	 */
+	public function handle_site_deleted($site) {
+
+		global $current_site;
+
+		$has_subdomain = str_replace($current_site->domain, '', $site->domain);
+
+		if (!$has_subdomain) {
+
+			return;
+
+		} // end if;
+
+		$args = array(
+			'subdomain' => $site->domain,
+			'site_id'   => $site->blog_id,
+		);
+
+		wu_enqueue_async_action('wu_remove_subdomain', $args, 'domain');
+
+	} // end handle_site_deleted;
 
 	/**
 	 * Triggers the do_event of the payment successful.
@@ -142,6 +235,30 @@ class Domain_Manager extends Base_Manager {
 	} // end handle_domain_created;
 
 	/**
+	 * Remove send domain removal event.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param boolean                  $result The result of the deletion.
+	 * @param \WP_Ultimo\Models\Domain $domain The domain being deleted.
+	 * @return void
+	 */
+	public function handle_domain_deleted($result, $domain) {
+
+		if ($result) {
+
+			$args = array(
+				'domain'  => $domain->get_domain(),
+				'site_id' => $domain->get_site_id(),
+			);
+
+			wu_enqueue_async_action('wu_remove_domain', $args, 'domain');
+
+		} // end if;
+
+	} // end handle_domain_deleted;
+
+	/**
 	 * Add all domain mapping settings.
 	 *
 	 * @since 2.0.0
@@ -162,16 +279,6 @@ class Domain_Manager extends Base_Manager {
 			'default' => 1,
 		));
 
-		wu_register_settings_field('domain-mapping', 'enable_sso', array(
-			'title'   => __('Enable Single Sign-On', 'wp-ultimo'),
-			'desc'    => __('Enables the Single Sign-on functionality between mapped-domains.', 'wp-ultimo'),
-			'type'    => 'toggle',
-			'default' => 1,
-			'require' => array(
-				'enable_domain_mapping' => true,
-			),
-		));
-
 		wu_register_settings_field('domain-mapping', 'force_admin_redirect', array(
 			'title'   => __('Force Admin Redirect', 'wp-ultimo'),
 			'desc'    => __('Select how you want your users to access the admin panel if they have mapped domains.', 'wp-ultimo') . '<br><br>' . __('Force Redirect to Mapped Domain: your users with mapped domains will be redirected to theirdomain.com/wp-admin, even if they access using yournetworkdomain.com/wp-admin.', 'wp-ultimo') . '<br><br>' . __('Force Redirect to Network Domain: your users with mapped domains will be redirect to yournetworkdomain.com/wp-admin, even if they access using theirdomain.com/wp-admin.', 'wp-ultimo'),
@@ -188,7 +295,7 @@ class Domain_Manager extends Base_Manager {
 
 		wu_register_settings_field('domain-mapping', 'custom_domains', array(
 			'title'   => __('Enable Custom Domains?', 'wp-ultimo'),
-			'desc'    => __('Toggle this option if you wish to allow end-customers to add their own domains. This can be controled on a plan per plan basis.', 'wp-ultimo'),
+			'desc'    => __('Toggle this option if you wish to allow end-customers to add their own domains. This can be controlled on a plan per plan basis.', 'wp-ultimo'),
 			'type'    => 'toggle',
 			'default' => 1,
 			'require' => array(
@@ -212,6 +319,49 @@ class Domain_Manager extends Base_Manager {
 		));
 
 	} // end add_domain_mapping_settings;
+
+	/**
+	 * Add all SSO settings.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function add_sso_settings() {
+
+		wu_register_settings_field('sso', 'sso_header', array(
+			'title' => __('Single Sign-On Settings', 'wp-ultimo'),
+			'desc'  => __('Settings to configure the Single Sign-On functionality of WP Ultimo, responsible for keeping customers and admins logged in across all network domains.', 'wp-ultimo'),
+			'type'  => 'header',
+		));
+
+		wu_register_settings_field('sso', 'enable_sso', array(
+			'title'   => __('Enable Single Sign-On', 'wp-ultimo'),
+			'desc'    => __('Enables the Single Sign-on functionality.', 'wp-ultimo'),
+			'type'    => 'toggle',
+			'default' => 1,
+		));
+
+		wu_register_settings_field('sso', 'restrict_sso_to_login_pages', array(
+			'title'   => __('Restrict SSO Checks to Login Pages', 'wp-ultimo'),
+			'desc'    => __('The Single Sign-on feature adds one extra ajax calls to every page load on sites with custom domains active to check if it should perform an auth loopback. You can restrict these extra calls to the login pages of sub-sites using this option. If enabled, SSO will only work on login pages.', 'wp-ultimo'),
+			'type'    => 'toggle',
+			'default' => 0,
+			'require' => array(
+				'enable_sso' => true,
+			),
+		));
+
+		wu_register_settings_field('sso', 'enable_sso_loading_overlay', array(
+			'title'   => __('Enable SSO Loading Overlay', 'wp-ultimo'),
+			'desc'    => __('When active, a loading overlay will be added on-top of the site currently being viewed while the SSO auth loopback is performed on the background.', 'wp-ultimo'),
+			'type'    => 'toggle',
+			'default' => 1,
+			'require' => array(
+				'enable_sso' => true,
+			),
+		));
+
+	} // end add_sso_settings;
 
 	/**
 	 * Returns the default instructions for domain mapping.
@@ -278,9 +428,11 @@ class Domain_Manager extends Base_Manager {
 
 		if ($old_value !== $new_value) {
 
+			$domain = wu_get_domain($item_id);
+
 			$args = array(
 				'domain'  => $new_value,
-				'site_id' => null,
+				'site_id' => $domain->get_site_id(),
 			);
 
 			wu_enqueue_async_action('wu_add_domain', $args, 'domain');
@@ -300,9 +452,9 @@ class Domain_Manager extends Base_Manager {
 	 */
 	public function async_process_domain_stage($domain_id, $tries = 0) {
 
-		$max_tries = apply_filters('wu_async_process_domain_stag_max_tries', 5);
+		$max_tries = apply_filters('wu_async_process_domain_stage_max_tries', 5);
 
-		$try_again_time = 5; // minutes
+		$try_again_time = apply_filters('wu_async_process_domains_try_again_time', 5); // minutes
 
 		$tries++;
 
@@ -318,6 +470,7 @@ class Domain_Manager extends Base_Manager {
 
 		$domain_url = $domain->get_domain();
 
+		// translators: %s is the domain name
 		wu_log_add("domain-{$domain_url}", sprintf(__('Starting Check for %s', 'wp-ultimo'), $domain_url));
 
 		if ($stage === 'checking-dns') {
@@ -349,7 +502,8 @@ class Domain_Manager extends Base_Manager {
 
 					wu_log_add(
 						"domain-{$domain_url}",
-						sprintf(__('- DNS propagation checks tried for the max amount of times (5 times every %d minutes). Marking as failed.', 'wp-ultimo'), $try_again_time)
+						// translators: %d is the number of minutes to try again.
+						sprintf(__('- DNS propagation checks tried for the max amount of times (5 times, one every %d minutes). Marking as failed.', 'wp-ultimo'), $try_again_time)
 					);
 
 					return;
@@ -358,6 +512,7 @@ class Domain_Manager extends Base_Manager {
 
 				wu_log_add(
 					"domain-{$domain_url}",
+					// translators: %d is the number of minutes before trying again.
 					sprintf(__('- DNS propagation not finished, retrying in %d minutes...', 'wp-ultimo'), $try_again_time)
 				);
 
@@ -404,7 +559,8 @@ class Domain_Manager extends Base_Manager {
 
 					wu_log_add(
 						"domain-{$domain_url}",
-						sprintf(__('- SSL checks tried for the max amount of times (5 times every %d minutes). Marking as ready without SSL.', 'wp-ultimo'), $try_again_time)
+						// translators: %d is the number of minutes to try again.
+						sprintf(__('- SSL checks tried for the max amount of times (5 times, one every %d minutes). Marking as ready without SSL.', 'wp-ultimo'), $try_again_time)
 					);
 
 					return;
@@ -413,6 +569,7 @@ class Domain_Manager extends Base_Manager {
 
 				wu_log_add(
 					"domain-{$domain_url}",
+					// translators: %d is the number of minutes before trying again.
 					sprintf(__('- SSL Cert not found, retrying in %d minute(s)...', 'wp-ultimo'), $try_again_time)
 				);
 
@@ -437,10 +594,14 @@ class Domain_Manager extends Base_Manager {
 
 		$results = array();
 
+		wu_setup_memory_limit_trap('json');
+
+		wu_try_unlimited_server_limits();
+
 		$records = \WP_Ultimo\Dependencies\Gemz\Dns\Dns::for($domain)->records(array(
-			'A',
-			'CNAME',
 			'NS',
+			'CNAME',
+			'A',
 		));
 
 		foreach ($records as $record_type => $records) {
@@ -451,13 +612,15 @@ class Domain_Manager extends Base_Manager {
 
 				$record['host'] = $domain;
 
+				$record['tag'] = ''; // Used by integrations.
+
 				$results[] = $record;
 
 			} // end foreach;
 
 		} // end foreach;
 
-		return $results;
+		return apply_filters('wu_domain_dns_get_record', $results, $domain);
 
 	} // end dns_get_record;
 
@@ -487,7 +650,9 @@ class Domain_Manager extends Base_Manager {
 
 		} catch (\Throwable $e) {
 
-			wp_send_json_error(new \WP_Error('exception', $e->getMessage()));
+			wp_send_json_error(new \WP_Error('error', __('Not able to fetch DNS entries.', 'wp-ultimo'), array(
+				'exception' => $e->getMessage(),
+			)));
 
 		} // end try;
 
@@ -522,9 +687,13 @@ class Domain_Manager extends Base_Manager {
 
 			$domain = wu_get_domain($domain_id);
 
-			$domain->set_primary_domain(false);
+			if ($domain) {
 
-			$domain->save();
+				$domain->set_primary_domain(false);
+
+				$domain->save();
+
+			} // end if;
 
 		} // end foreach;
 
@@ -556,7 +725,7 @@ class Domain_Manager extends Base_Manager {
 		if (!$integration->is_setup()) {
 
 			wp_send_json_error(array(
-				'message' => __('The necessary constants where not found on your wp-config.php file.', 'wp-ultimo'),
+				'message' => __('The necessary constants were not found on your wp-config.php file.', 'wp-ultimo'),
 			));
 
 		} // end if;
@@ -572,6 +741,11 @@ class Domain_Manager extends Base_Manager {
 	 * @return void
 	 */
 	public function load_integrations() {
+		/*
+		* Loads our RunCloud integration.
+		*/
+		\WP_Ultimo\Integrations\Host_Providers\Runcloud_Host_Provider::get_instance();
+
 		/*
 		* Loads our Closte integration.
 		*/
@@ -593,18 +767,23 @@ class Domain_Manager extends Base_Manager {
 		\WP_Ultimo\Integrations\Host_Providers\WPMUDEV_Host_Provider::get_instance();
 
 		/*
-		* Loads our RunCloud integration.
+		* Loads our Cloudways integration.
 		*/
-		\WP_Ultimo\Integrations\Host_Providers\Runcloud_Host_Provider::get_instance();
+		\WP_Ultimo\Integrations\Host_Providers\Cloudways_Host_Provider::get_instance();
 
 		/*
 		* Loads our cPanel integration.
 		*/
 		\WP_Ultimo\Integrations\Host_Providers\CPanel_Host_Provider::get_instance();
 
+		/*
+		* Loads our Cloudflare integration.
+		*/
+		\WP_Ultimo\Integrations\Host_Providers\Cloudflare_Host_Provider::get_instance();
+
 		/**
 		 * Allow developers to add their own host provider integrations via wp plugins.
-	 *
+	 	 *
 		 * @since 2.0.0
 		 */
 		do_action('wp_ultimo_host_providers_load');

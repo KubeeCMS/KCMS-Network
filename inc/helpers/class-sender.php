@@ -93,13 +93,13 @@ class Sender {
 
 			$default_settings = \WP_Ultimo\Admin_Pages\Email_Template_Customize_Admin_Page::get_default_settings();
 
-			$template_settings = WP_Ultimo()->helper->get_option('email_template', $default_settings);
+			$template_settings = wu_get_option('email_template', $default_settings);
 
 			$template_settings = wp_parse_args($template_settings, $default_settings);
 
 			$template = wu_get_template_contents('broadcast/emails/base', array(
 				'site_name'         => get_network_option(null, 'site_name'),
-				'site_url'          => get_site_url(),
+				'site_url'          => get_site_url(wu_get_main_site_id()),
 				'logo_url'          => wu_get_network_logo(),
 				'is_editor'         => false,
 				'subject'           => $subject,
@@ -128,11 +128,26 @@ class Sender {
 
 			}, $to);
 
-			$bcc = implode(',', $to);
+			/*
+			 * Decide which strategy to use, BCC or multiple "to"s.
+			 *
+			 * By default, we use multiple tos, but that can be changed to bcc.
+			 * Depending on the SMTP solution being used, that can make a difference on the number of
+			 * emails sent out.
+			 */
+			if (apply_filters('wu_sender_recipients_strategy', 'bcc') === 'bcc') {
 
-			$headers[] = "Bcc: $bcc";
+				$main_to = $to[0];
 
-			$to = null;
+				unset($to[0]);
+
+				$bcc = implode(',', $to);
+
+				$headers[] = "Bcc: $bcc";
+
+				$to = $main_to;
+
+			} // end if;
 
 		} else {
 

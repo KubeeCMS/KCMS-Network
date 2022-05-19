@@ -2,13 +2,14 @@
 /**
  * Email Functions
  *
- * Public APIs to load and deal with WP Ultimo email.
- *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Email_Manager
- * @version     2.0.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
+
+// Exit if accessed directly
+defined('ABSPATH') || exit;
+
+use \WP_Ultimo\Models\Email;
 
 /**
  * Returns a email.
@@ -67,7 +68,7 @@ function wu_get_emails($query = array()) {
 } // end wu_get_emails;
 
 /**
- * Get all registered system emails.
+ * Get all saved system email.
  *
  * @since 2.0.0
  *
@@ -76,10 +77,41 @@ function wu_get_emails($query = array()) {
 function wu_get_all_system_emails() {
 
 	return \WP_Ultimo\Models\Email::query(array(
-		'type__in' => array('system_email'),
+		'status__in' => array('draft', 'publish'),
+		'type__in'   => array('system_email'),
 	));
 
 } // end wu_get_all_system_emails;
+
+/**
+ * Get a single or all default registered system emails.
+ *
+ * @since 2.0.0
+ *
+ * @param string $slug Default system email slug.
+ * @return array All default system emails.
+ */
+function wu_get_default_system_emails($slug = '') {
+
+	return \WP_Ultimo\Managers\Email_Manager::get_instance()->get_default_system_emails($slug);
+
+} // end wu_get_default_system_emails;
+
+/**
+ * Create a single default system email.
+ *
+ * @since 2.0.0
+ *
+ * @param string $slug Default system email slug to be create.
+ * @return array
+ */
+function wu_create_default_system_email($slug) {
+
+	$args = wu_get_default_system_emails($slug);
+
+	return \WP_Ultimo\Managers\Email_Manager::get_instance()->create_system_email($args);
+
+} // end wu_create_default_system_email;
 
 /**
  * Send an email to one or more users.
@@ -91,7 +123,7 @@ function wu_get_all_system_emails() {
  * @param array $args With content, subject and other arguments, has shortcodes, mail type.
  * @return array
  */
-function wu_send_mail($from = array(), $to, $args = array()) {
+function wu_send_mail($from = array(), $to = array(), $args = array()) {
 
 	$sender = new \WP_Ultimo\Helpers\Sender;
 
@@ -115,3 +147,33 @@ function wu_format_email_string($email, $name = false) {
 	return $name ? sprintf('%s <%s>', $name, $email) : $email;
 
 } // end wu_format_email_string;
+
+/**
+ * Creates a new email.
+ *
+ * Check the wp_parse_args below to see what parameters are necessary.
+ *
+ * @since 2.0.0
+ *
+ * @param array $email_data Email attributes.
+ * @return \WP_Error|\WP_Ultimo\Models\Email
+ */
+function wu_create_email($email_data) {
+
+	$email_data = wp_parse_args($email_data, array(
+		'type'          => 'system_email',
+		'event'         => 'Laborum consectetur',
+		'title'         => 'Lorem Ipsum',
+		'slug'          => 'lorem-ipsum',
+		'target'        => 'admin',
+		'date_created'  => wu_get_current_time('mysql', true),
+		'date_modified' => wu_get_current_time('mysql', true),
+	));
+
+	$email = new Email($email_data);
+
+	$saved = $email->save();
+
+	return is_wp_error($saved) ? $saved : $email;
+
+} // end wu_create_email;

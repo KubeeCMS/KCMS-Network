@@ -24,7 +24,7 @@ defined('ABSPATH') || exit;
  */
 class Customer extends Base_Model {
 
-	use Traits\Billable;
+	use Traits\Billable, Traits\Notable;
 
 	/**
 	 * User ID of the associated user.
@@ -95,6 +95,14 @@ class Customer extends Base_Model {
 	 * @var string
 	 */
 	protected $ips;
+
+	/**
+	 * The form used to signup.
+	 *
+	 * @since 2.0.0
+	 * @var string
+	 */
+	protected $signup_form;
 
 	/**
 	 * Extra information about this customer.
@@ -187,6 +195,12 @@ class Customer extends Base_Model {
 			'user_id'            => "required|integer|unique:\WP_Ultimo\Models\Customer,user_id,{$id}",
 			'email_verification' => 'required|in:none,pending,verified',
 			'type'               => 'required|in:customer',
+			'last_login'         => 'default:',
+			'has_trialed'        => 'boolean|default:0',
+			'vip'                => 'boolean|default:0',
+			'ips'                => 'array',
+			'extra_information'  => 'default:',
+			'signup_form'        => 'default:',
 		);
 
 	} // end validation_rules;
@@ -199,7 +213,7 @@ class Customer extends Base_Model {
 	 */
 	public function get_user_id() {
 
-		return $this->user_id;
+		return absint($this->user_id);
 
 	} // end get_user_id;
 
@@ -207,7 +221,7 @@ class Customer extends Base_Model {
 	 * Set user ID of the associated user.
 	 *
 	 * @since 2.0.0
-	 * @param int $user_id User ID of the associated user.
+	 * @param int $user_id The WordPress user ID attached to this customer.
 	 * @return void
 	 */
 	public function set_user_id($user_id) {
@@ -236,7 +250,15 @@ class Customer extends Base_Model {
 	 */
 	public function get_display_name() {
 
-		return $this->get_user()->display_name;
+		$user = $this->get_user();
+
+		if (empty($user)) {
+
+			return __('User Deleted', 'wp-ultimo');
+
+		} // end if;
+
+		return $user->display_name;
 
 	} // end get_display_name;
 
@@ -289,7 +311,15 @@ class Customer extends Base_Model {
 	 */
 	public function get_username() {
 
-		return $this->get_user()->user_login;
+		$user = $this->get_user();
+
+		if (empty($user)) {
+
+			return __('none', 'wp-ultimo');
+
+		} // end if;
+
+		return $user->user_login;
 
 	} // end get_username;
 
@@ -301,7 +331,15 @@ class Customer extends Base_Model {
 	 */
 	public function get_email_address() {
 
-		return $this->get_user()->user_email;
+		$user = $this->get_user();
+
+		if (empty($user)) {
+
+			return __('none', 'wp-ultimo');
+
+		} // end if;
+
+		return $user->user_email;
 
 	} // end get_email_address;
 
@@ -398,7 +436,7 @@ class Customer extends Base_Model {
 	 * Set whether or not the customer has trialed before.
 	 *
 	 * @since 2.0.0
-	 * @param null|bool $has_trialed Whether or not the customer has trialed before.
+	 * @param bool $has_trialed Whether or not the customer has trialed before.
 	 * @return void
 	 */
 	public function set_has_trialed($has_trialed) {
@@ -440,7 +478,19 @@ class Customer extends Base_Model {
 	 */
 	public function get_ips() {
 
-		return (array) maybe_unserialize($this->ips);
+		if (empty($this->ips)) {
+
+			return array();
+
+		} // end if;
+
+		if (is_string($this->ips)) {
+
+			$this->ips = maybe_unserialize($this->ips);
+
+		} // end if;
+
+		return $this->ips;
 
 	} // end get_ips;
 
@@ -462,10 +512,16 @@ class Customer extends Base_Model {
 	 * Set list of IP addresses used by this customer.
 	 *
 	 * @since 2.0.0
-	 * @param string $ips List of IP addresses used by this customer.
+	 * @param array $ips List of IP addresses used by this customer.
 	 * @return void
 	 */
 	public function set_ips($ips) {
+
+		if (is_string($ips)) {
+
+			$ips = maybe_unserialize($ips);
+
+		} // end if;
 
 		$this->ips = $ips;
 
@@ -483,15 +539,60 @@ class Customer extends Base_Model {
 
 		$ips = $this->get_ips();
 
-		if (!in_array($ip, $ips, true)) {
+		if (!is_array($ips)) {
 
-			$ips[] = sanitize_text_field($ip);
+			$ips = array();
 
 		} // end if;
+
+		/*
+		 * IP already exists.
+		 */
+		if (in_array($ip, $ips, true)) {
+
+			return;
+
+		} // end if;
+
+		$ips[] = sanitize_text_field($ip);
 
 		$this->set_ips($ips);
 
 	} // end add_ip;
+
+	/**
+	 * Updates the last login, as well as the ip and country if necessary.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param boolean $update_ip If we want to update the IP address.
+	 * @param boolean $update_country_and_state If we want to update country and state.
+	 * @return boolean
+	 */
+	public function update_last_login($update_ip = true, $update_country_and_state = false) {
+
+		$this->attributes(array(
+			'last_login' => wu_get_current_time('mysql', true),
+		));
+
+		$geolocation = $update_ip || $update_country_and_state ? \WP_Ultimo\Geolocation::geolocate_ip('', true) : false;
+
+		if ($update_ip) {
+
+			$this->add_ip($geolocation['ip']);
+
+		} // end if;
+
+		if ($update_country_and_state) {
+
+			$this->update_meta('ip_country', $geolocation['country']);
+			$this->update_meta('ip_state', $geolocation['state']);
+
+		} // end if;
+
+		return $this->save();
+
+	} // end update_last_login;
 
 	/**
 	 * Get extra information.
@@ -515,7 +616,7 @@ class Customer extends Base_Model {
 	 * Set featured extra information.
 	 *
 	 * @since 2.0.0
-	 * @param string $extra_information Holds the ID of the featured image.
+	 * @param string $extra_information Any extra information related to this customer.
 	 * @return void
 	 */
 	public function set_extra_information($extra_information) {
@@ -586,6 +687,33 @@ class Customer extends Base_Model {
 	} // end get_pending_sites;
 
 	/**
+	 * The the primary site ID if available.
+	 *
+	 * In cases where none is set, we:
+	 * - return the id of the first site on the list off sites
+	 * belonging to this customer;
+	 * - or return the main site id.
+	 *
+	 * @since 2.0.0
+	 * @return int
+	 */
+	public function get_primary_site_id() {
+
+		$primary_site_id = get_user_option('primary_blog', $this->get_user_id());
+
+		if (!$primary_site_id) {
+
+			$sites = $this->get_sites();
+
+			$primary_site_id = $sites ? $sites[0]->get_id() : wu_get_main_site_id();
+
+		} // end if;
+
+		return $primary_site_id;
+
+	} // end get_primary_site_id;
+
+	/**
 	 * Returns the payments attached to this customer.
 	 *
 	 * @since 2.0.0
@@ -630,7 +758,8 @@ class Customer extends Base_Model {
 
 		} // end if;
 
-		$search_result['billing_address'] = $this->get_billing_address()->to_string();
+		$search_result['billing_address_data'] = $this->get_billing_address()->to_array();
+		$search_result['billing_address']      = $this->get_billing_address()->to_string();
 
 		return $search_result;
 
@@ -652,7 +781,8 @@ class Customer extends Base_Model {
 	 * Get the customer type.
 	 *
 	 * @since 2.0.0
-	 * @param string $type Customer type.
+	 * @param string $type The customer type. Can be 'customer'.
+	 * @options customer
 	 * @return void
 	 */
 	public function set_type($type) {
@@ -713,5 +843,112 @@ class Customer extends Base_Model {
 		return $minutes_interval <= apply_filters('wu_is_online_minutes_interval', 3) ? true : false;
 
 	} // end is_online;
+
+	/**
+	 * Saves a verification key.
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	public function generate_verification_key() {
+
+		$seed = time();
+
+		$hash = \WP_Ultimo\Helpers\Hash::encode($seed, 'verification-key');
+
+		return $this->update_meta('wu_verification_key', $hash);
+
+	} // end generate_verification_key;
+
+	/**
+	 * Returns the saved verification key.
+	 *
+	 * @since 2.0.0
+	 * @return string|bool
+	 */
+	public function get_verification_key() {
+
+		return $this->get_meta('wu_verification_key', false);
+
+	} // end get_verification_key;
+
+	/**
+	 * Disabled the verification by setting the key to false.
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	public function disable_verification_key() {
+
+		return $this->update_meta('wu_verification_key', false);
+
+	} // end disable_verification_key;
+
+	/**
+	 * Returns the link of the email verification endpoint.
+	 *
+	 * @since 2.0.0
+	 * @return string|bool
+	 */
+	public function get_verification_url() {
+
+		$key = $this->get_verification_key();
+
+		if (!$key) {
+
+			return get_site_url(wu_get_main_site_id());
+
+		} // end if;
+
+		return add_query_arg(array(
+			'email-verification-key' => $key,
+			'customer'               => $this->get_hash(),
+		), get_site_url(wu_get_main_site_id()));
+
+	} // end get_verification_url;
+
+	/**
+	 * Send verification email.
+	 *
+	 * @since 2.0.4
+	 * @return void
+	 */
+	public function send_verification_email() {
+
+		$this->generate_verification_key();
+
+		$payload = array_merge(
+			array('verification_link' => $this->get_verification_url()),
+			wu_generate_event_payload('customer', $this)
+		);
+
+		wu_do_event('confirm_email_address', $payload);
+
+	} // end send_verification_email;
+
+	/**
+	 * Get the form used to signup.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_signup_form() {
+
+		return $this->signup_form;
+
+	} // end get_signup_form;
+
+	/**
+	 * Set the form used to signup.
+	 *
+	 * @since 2.0.0
+	 * @param string $signup_form The form used to signup.
+	 * @return void
+	 */
+	public function set_signup_form($signup_form) {
+
+		$this->signup_form = $signup_form;
+
+	} // end set_signup_form;
 
 } // end class Customer;

@@ -6,7 +6,7 @@ namespace WP_Ultimo\Dependencies\Stripe\Exception;
  * CardException is thrown when a user enters a card that can't be charged for
  * some reason.
  */
-class CardException extends \WP_Ultimo\Dependencies\Stripe\Exception\ApiErrorException
+class CardException extends ApiErrorException
 {
     protected $declineCode;
     protected $stripeParam;

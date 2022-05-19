@@ -5,6 +5,7 @@
  * @since 2.0.0
  */
 ?>
+
 <?php if (is_array($field->value)) : ?>
 
   <?php foreach ($field->value as $index => $value) : ?>
@@ -19,5 +20,14 @@
 
 <?php endif; ?>
 
-<p v-cloak class="wu-block wu-bg-red-100 wu-p-2 wu-mb-4" v-if="get_error('<?php echo esc_attr($field->id); ?>')" v-html="get_error('<?php echo esc_attr($field->id); ?>').message">
-</p>
+<?php
+
+/**
+ * Adds the partial error template.
+ * @since 2.0.0
+ */
+wu_get_template('checkout/fields/partials/field-errors', array(
+  'field' => $field,
+));
+
+?>

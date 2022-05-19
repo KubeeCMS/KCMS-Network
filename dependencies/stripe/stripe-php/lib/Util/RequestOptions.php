@@ -77,17 +77,17 @@ class RequestOptions
     public static function parse($options, $strict = \false)
     {
         if ($options instanceof self) {
-            return $options;
+            return clone $options;
         }
         if (null === $options) {
-            return new \WP_Ultimo\Dependencies\Stripe\Util\RequestOptions(null, [], null);
+            return new RequestOptions(null, [], null);
         }
         if (\is_string($options)) {
             if ($strict) {
                 $message = 'Do not pass a string for request options. If you want to set the ' . 'API key, pass an array like ["api_key" => <apiKey>] instead.';
                 throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException($message);
             }
-            return new \WP_Ultimo\Dependencies\Stripe\Util\RequestOptions($options, [], null);
+            return new RequestOptions($options, [], null);
         }
         if (\is_array($options)) {
             $headers = [];
@@ -117,7 +117,7 @@ class RequestOptions
                 $message = 'Got unexpected keys in options array: ' . \implode(', ', \array_keys($options));
                 throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException($message);
             }
-            return new \WP_Ultimo\Dependencies\Stripe\Util\RequestOptions($key, $headers, $base);
+            return new RequestOptions($key, $headers, $base);
         }
         $message = 'The second argument to Stripe API method calls is an ' . 'optional per-request apiKey, which must be a string, or ' . 'per-request options, which must be an array. (HINT: you can set ' . 'a global apiKey by "Stripe::setApiKey(<apiKey>)")';
         throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException($message);
@@ -127,7 +127,7 @@ class RequestOptions
         $pieces = \explode('_', $this->apiKey, 3);
         $last = \array_pop($pieces);
         $redactedLast = \strlen($last) > 4 ? \str_repeat('*', \strlen($last) - 4) . \substr($last, -4) : $last;
-        \array_push($pieces, $redactedLast);
+        $pieces[] = $redactedLast;
         return \implode('_', $pieces);
     }
 }

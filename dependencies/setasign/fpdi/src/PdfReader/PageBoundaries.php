@@ -7,6 +7,7 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\PdfReader;
 
 /**
@@ -23,6 +24,7 @@ abstract class PageBoundaries
      * @var string
      */
     const MEDIA_BOX = 'MediaBox';
+
     /**
      * CropBox
      *
@@ -33,6 +35,7 @@ abstract class PageBoundaries
      * @var string
      */
     const CROP_BOX = 'CropBox';
+
     /**
      * BleedBox
      *
@@ -43,6 +46,7 @@ abstract class PageBoundaries
      * @var string
      */
     const BLEED_BOX = 'BleedBox';
+
     /**
      * TrimBox
      *
@@ -52,6 +56,7 @@ abstract class PageBoundaries
      * @var string
      */
     const TRIM_BOX = 'TrimBox';
+
     /**
      * ArtBox
      *
@@ -62,12 +67,20 @@ abstract class PageBoundaries
      * @var string
      */
     const ART_BOX = 'ArtBox';
+
     /**
      * All page boundaries
      *
      * @var array
      */
-    public static $all = array(self::MEDIA_BOX, self::CROP_BOX, self::BLEED_BOX, self::TRIM_BOX, self::ART_BOX);
+    public static $all = array(
+        self::MEDIA_BOX,
+        self::CROP_BOX,
+        self::BLEED_BOX,
+        self::TRIM_BOX,
+        self::ART_BOX
+    );
+
     /**
      * Checks if a name is a valid page boundary name.
      *
@@ -76,6 +89,6 @@ abstract class PageBoundaries
      */
     public static function isValidName($name)
     {
-        return \in_array($name, self::$all, \true);
+        return \in_array($name, self::$all, true);
     }
 }

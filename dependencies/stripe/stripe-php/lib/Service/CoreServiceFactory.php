@@ -25,6 +25,8 @@ namespace WP_Ultimo\Dependencies\Stripe\Service;
  * @property ExchangeRateService $exchangeRates
  * @property FileLinkService $fileLinks
  * @property FileService $files
+ * @property FinancialConnections\FinancialConnectionsServiceFactory $financialConnections
+ * @property Identity\IdentityServiceFactory $identity
  * @property InvoiceItemService $invoiceItems
  * @property InvoiceService $invoices
  * @property Issuing\IssuingServiceFactory $issuing
@@ -33,26 +35,31 @@ namespace WP_Ultimo\Dependencies\Stripe\Service;
  * @property OrderReturnService $orderReturns
  * @property OrderService $orders
  * @property PaymentIntentService $paymentIntents
+ * @property PaymentLinkService $paymentLinks
  * @property PaymentMethodService $paymentMethods
  * @property PayoutService $payouts
  * @property PlanService $plans
  * @property PriceService $prices
  * @property ProductService $products
  * @property PromotionCodeService $promotionCodes
+ * @property QuoteService $quotes
  * @property Radar\RadarServiceFactory $radar
  * @property RefundService $refunds
  * @property Reporting\ReportingServiceFactory $reporting
  * @property ReviewService $reviews
  * @property SetupAttemptService $setupAttempts
  * @property SetupIntentService $setupIntents
+ * @property ShippingRateService $shippingRates
  * @property Sigma\SigmaServiceFactory $sigma
  * @property SkuService $skus
  * @property SourceService $sources
  * @property SubscriptionItemService $subscriptionItems
  * @property SubscriptionService $subscriptions
  * @property SubscriptionScheduleService $subscriptionSchedules
+ * @property TaxCodeService $taxCodes
  * @property TaxRateService $taxRates
  * @property Terminal\TerminalServiceFactory $terminal
+ * @property TestHelpers\TestHelpersServiceFactory $testHelpers
  * @property TokenService $tokens
  * @property TopupService $topups
  * @property TransferService $transfers
@@ -63,7 +70,7 @@ class CoreServiceFactory extends \WP_Ultimo\Dependencies\Stripe\Service\Abstract
     /**
      * @var array<string, string>
      */
-    private static $classMap = ['accountLinks' => \WP_Ultimo\Dependencies\Stripe\Service\AccountLinkService::class, 'accounts' => \WP_Ultimo\Dependencies\Stripe\Service\AccountService::class, 'applePayDomains' => \WP_Ultimo\Dependencies\Stripe\Service\ApplePayDomainService::class, 'applicationFees' => \WP_Ultimo\Dependencies\Stripe\Service\ApplicationFeeService::class, 'balance' => \WP_Ultimo\Dependencies\Stripe\Service\BalanceService::class, 'balanceTransactions' => \WP_Ultimo\Dependencies\Stripe\Service\BalanceTransactionService::class, 'billingPortal' => \WP_Ultimo\Dependencies\Stripe\Service\BillingPortal\BillingPortalServiceFactory::class, 'charges' => \WP_Ultimo\Dependencies\Stripe\Service\ChargeService::class, 'checkout' => \WP_Ultimo\Dependencies\Stripe\Service\Checkout\CheckoutServiceFactory::class, 'countrySpecs' => \WP_Ultimo\Dependencies\Stripe\Service\CountrySpecService::class, 'coupons' => \WP_Ultimo\Dependencies\Stripe\Service\CouponService::class, 'creditNotes' => \WP_Ultimo\Dependencies\Stripe\Service\CreditNoteService::class, 'customers' => \WP_Ultimo\Dependencies\Stripe\Service\CustomerService::class, 'disputes' => \WP_Ultimo\Dependencies\Stripe\Service\DisputeService::class, 'ephemeralKeys' => \WP_Ultimo\Dependencies\Stripe\Service\EphemeralKeyService::class, 'events' => \WP_Ultimo\Dependencies\Stripe\Service\EventService::class, 'exchangeRates' => \WP_Ultimo\Dependencies\Stripe\Service\ExchangeRateService::class, 'fileLinks' => \WP_Ultimo\Dependencies\Stripe\Service\FileLinkService::class, 'files' => \WP_Ultimo\Dependencies\Stripe\Service\FileService::class, 'invoiceItems' => \WP_Ultimo\Dependencies\Stripe\Service\InvoiceItemService::class, 'invoices' => \WP_Ultimo\Dependencies\Stripe\Service\InvoiceService::class, 'issuing' => \WP_Ultimo\Dependencies\Stripe\Service\Issuing\IssuingServiceFactory::class, 'mandates' => \WP_Ultimo\Dependencies\Stripe\Service\MandateService::class, 'oauth' => \WP_Ultimo\Dependencies\Stripe\Service\OAuthService::class, 'orderReturns' => \WP_Ultimo\Dependencies\Stripe\Service\OrderReturnService::class, 'orders' => \WP_Ultimo\Dependencies\Stripe\Service\OrderService::class, 'paymentIntents' => \WP_Ultimo\Dependencies\Stripe\Service\PaymentIntentService::class, 'paymentMethods' => \WP_Ultimo\Dependencies\Stripe\Service\PaymentMethodService::class, 'payouts' => \WP_Ultimo\Dependencies\Stripe\Service\PayoutService::class, 'plans' => \WP_Ultimo\Dependencies\Stripe\Service\PlanService::class, 'prices' => \WP_Ultimo\Dependencies\Stripe\Service\PriceService::class, 'products' => \WP_Ultimo\Dependencies\Stripe\Service\ProductService::class, 'promotionCodes' => \WP_Ultimo\Dependencies\Stripe\Service\PromotionCodeService::class, 'radar' => \WP_Ultimo\Dependencies\Stripe\Service\Radar\RadarServiceFactory::class, 'refunds' => \WP_Ultimo\Dependencies\Stripe\Service\RefundService::class, 'reporting' => \WP_Ultimo\Dependencies\Stripe\Service\Reporting\ReportingServiceFactory::class, 'reviews' => \WP_Ultimo\Dependencies\Stripe\Service\ReviewService::class, 'setupAttempts' => \WP_Ultimo\Dependencies\Stripe\Service\SetupAttemptService::class, 'setupIntents' => \WP_Ultimo\Dependencies\Stripe\Service\SetupIntentService::class, 'sigma' => \WP_Ultimo\Dependencies\Stripe\Service\Sigma\SigmaServiceFactory::class, 'skus' => \WP_Ultimo\Dependencies\Stripe\Service\SkuService::class, 'sources' => \WP_Ultimo\Dependencies\Stripe\Service\SourceService::class, 'subscriptionItems' => \WP_Ultimo\Dependencies\Stripe\Service\SubscriptionItemService::class, 'subscriptions' => \WP_Ultimo\Dependencies\Stripe\Service\SubscriptionService::class, 'subscriptionSchedules' => \WP_Ultimo\Dependencies\Stripe\Service\SubscriptionScheduleService::class, 'taxRates' => \WP_Ultimo\Dependencies\Stripe\Service\TaxRateService::class, 'terminal' => \WP_Ultimo\Dependencies\Stripe\Service\Terminal\TerminalServiceFactory::class, 'tokens' => \WP_Ultimo\Dependencies\Stripe\Service\TokenService::class, 'topups' => \WP_Ultimo\Dependencies\Stripe\Service\TopupService::class, 'transfers' => \WP_Ultimo\Dependencies\Stripe\Service\TransferService::class, 'webhookEndpoints' => \WP_Ultimo\Dependencies\Stripe\Service\WebhookEndpointService::class];
+    private static $classMap = ['accountLinks' => AccountLinkService::class, 'accounts' => AccountService::class, 'applePayDomains' => ApplePayDomainService::class, 'applicationFees' => ApplicationFeeService::class, 'balance' => BalanceService::class, 'balanceTransactions' => BalanceTransactionService::class, 'billingPortal' => BillingPortal\BillingPortalServiceFactory::class, 'charges' => ChargeService::class, 'checkout' => Checkout\CheckoutServiceFactory::class, 'countrySpecs' => CountrySpecService::class, 'coupons' => CouponService::class, 'creditNotes' => CreditNoteService::class, 'customers' => CustomerService::class, 'disputes' => DisputeService::class, 'ephemeralKeys' => EphemeralKeyService::class, 'events' => EventService::class, 'exchangeRates' => ExchangeRateService::class, 'fileLinks' => FileLinkService::class, 'files' => FileService::class, 'financialConnections' => FinancialConnections\FinancialConnectionsServiceFactory::class, 'identity' => Identity\IdentityServiceFactory::class, 'invoiceItems' => InvoiceItemService::class, 'invoices' => InvoiceService::class, 'issuing' => Issuing\IssuingServiceFactory::class, 'mandates' => MandateService::class, 'oauth' => OAuthService::class, 'orderReturns' => OrderReturnService::class, 'orders' => OrderService::class, 'paymentIntents' => PaymentIntentService::class, 'paymentLinks' => PaymentLinkService::class, 'paymentMethods' => PaymentMethodService::class, 'payouts' => PayoutService::class, 'plans' => PlanService::class, 'prices' => PriceService::class, 'products' => ProductService::class, 'promotionCodes' => PromotionCodeService::class, 'quotes' => QuoteService::class, 'radar' => Radar\RadarServiceFactory::class, 'refunds' => RefundService::class, 'reporting' => Reporting\ReportingServiceFactory::class, 'reviews' => ReviewService::class, 'setupAttempts' => SetupAttemptService::class, 'setupIntents' => SetupIntentService::class, 'shippingRates' => ShippingRateService::class, 'sigma' => Sigma\SigmaServiceFactory::class, 'skus' => SkuService::class, 'sources' => SourceService::class, 'subscriptionItems' => SubscriptionItemService::class, 'subscriptions' => SubscriptionService::class, 'subscriptionSchedules' => SubscriptionScheduleService::class, 'taxCodes' => TaxCodeService::class, 'taxRates' => TaxRateService::class, 'terminal' => Terminal\TerminalServiceFactory::class, 'testHelpers' => TestHelpers\TestHelpersServiceFactory::class, 'tokens' => TokenService::class, 'topups' => TopupService::class, 'transfers' => TransferService::class, 'webhookEndpoints' => WebhookEndpointService::class];
     protected function getServiceClass($name)
     {
         return \array_key_exists($name, self::$classMap) ? self::$classMap[$name] : null;

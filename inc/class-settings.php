@@ -158,7 +158,7 @@ class Settings {
 		// Get all the settings
 		if (null === $this->settings) {
 
-			$this->settings = WP_Ultimo()->helper->get_option(Settings::KEY);
+			$this->settings = wu_get_option(Settings::KEY);
 
 		} // end if;
 
@@ -168,13 +168,7 @@ class Settings {
 
 		} // end if;
 
-		if ($check_caps) {
-
-			/**
-			 * Todo
-			 */
-
-		} // end if;
+		if ($check_caps) {} // phpcs:ignore;
 
 		return $this->settings;
 
@@ -227,7 +221,7 @@ class Settings {
 
 		$settings[$setting] = $value;
 
-		$status = WP_Ultimo()->helper->save_option(Settings::KEY, $settings);
+		$status = wu_save_option(Settings::KEY, $settings);
 
 		$this->settings = $settings;
 
@@ -268,7 +262,7 @@ class Settings {
 				$new_value = isset($settings_to_save[$field_slug]) ? $settings_to_save[$field_slug] : $existing_value;
 
 				/**
-				 * For the current tab, we need to assume toogle fields.
+				 * For the current tab, we need to assume toggle fields.
 				 */
 				if ($section_slug === wu_request('tab', 'general') && $field->type === 'toggle' && !isset($settings_to_save[$field_slug])) {
 
@@ -292,7 +286,7 @@ class Settings {
 
 		} // end foreach;
 
-		WP_Ultimo()->helper->save_option(Settings::KEY, $settings);
+		wu_save_option(Settings::KEY, $settings);
 
 		do_action('wu_after_save_settings', $settings, $settings_to_save, $saved_settings);
 
@@ -312,7 +306,18 @@ class Settings {
 	 */
 	public function get_sections() {
 
-		$this->sections = apply_filters('wu_settings_get_sections', array());
+		$this->sections = apply_filters('wu_settings_get_sections', array(
+
+			/*
+			 * Add a default invisible section that we can use
+			 * to register settings that will not have a control.
+			 */
+			'core' => array(
+				'invisible' => true,
+				'order'     => 1000000,
+				'fields'    => apply_filters('wu_settings_section_core_fields', array()),
+			),
+		));
 
 		uasort($this->sections, 'wu_sort_by_order');
 
@@ -364,12 +369,6 @@ class Settings {
 			));
 
 			$atts['fields'] = apply_filters("wu_settings_section_{$section_slug}_fields", array());
-
-			$atts['sub-sections'] = array_filter($atts['fields'], function(&$field) {
-
-				return isset($field['show_as_submenu']) && $field['show_as_submenu'] === true;
-
-			});
 
 			$sections[$section_slug] = $atts;
 
@@ -423,6 +422,21 @@ class Settings {
 				},
 				'display_value'     => function() use ($field_slug) {
 					return wu_get_setting($field_slug);
+				},
+				'img'               => function() use ($field_slug) {
+
+					$img_id = wu_get_setting($field_slug);
+
+					if (!$img_id) {
+
+						return '';
+
+					} // end if;
+
+					$custom_logo_args = wp_get_attachment_image_src($img_id, 'full');
+
+					return $custom_logo_args ? $custom_logo_args[0] : '';
+
 				},
 			));
 
@@ -483,7 +497,9 @@ class Settings {
 
 					$attr = str_replace('-', '_', $attr);
 
-					$require_rules[] = "require('{$attr}', '{$value}')";
+					$value = json_encode($value);
+
+					$require_rules[] = "require('{$attr}', {$value})";
 
 				} // end foreach;
 
@@ -534,18 +550,28 @@ class Settings {
 
 		$this->add_field('general', 'company_name', array(
 			'title'   => __('Company Name', 'wp-ultimo'),
+			'desc'    => __('This name is used when generating invoices, for example.', 'wp-ultimo'),
 			'type'    => 'text',
 			'default' => get_network_option(null, 'site_name'),
 		));
 
+		$this->add_field('general', 'company_logo', array(
+			'title'   => __('Upload Company Logo', 'wp-ultimo'),
+			'desc'    => __('Add your company logo to be used on the login page and other places.', 'wp-ultimo'),
+			'type'    => 'image',
+			'default' => '',
+		));
+
 		$this->add_field('general', 'company_email', array(
 			'title'   => __('Company Email Address', 'wp-ultimo'),
+			'desc'    => __('This email is used when generating invoices, for example.', 'wp-ultimo'),
 			'type'    => 'text',
 			'default' => get_network_option(null, 'admin_email'),
 		));
 
 		$this->add_field('general', 'company_address', array(
 			'title'       => __('Company Address', 'wp-ultimo'),
+			'desc'        => __('This address is used when generating invoices.', 'wp-ultimo'),
 			'type'        => 'textarea',
 			'placeholder' => "350 Fifth Avenue\nManhattan, \nNew York City, NY \n10118",
 			'default'     => '',
@@ -556,6 +582,7 @@ class Settings {
 
 		$this->add_field('general', 'company_country', array(
 			'title'   => __('Company Country', 'wp-ultimo'),
+			'desc'    => __('This info is used when generating invoices, as well as for calculating when taxes apply in some contexts.', 'wp-ultimo'),
 			'type'    => 'select',
 			'options' => 'wu_get_countries',
 			'default' => array($this, 'get_default_company_country'),
@@ -568,8 +595,8 @@ class Settings {
 		));
 
 		$this->add_field('general', 'currency_symbol', array(
-			'title'   => __('Currency Symbol', 'wp-ultimo'),
-			'desc'    => __('Select the currency symbol to be used in WP Ultimo', 'wp-ultimo'),
+			'title'   => __('Currency', 'wp-ultimo'),
+			'desc'    => __('Select the currency to be used in WP Ultimo.', 'wp-ultimo'),
 			'type'    => 'select',
 			'default' => 'USD',
 			'options' => 'wu_get_currencies',
@@ -577,6 +604,7 @@ class Settings {
 
 		$this->add_field('general', 'currency_position', array(
 			'title'   => __('Currency Position', 'wp-ultimo'),
+			'desc'    => __('This setting affects all prices displayed across the plugin elements.', 'wp-ultimo'),
 			'desc'    => '',
 			'type'    => 'select',
 			'default' => '%s %v',
@@ -590,18 +618,22 @@ class Settings {
 
 		$this->add_field('general', 'decimal_separator', array(
 			'title'   => __('Decimal Separator', 'wp-ultimo'),
+			'desc'    => __('This setting affects all prices displayed across the plugin elements.', 'wp-ultimo'),
 			'type'    => 'text',
 			'default' => '.',
 		));
 
 		$this->add_field('general', 'thousand_separator', array(
 			'title'   => __('Thousand Separator', 'wp-ultimo'),
+			'desc'    => __('This setting affects all prices displayed across the plugin elements.', 'wp-ultimo'),
 			'type'    => 'text',
 			'default' => ',',
+			'raw'     => true
 		));
 
 		$this->add_field('general', 'precision', array(
 			'title'   => __('Number of Decimals', 'wp-ultimo'),
+			'desc'    => __('This setting affects all prices displayed across the plugin elements.', 'wp-ultimo'),
 			'type'    => 'number',
 			'default' => '2',
 			'min'     => 0,
@@ -620,7 +652,7 @@ class Settings {
 
 		$this->add_field('login-and-registration', 'registration_header', array(
 			'title' => __('Login and Registration Options', 'wp-ultimo'),
-			'desc'  => __('Options related to resgitration and login behavior.', 'wp-ultimo'),
+			'desc'  => __('Options related to registration and login behavior.', 'wp-ultimo'),
 			'type'  => 'header',
 		));
 
@@ -631,10 +663,18 @@ class Settings {
 			'default' => 1,
 		));
 
+		$this->add_field('login-and-registration', 'enable_email_verification', array(
+			'title'   => __('Enable email verification', 'wp-ultimo'),
+			'desc'    => __('Enabling this option will require the customer to verify their email address when subscribing to a free plan or a plan with a trial period. Sites will not be created until the customer email verification status is changed to verified.', 'wp-ultimo'),
+			'type'    => 'toggle',
+			'default' => 1,
+		));
+
 		$this->add_field('login-and-registration', 'default_registration_page', array(
 			'type'        => 'model',
 			'title'       => __('Default Registration Page', 'wp-ultimo'),
 			'placeholder' => __('Search pages on the main site...', 'wp-ultimo'),
+			'desc'        => __('Only published pages on the main site are available for selection, and you need to make sure they contain a [wu_checkout] shortcode.', 'wp-ultimo'),
 			'tooltip'     => '',
 			'html_attr'   => array(
 				'data-base-link'    => get_admin_url(wu_get_main_site_id(), 'post.php?action=edit&post'),
@@ -657,6 +697,7 @@ class Settings {
 			'type'        => 'model',
 			'title'       => __('Default Login Page', 'wp-ultimo'),
 			'placeholder' => __('Search pages on the main site...', 'wp-ultimo'),
+			'desc'        => __('Only published pages on the main site are available for selection, and you need to make sure they contain a [wu_login_form] shortcode.', 'wp-ultimo'),
 			'tooltip'     => '',
 			'html_attr'   => array(
 				'data-base-link'    => get_admin_url(wu_get_main_site_id(), 'post.php?action=edit&post'),
@@ -691,6 +732,13 @@ class Settings {
 			),
 		));
 
+		$this->add_field('login-and-registration', 'force_publish_sites_sync', array(
+			'title'   => __('Force Synchronous Site Publication ', 'wp-ultimo'),
+			'desc'    => __('By default, when a new pending site needs to be converted into a real network site, the publishing process happens via Job Queue, asynchronously. Enable this option to force the publication to happen in the same request as the signup. Be careful, as this can cause timeouts depending on the size of the site templates being copied.', 'wp-ultimo'),
+			'type'    => 'toggle',
+			'default' => 0,
+		));
+
 		$this->add_field('login-and-registration', 'other_header', array(
 			'title' => __('Other Options', 'wp-ultimo'),
 			'desc'  => __('Other registration-related options.', 'wp-ultimo'),
@@ -723,9 +771,11 @@ class Settings {
 			),
 		));
 
+		do_action('wu_settings_login');
+
 		/*
 		 * Memberships
-		 * This section holds the Membership settings.
+		 * This section holds the Membership  settings of the WP Ultimo Plugin.
 		 */
 
 		$this->add_section('memberships', array(
@@ -736,7 +786,7 @@ class Settings {
 
 		$this->add_field('memberships', 'block_frontend', array(
 			'title'   => __('Block Frontend Access', 'wp-ultimo'),
-			'desc'    => __('Block the frontend access of network sites after a subscription is no longer active.', 'wp-ultimo'),
+			'desc'    => __('Block the frontend access of network sites after a membership is no longer active.', 'wp-ultimo'),
 			'tooltip' => __('By default, if a user does not pay and the account goes inactive, only the admin panel will be blocked, but the user\'s site will still be accessible on the frontend. If enabled, this option will also block frontend access in those cases.', 'wp-ultimo'),
 			'type'    => 'toggle',
 			'default' => 0,
@@ -744,7 +794,7 @@ class Settings {
 
 		$this->add_field('memberships', 'block_frontend_grace_period', array(
 			'title'   => __('Frontend Block Grace Period', 'wp-ultimo'),
-			'desc'    => __('Select the number of days WP Ultimo should wait after the subscription goes inactive before blocking the frontend access. Leave 0 to block immediately after the subscription becomes inactive.', 'wp-ultimo'),
+			'desc'    => __('Select the number of days WP Ultimo should wait after the membership goes inactive before blocking the frontend access. Leave 0 to block immediately after the membership becomes inactive.', 'wp-ultimo'),
 			'type'    => 'number',
 			'default' => 0,
 			'min'     => 0,
@@ -753,9 +803,34 @@ class Settings {
 			),
 		));
 
+		$this->add_field('memberships', 'default_block_frontend_page', array(
+			'title'     => __('Frontend Block Page', 'wp-ultimo'),
+			'desc'      => __('Select a page to redirect user if access is blocked', 'wp-ultimo'),
+			'desc'      => __('Only published pages on the main site are available for selection.', 'wp-ultimo'),
+			'tooltip'   => '',
+			'html_attr' => array(
+				'data-base-link'    => get_admin_url(wu_get_main_site_id(), 'post.php?action=edit&post'),
+				'data-model'        => 'page',
+				'data-value-field'  => 'ID',
+				'data-label-field'  => 'post_title',
+				'data-search-field' => 'post_title',
+				'data-max-items'    => 1,
+			),
+			'require'   => array(
+				'block_frontend' => 1,
+			),
+		));
+
+		$this->add_field('memberships', 'enable_multiple_memberships', array(
+			'title'   => __('Enable Multiple Memberships per Customer', 'wp-ultimo'),
+			'desc'    => __('Enabling this option will allow your users to create more than one membership.', 'wp-ultimo'),
+			'type'    => 'toggle',
+			'default' => 0,
+		));
+
 		$this->add_field('memberships', 'enable_multiple_sites', array(
-			'title'   => __('Enable Multiple Sites per User', 'wp-ultimo'),
-			'desc'    => __('Enabling this option will allow your users to create more than one site. You can limit how many sites your users can create in a per plan basis.', 'wp-ultimo'),
+			'title'   => __('Enable Multiple Sites per Membership', 'wp-ultimo'),
+			'desc'    => __('Enabling this option will allow your customers to create more than one site. You can limit how many sites your users can create in a per plan basis.', 'wp-ultimo'),
 			'type'    => 'toggle',
 			'default' => 0,
 		));
@@ -788,6 +863,88 @@ class Settings {
 			),
 		));
 
+		$this->add_field('memberships', 'emulated_post_types_header', array(
+			'type'  => 'header',
+			'title' => __('Emulated Post Types', 'wp-ultimo'),
+			'desc'  => __('Emulates the registering of a custom post type to be able to create limits for it without having to activate plugins on the main site.', 'wp-ultimo'),
+		));
+
+		$this->add_field('memberships', 'emulated_post_types_explanation', array(
+			'type'            => 'note',
+			'desc'            => __('By default, WP Ultimo only allows super admins to limit post types that are registered on the main site. This makes sense from a technical stand-point but it also forces you to have plugins network-activated in order to be able to set limitations for their custom post types. Using this option, you can emulate the registering of a post type. This will register them on the main site and allow you to create limits for them on your products.', 'wp-ultimo'),
+			'classes'         => '',
+			'wrapper_classes' => '',
+		));
+
+		$this->add_field('memberships', 'emulated_post_types_empty', array(
+			'type'              => 'note',
+			'desc'              => __('Add the first post type using the button below.', 'wp-ultimo'),
+			'classes'           => 'wu-text-gray-600 wu-text-xs wu-text-center wu-w-full',
+			'wrapper_classes'   => 'wu-bg-gray-100 wu-items-end',
+			'wrapper_html_attr' => array(
+				'v-if'    => 'emulated_post_types.length === 0',
+				'v-cloak' => '1',
+			),
+		));
+
+		$this->add_field('memberships', 'emulated_post_types', array(
+			'type'              => 'group',
+			'tooltip'           => '',
+			'raw'               => true,
+			'default'           => array(),
+			'wrapper_classes'   => 'wu-relative wu-bg-gray-100 wu-pb-2',
+			'wrapper_html_attr' => array(
+				'v-if'    => 'emulated_post_types.length',
+				'v-for'   => '(emulated_post_type, index) in emulated_post_types',
+				'v-cloak' => '1',
+			),
+			'fields'            => array(
+				'emulated_post_types_remove' => array(
+					'type'            => 'note',
+					'desc'            => sprintf('<a title="%s" class="wu-no-underline wu-inline-block wu-text-gray-600 wu-mt-2 wu-mr-2" href="#" @click.prevent="() => emulated_post_types.splice(index, 1)"><span class="dashicons-wu-squared-cross"></span></a>', __('Remove', 'wp-ultimo')),
+					'wrapper_classes' => 'wu-absolute wu-top-0 wu-right-0',
+				),
+				'emulated_post_types_slug'   => array(
+					'type'            => 'text',
+					'title'           => __('Post Type Slug', 'wp-ultimo'),
+					'placeholder'     => __('e.g. product', 'wp-ultimo'),
+					'wrapper_classes' => 'wu-w-5/12',
+					'html_attr'       => array(
+						'v-model'     => 'emulated_post_type.post_type',
+						'v-bind:name' => '"emulated_post_types[" + index + "][post_type]"',
+					),
+				),
+				'emulated_post_types_label'  => array(
+					'type'            => 'text',
+					'title'           => __('Post Type Label', 'wp-ultimo'),
+					'placeholder'     => __('e.g. Products', 'wp-ultimo'),
+					'wrapper_classes' => 'wu-w-7/12 wu-ml-2',
+					'html_attr'       => array(
+						'v-model'     => 'emulated_post_type.label',
+						'v-bind:name' => '"emulated_post_types[" + index + "][label]"',
+					),
+				),
+			),
+		));
+
+		$this->add_field('memberships', 'emulated_post_types_repeat', array(
+			'type'              => 'submit',
+			'title'             => __('+ Add Post Type', 'wp-ultimo'),
+			'classes'           => 'wu-uppercase wu-text-2xs wu-text-blue-700 wu-border-none wu-bg-transparent wu-font-bold wu-text-right wu-w-full wu-cursor-pointer',
+			'wrapper_classes'   => 'wu-bg-gray-100 wu-items-end',
+			'wrapper_html_attr' => array(
+				'v-cloak' => '1',
+			),
+			'html_attr'         => array(
+				'v-on:click.prevent' => '() => {
+					emulated_post_types = Array.isArray(emulated_post_types) ? emulated_post_types : [];  emulated_post_types.push({
+						post_type: "",
+						label: "",
+					})
+				}',
+			),
+		));
+
 		do_action('wu_settings_memberships');
 
 		/*
@@ -810,6 +967,13 @@ class Settings {
 		$this->add_field('sites', 'enable_visits_limiting', array(
 			'title'   => __('Enable Visits Limitation & Counting', 'wp-ultimo'),
 			'desc'    => __('Enabling this option will add visits limitation settings to the plans and add the functionality necessary to count site visits on the front-end.', 'wp-ultimo'),
+			'type'    => 'toggle',
+			'default' => 1,
+		));
+
+		$this->add_field('sites', 'enable_screenshot_generator', array(
+			'title'   => __('Enable Screenshot Generator', 'wp-ultimo'),
+			'desc'    => __('With this option is enabled, WP Ultimo will take a screenshot for every newly created site on your network and set the resulting image as that site\'s featured image. This features requires a valid license key to work and it is not supported for local sites.', 'wp-ultimo'),
 			'type'    => 'toggle',
 			'default' => 1,
 		));
@@ -893,17 +1057,33 @@ class Settings {
 			'show_as_submenu' => true,
 		));
 
+		$this->add_field('payment-gateways', 'force_auto_renew', array(
+			'title'   => __('Force Auto-Renew', 'wp-ultimo'),
+			'desc'    => __('Enable this option if you want to make sure memberships are created with auto-renew activated whenever the selected gateway supports it. Disabling this option will show an auto-renew option during checkout.', 'wp-ultimo'),
+			'tooltip' => '',
+			'type'    => 'toggle',
+			'default' => 1,
+		));
+
+		$this->add_field('payment-gateways', 'allow_trial_without_payment_method', array(
+			'title'   => __('Allow Trials without Payment Method', 'wp-ultimo'),
+			'desc'    => __('By default, WP Ultimo asks customers to add a payment method on sign-up even if a trial period is present. Enable this option to only ask for a payment method when the trial period is over.', 'wp-ultimo'),
+			'tooltip' => '',
+			'type'    => 'toggle',
+			'default' => 0,
+		));
+
 		$this->add_field('payment-gateways', 'attach_invoice_pdf', array(
 			'title'   => __('Send Invoice on Payment Confirmation', 'wp-ultimo'),
 			'desc'    => __('Enabling this option will attach a PDF invoice (marked paid) with the payment confirmation email. This option does not apply to the Manual Gateway, which sends invoices regardless of this option.', 'wp-ultimo'),
-			'tooltip' => __('The invoice files will be saved on the wp-content/uploads/invc folder.', 'wp-ultimo'),
+			'tooltip' => __('The invoice files will be saved on the wp-content/uploads/wu-invoices folder.', 'wp-ultimo'),
 			'type'    => 'toggle',
 			'default' => 1,
 		));
 
 		$this->add_field('payment-gateways', 'invoice_numbering_scheme', array(
 			'title'   => __('Invoice Numbering Scheme', 'wp-ultimo'),
-			'tooltip' => __('What should WP Ultimo use as the invoice number?', 'wp-ultimo'),
+			'desc'    => __('What should WP Ultimo use as the invoice number?', 'wp-ultimo'),
 			'type'    => 'select',
 			'default' => 'reference_code',
 			'tooltip' => '',
@@ -915,7 +1095,7 @@ class Settings {
 
 		$this->add_field('payment-gateways', 'next_invoice_number', array(
 			'title'   => __('Next Invoice Number', 'wp-ultimo'),
-			'tooltip' => __('This number will be used as the invoice number for the next invoice generated on the system. This number is incremented by one every time a new invoice is created. You can change it and save it to reset the invoice sequential number to a specific value.', 'wp-ultimo'),
+			'desc'    => __('This number will be used as the invoice number for the next invoice generated on the system. It is incremented by one every time a new invoice is created. You can change it and save it to reset the invoice sequential number to a specific value.', 'wp-ultimo'),
 			'type'    => 'number',
 			'default' => '1',
 			'min'     => 0,
@@ -927,9 +1107,10 @@ class Settings {
 		$this->add_field('payment-gateways', 'invoice_prefix', array(
 			'title'       => __('Invoice Number Prefix', 'wp-ultimo'),
 			'placeholder' => __('INV00', 'wp-ultimo'),
-			'tooltip'     => __('Use %%YEAR%%, %%MONTH%%, and %%DAY%% to have a dynamic placeholder.', 'wp-ultimo'),
+			'desc'        => sprintf(__('Use %%YEAR%%, %%MONTH%%, and %%DAY%% to create a dynamic placeholder. E.g. %%YEAR%%-%%MONTH%%-INV will become %s.', 'wp-ultimo'), date('Y') . '-' . date('m') . '-INV'), // phpcs:ignore
 			'default'     => '',
 			'type'        => 'text',
+			'raw'         => true, // Necessary to prevent the removal of the %% tags.
 			'require'     => array(
 				'invoice_numbering_scheme' => 'sequential_number',
 			),
@@ -945,34 +1126,6 @@ class Settings {
 		do_action('wu_settings_payment_gateways');
 
 		/*
-		 * Tax Settings
-		 * This section holds the Tax settings of the WP Ultimo Plugin.
-		 */
-
-		$this->add_section('taxes', array(
-			'title' => __('Taxes', 'wp-ultimo'),
-			'desc'  => __('Taxes', 'wp-ultimo'),
-			'icon'  => 'dashicons-wu-price-tag',
-		));
-
-		$this->add_field('taxes', 'enable_taxes', array(
-			'title'   => __('Enable Tax Support', 'wp-ultimo'),
-			'desc'    => __('Enable this option if you wish to add tax calculations to your WP Ultimo purchases.', 'wp-ultimo'),
-			'type'    => 'toggle',
-			'default' => 0,
-		));
-
-		$this->add_field('taxes', 'enable_vat', array(
-			'title'   => __('Enable EU VAT Support', 'wp-ultimo'),
-			'desc'    => __('Enable this option to add support to EU VAT.', 'wp-ultimo'),
-			'type'    => 'toggle',
-			'default' => 0,
-			'require' => array(
-				'enable_taxes' => 1,
-			),
-		));
-
-		/*
 		 * Emails
 		 * This section holds the Email settings of the WP Ultimo Plugin.
 		 */
@@ -986,7 +1139,7 @@ class Settings {
 
     /*
 		 * Domain Mapping
-		 * This section holds the Integrations settings of the WP Ultimo Plugin.
+		 * This section holds the Domain Mapping settings of the WP Ultimo Plugin.
 		 */
 
 		$this->add_section('domain-mapping', array(
@@ -996,6 +1149,19 @@ class Settings {
 		));
 
 		do_action('wu_settings_domain_mapping');
+
+		/*
+		 * Single Sign-on
+		 * This section includes settings related to the single sign-on functionality
+		 */
+
+		$this->add_section('sso', array(
+			'title' => __('Single Sign-On', 'wp-ultimo'),
+			'desc'  => __('Single Sign-On', 'wp-ultimo'),
+			'icon'  => 'dashicons-wu-add-user',
+		));
+
+		do_action('wu_settings_sso');
 
 		/*
 		 * Integrations
@@ -1009,19 +1175,48 @@ class Settings {
 		));
 
 		$this->add_field('integrations', 'hosting_providers_header', array(
-			'title'           => __('Hosting Providers', 'wp-ultimo'),
-			'desc'            => __('Configure and manage the integration with your Hosting Provider.', 'wp-ultimo'),
+			'title'           => __('Hosting or Panel Providers', 'wp-ultimo'),
+			'desc'            => __('Configure and manage the integration with your Hosting or Panel Provider.', 'wp-ultimo'),
 			'type'            => 'header',
 			'show_as_submenu' => true,
 		));
 
 		do_action('wu_settings_integrations');
 
+		/*
+		 * Other Options
+		 * This section holds the Other Options settings of the WP Ultimo Plugin.
+		 */
+
 		$this->add_section('other', array(
 			'title' => __('Other Options', 'wp-ultimo'),
 			'desc'  => __('Other Options', 'wp-ultimo'),
 			'icon'  => 'dashicons-wu-switch',
 			'order' => 1000,
+		));
+
+		$this->add_field('other', 'Other_header', array(
+			'title' => __('Miscellaneous', 'wp-ultimo'),
+			'desc'  => __('Other options that do not fit anywhere else.', 'wp-ultimo'),
+			'type'  => 'header',
+		));
+
+		$preview_image = wu_preview_image(wu_get_asset('settings/settings-hide-ui-tours.png'));
+
+		$this->add_field('other', 'hide_tours', array(
+			'title'   => __('Hide UI Tours', 'wp-ultimo') . $preview_image,
+			'desc'    => __('The UI tours showed by WP Ultimo should permanently hide themselves after being seen but if they persist for whatever reason, toggle this option to force them into their viewed state - which will prevent them from showing up again.', 'wp-ultimo'),
+			'type'    => 'toggle',
+			'default' => 0,
+		));
+
+		$preview_image_2 = wu_preview_image(wu_get_asset('settings/settings-disable-hover-to-zoom.png'));
+
+		$this->add_field('other', 'disable_image_zoom', array(
+			'title'   => __('Disable "Hover to Zoom"', 'wp-ultimo') . $preview_image_2,
+			'desc'    => __('By default, WP Ultimo adds a "hover to zoom" feature, allowing network admins to see larger version of site screenshots and other images across the UI in full-size when hovering over them. You can disable that feature here. Preview tags like the above are not affected.', 'wp-ultimo'),
+			'type'    => 'toggle',
+			'default' => 0,
 		));
 
 		$this->add_field('other', 'error_reporting_header', array(

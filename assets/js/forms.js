@@ -1,13 +1,7 @@
-/* global wutb_remove, wu_block_ui, wu_initialize_input_masks, wu_modal_refresh, wu_initialize_editors */
+/* global wutb_remove, wu_block_ui, wu_modal_refresh, wu_initialize_editors, wu_initialize_forms */
 (function($) {
 
-  $(document).ready(function() {
-
-    wu_modal_refresh();
-
-    wu_initialize_input_masks();
-
-    wu_initialize_editors();
+  window.wu_initialize_forms = function() {
 
     const form_id = $('.wu_form').attr('id');
 
@@ -42,7 +36,7 @@
 
         submit_button = $(e.originalEvent.submitter).val();
 
-      } catch ($error) {}
+      } catch ($error) { }
 
       const form_data = $('.wu_form').serialize() + '&submit=' + submit_button;
 
@@ -87,24 +81,16 @@
            */
           if (typeof results.data.send === 'object') {
 
-            window[results.data.send.scope][results.data.send.function_name](results.data.send.data);
+            window[results.data.send.scope][results.data.send.function_name](results.data.send.data, () => {
 
-            /*
-             * Unblock the form
-             */
-            blocked_form.unblock();
+              /*
+               * Close thickbox
+               */
+              wutb_remove();
 
-            /*
-             * Close thickbox
-             */
-            wutb_remove();
+            });
 
           } // end if;
-
-          /*
-           * Close thickbox
-           */
-          wutb_remove();
 
         } else {
 
@@ -118,9 +104,23 @@
            */
           window['wu_' + form_id + '_errors'].errors = results.data;
 
+          jQuery('[data-wu-app="' + form_id + '_errors' + '"]').attr('tabindex', -1).focus();
+
         } // end if;
 
       });
+
+    });
+
+  };
+
+  $(document).ready(function() {
+
+    jQuery('body').on('wubox:load', function() {
+
+      wu_initialize_editors();
+
+      wu_initialize_forms();
 
     });
 

@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * This file is part of the Carbon package.
+ *
+ * (c) Brian Nesbitt <brian@nesbot.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
 namespace WP_Ultimo\Dependencies\Carbon\PHPStan;
 
 use WP_Ultimo\Dependencies\PHPStan\Reflection\ClassReflection;
@@ -12,7 +20,7 @@ use WP_Ultimo\Dependencies\PHPStan\Type\TypehintHelper;
  *
  * @codeCoverageIgnore Pure PHPStan wrapper.
  */
-final class MacroExtension implements \WP_Ultimo\Dependencies\PHPStan\Reflection\MethodsClassReflectionExtension
+final class MacroExtension implements MethodsClassReflectionExtension
 {
     /**
      * @var PhpMethodReflectionFactory
@@ -27,24 +35,24 @@ final class MacroExtension implements \WP_Ultimo\Dependencies\PHPStan\Reflection
      *
      * @param PhpMethodReflectionFactory $methodReflectionFactory
      */
-    public function __construct(\WP_Ultimo\Dependencies\PHPStan\Reflection\Php\PhpMethodReflectionFactory $methodReflectionFactory)
+    public function __construct(PhpMethodReflectionFactory $methodReflectionFactory)
     {
-        $this->scanner = new \WP_Ultimo\Dependencies\Carbon\PHPStan\MacroScanner();
+        $this->scanner = new MacroScanner();
         $this->methodReflectionFactory = $methodReflectionFactory;
     }
     /**
      * {@inheritdoc}
      */
-    public function hasMethod(\WP_Ultimo\Dependencies\PHPStan\Reflection\ClassReflection $classReflection, string $methodName) : bool
+    public function hasMethod(ClassReflection $classReflection, string $methodName) : bool
     {
         return $this->scanner->hasMethod($classReflection->getName(), $methodName);
     }
     /**
      * {@inheritdoc}
      */
-    public function getMethod(\WP_Ultimo\Dependencies\PHPStan\Reflection\ClassReflection $classReflection, string $methodName) : \WP_Ultimo\Dependencies\PHPStan\Reflection\MethodReflection
+    public function getMethod(ClassReflection $classReflection, string $methodName) : MethodReflection
     {
         $builtinMacro = $this->scanner->getMethod($classReflection->getName(), $methodName);
-        return $this->methodReflectionFactory->create($classReflection, null, $builtinMacro, $classReflection->getActiveTemplateTypeMap(), [], \WP_Ultimo\Dependencies\PHPStan\Type\TypehintHelper::decideTypeFromReflection($builtinMacro->getReturnType()), null, null, $builtinMacro->isDeprecated()->yes(), $builtinMacro->isInternal(), $builtinMacro->isFinal(), $builtinMacro->getDocComment());
+        return $this->methodReflectionFactory->create($classReflection, null, $builtinMacro, $classReflection->getActiveTemplateTypeMap(), [], TypehintHelper::decideTypeFromReflection($builtinMacro->getReturnType()), null, null, $builtinMacro->isDeprecated()->yes(), $builtinMacro->isInternal(), $builtinMacro->isFinal(), $builtinMacro->getDocComment());
     }
 }

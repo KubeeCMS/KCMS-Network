@@ -8,7 +8,7 @@
 <?php wp_nonce_field('meta-box-order', 'meta-box-order-nonce', false); ?>
 <?php wp_nonce_field('closedpostboxes', 'closedpostboxesnonce', false); ?>
 
-<div id="wp-ultimo-wrap" class="wrap">
+<div id="wp-ultimo-wrap" class="<?php wu_wrap_use_container() ?> wrap">
 
   <h1 class="wp-heading-inline"><?php _e('System Info', 'wp-ultimo'); ?></h1>
 

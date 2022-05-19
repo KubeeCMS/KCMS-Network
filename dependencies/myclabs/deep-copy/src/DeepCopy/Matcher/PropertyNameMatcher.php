@@ -5,7 +5,7 @@ namespace WP_Ultimo\Dependencies\DeepCopy\Matcher;
 /**
  * @final
  */
-class PropertyNameMatcher implements \WP_Ultimo\Dependencies\DeepCopy\Matcher\Matcher
+class PropertyNameMatcher implements Matcher
 {
     /**
      * @var string

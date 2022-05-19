@@ -123,7 +123,11 @@ class Legacy_Checkout {
 	 */
 	public function add_new_template($posts_templates) {
 
-		$posts_templates = array_merge($posts_templates, $this->templates);
+		if (is_main_site()) {
+
+			$posts_templates = array_merge($posts_templates, $this->templates);
+		
+		} // end if;
 
 		return $posts_templates;
 
@@ -204,7 +208,7 @@ class Legacy_Checkout {
 
 		} // end if;
 
-		$file = WP_Ultimo()->helper->path("views/legacy/signup/$template_slug");
+		$file = wu_path("views/legacy/signup/$template_slug");
 
 		// Just to be safe, we check if the file exist first
 		if (file_exists($file)) {
@@ -978,7 +982,7 @@ class Legacy_Checkout {
 	 * @param bool $die If we should die when there's no transient set.
 	 * @return array The transient information
 	 */
-	public function get_transient($die = true) {
+	public static function get_transient($die = true) {
 
 		if (self::is_customizer()) {
 
@@ -988,13 +992,19 @@ class Legacy_Checkout {
 
 		} else {
 
-			$transient = $this->session->get('form');
+			$transient = wu_get_session('signup')->get('form');
 
 		} // end if;
 
 		if ($die && empty($transient)) {
 
 			// wp_die(__('Try again', 'wp-ultimo'));
+
+		} // end if;
+
+		if (is_null($transient)) {
+
+			return array();
 
 		} // end if;
 

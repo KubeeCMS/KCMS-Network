@@ -1,10 +1,18 @@
 <?php
 
+/**
+ * This file is part of the Carbon package.
+ *
+ * (c) Brian Nesbitt <brian@nesbot.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
 namespace WP_Ultimo\Dependencies\Carbon\Cli;
 
 class Invoker
 {
-    const CLI_CLASS_NAME = 'WP_Ultimo\\Dependencies\\Carbon\\Cli';
+    public const CLI_CLASS_NAME = 'WP_Ultimo\\Dependencies\\Carbon\\Cli';
     protected function runWithCli(string $className, array $parameters) : bool
     {
         $cli = new $className();
@@ -15,7 +23,7 @@ class Invoker
         if (\class_exists(self::CLI_CLASS_NAME)) {
             return $this->runWithCli(self::CLI_CLASS_NAME, $parameters);
         }
-        $function = ($parameters[1] ?? '') === 'install' ? $parameters[2] ?? null : null ?: 'shell_exec';
+        $function = (($parameters[1] ?? '') === 'install' ? $parameters[2] ?? null : null) ?: 'shell_exec';
         $function('composer require carbon-cli/carbon-cli --no-interaction');
         echo 'Installation succeeded.';
         return \true;

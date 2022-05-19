@@ -143,7 +143,22 @@ class Email extends Post_Base_Model {
 	public function validation_rules() {
 
 		return array(
-			'slug' => 'required',
+			'schedule'            => 'boolean|default:0',
+			'type'                => 'in:system_email|default:system_email',
+			'event'               => 'required|default:',
+			'send_hours'          => 'default:',
+			'send_days'           => 'integer|default:',
+			'schedule_type'       => 'in:days,hours',
+			'name'                => 'default:title',
+			'title'               => 'required',
+			'slug'                => 'required',
+			'custom_sender'       => 'boolean|default:0',
+			'custom_sender_name'  => 'default:',
+			'custom_sender_email' => 'default:',
+			'target'              => 'required|in:customer,admin',
+			'send_copy_to_admin'  => 'boolean|default:0',
+			'active'              => 'default:1',
+			'legacy'              => 'boolean|default:0',
 		);
 
 	} // end validation_rules;
@@ -197,9 +212,22 @@ class Email extends Post_Base_Model {
 	 */
 	public function get_style() {
 
-		if ($this->style === null) {
+		$this->style = $this->get_meta('wu_style', 'html');
 
-			$this->style = $this->get_meta('wu_style', 'html');
+		if ($this->style === 'use_default') {
+
+			$this->style = wu_get_setting('email_template_type', 'html');
+
+		} // end if;
+
+		/*
+		 * Do an extra check for old installs
+		 * where the default value was not being
+		 * properly installed.
+		 */
+		if (empty($this->style)) {
+
+			$this->style = 'html';
 
 		} // end if;
 
@@ -212,7 +240,8 @@ class Email extends Post_Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $style The style being set.
+	 * @param string $style The email style. Can be 'html' or 'plain-text'.
+	 * @options html,plain-text
 	 * @return void
 	 */
 	public function set_style($style) {
@@ -399,10 +428,12 @@ class Email extends Post_Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $event The event being set.
+	 * @param string $event The event that needs to be fired for this email to be sent.
 	 * @return void
 	 */
 	public function set_event($event) {
+
+		$this->event = $event;
 
 		$this->meta['wu_system_email_event'] = $event;
 
@@ -427,7 +458,7 @@ class Email extends Post_Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $send_hours amount in hours and minutes.
+	 * @param string $send_hours The amount of hours that the email will wait before is sent.
 	 * @return void
 	 */
 	public function set_send_hours($send_hours) {
@@ -441,7 +472,7 @@ class Email extends Post_Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $send_days the amount of days.
+	 * @param string $send_days The amount of days that the email will wait before is sent.
 	 * @return void
 	 */
 	public function set_send_days($send_days) {
@@ -455,7 +486,8 @@ class Email extends Post_Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $schedule_type The type of schedule.
+	 * @param string $schedule_type The type of schedule. Can be 'days' or 'hours'.
+	 * @options days,hours
 	 * @return void
 	 */
 	public function set_schedule_type($schedule_type) {
@@ -497,7 +529,7 @@ class Email extends Post_Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $custom_sender if has a custom sender.
+	 * @param boolean $custom_sender If has a custom sender.
 	 * @return void
 	 */
 	public function set_custom_sender($custom_sender) {
@@ -511,7 +543,7 @@ class Email extends Post_Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $custom_sender_name custom sender name, if is the case.
+	 * @param string $custom_sender_name The name of the custom sender. E.g. From: John Doe.
 	 * @return void
 	 */
 	public function set_custom_sender_name($custom_sender_name) {
@@ -525,7 +557,7 @@ class Email extends Post_Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $custom_sender_email custom sender email, if is the case.
+	 * @param string $custom_sender_email The email of the custom sender. E.g. From: johndoe@gmail.com.
 	 * @return void
 	 */
 	public function set_custom_sender_email($custom_sender_email) {
@@ -556,7 +588,8 @@ class Email extends Post_Base_Model {
 	 * Set if we should send this to a customer or to the network admin.
 	 *
 	 * @since 2.0.0
-	 * @param string $target If we should send this to a customer or to the network admin.
+	 * @param string $target If we should send this to a customer or to the network admin. Can be 'customer' or 'admin'.
+	 * @options customer,admin
 	 * @return void
 	 */
 	public function set_target($target) {
@@ -601,7 +634,7 @@ class Email extends Post_Base_Model {
 
 			} // end if;
 
-			$target_list[]  = array(
+			$target_list[] = array(
 				'name'  => $customer->get_display_name(),
 				'email' => $customer->get_email_address(),
 			);
@@ -687,7 +720,6 @@ class Email extends Post_Base_Model {
 
 	} // end set_send_copy_to_admin;
 
-
 	/**
 	 * Get the active status of an email.
 	 *
@@ -710,7 +742,7 @@ class Email extends Post_Base_Model {
 	 * Set the active status of an email.
 	 *
 	 * @since 2.0.0
-	 * @param bool $active The active status of an email.
+	 * @param bool $active Set this email as active (true), which means available will fire when the event occur, or inactive (false).
 	 * @return void
 	 */
 	public function set_active($active) {

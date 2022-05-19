@@ -1,0 +1,7 @@
+#!/usr/bin/env php
+<?php 
+namespace WP_Ultimo\Dependencies;
+
+use WP_Ultimo\Dependencies\League\Uri\Installer\ICANNSection;
+require \dirname(__DIR__) . '/src/Installer/ICANNSection.php';
+ICANNSection::update();

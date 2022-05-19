@@ -17,7 +17,7 @@ use WP_Ultimo\Dependencies\Aura\Session\Exception;
  * @package Aura.Session
  *
  */
-class Randval implements \WP_Ultimo\Dependencies\Aura\Session\RandvalInterface
+class Randval implements RandvalInterface
 {
     /**
      *
@@ -35,7 +35,7 @@ class Randval implements \WP_Ultimo\Dependencies\Aura\Session\RandvalInterface
      * this makes testing easier.
      *
      */
-    public function __construct(\WP_Ultimo\Dependencies\Aura\Session\Phpfunc $phpfunc)
+    public function __construct(Phpfunc $phpfunc)
     {
         $this->phpfunc = $phpfunc;
     }
@@ -61,6 +61,6 @@ class Randval implements \WP_Ultimo\Dependencies\Aura\Session\RandvalInterface
             return $this->phpfunc->random_bytes($bytes);
         }
         $message = "Cannot generate cryptographically secure random values. " . "Please install extension 'openssl' or 'mcrypt', or use " . "another cryptographically secure implementation.";
-        throw new \WP_Ultimo\Dependencies\Aura\Session\Exception($message);
+        throw new Exception($message);
     }
 }

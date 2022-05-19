@@ -1,7 +1,4 @@
-/* eslint-disable no-unused-vars */
-/**************************************************************
- * included from http://www.quirksmode.org/js/cookies.html
- *************************************************************/
+/* global wu_create_cookie */
 
 jQuery(window).on('beforeunload', function() {
 
@@ -16,7 +13,7 @@ jQuery(window).on('beforeunload', function() {
 // document.domain = wu_template_previewer.domain;
 
 // create the cookie
-wuCreateCookie('wuTemplate', false);
+wu_create_cookie('wu_template', false);
 
 function is_iOS() {
 
@@ -53,6 +50,12 @@ function is_iOS() {
 
   $(document).ready(function() {
 
+    window.wu_listen_to_cookie_change('wu_selected_products', function() {
+
+      document.location.reload();
+
+    });
+
     if (document.getElementById('iframe')) {
 
       /**
@@ -71,7 +74,7 @@ function is_iOS() {
      */
     $('#action-select, #action-select2').on('click', function() {
 
-      wuCreateCookie('wuTemplate', $('#template-selector').val());
+      wu_create_cookie('wu_template', $('#template-selector').val());
 
       window.close();
 
@@ -103,93 +106,6 @@ function is_iOS() {
   });
 
 }(jQuery));
-
-function wuCreateCookie(name, value, days) {
-
-  let expires;
-
-  if (days) {
-
-    const date = new Date();
-
-    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-
-    expires = '; expires=' + date.toGMTString();
-
-  } else {
-
-    expires = '';
-
-  }
-
-  document.cookie = name + '=' + value + expires + '; path=/';
-
-}
-
-function wuReadCookie(name) {
-
-  const nameEQ = name + '=';
-
-  const ca = document.cookie.split(';');
-
-  for (let i = 0; i < ca.length; i++) {
-
-    let c = ca[i];
-
-    while (c.charAt(0) === ' ') {
-
-      c = c.substring(1, c.length);
-
-    }
-
-    if (c.indexOf(nameEQ) === 0) {
-
-      return c.substring(nameEQ.length, c.length);
-
-    }
-
-  }
-
-  return null;
-
-}
-
-// function wuEraseCookie(name) {
-
-//   wuCreateCookie(name, '', -1);
-
-// }
-
-/**************************************************************
- * Actual code below
- *************************************************************/
-
-const cookieRegistry = [];
-
-function wuListenCookieChange(cookieName, callback) {
-
-  setInterval(function() {
-
-    if (cookieRegistry[cookieName]) {
-
-      if (wuReadCookie(cookieName) !== cookieRegistry[cookieName]) {
-
-        // update registry so we dont get triggered again
-        cookieRegistry[cookieName] = wuReadCookie(cookieName);
-
-        return callback();
-
-      }
-
-    } else {
-
-      cookieRegistry[cookieName] = wuReadCookie(cookieName);
-
-    }
-
-  }, 100);
-
-}
 
 // FBar PHP & JS Theme Demo Bar Version v1.0
 let theme_list_open = false;
@@ -239,15 +155,19 @@ let theme_list_open = false;
 
       const eee = $(this).attr('rel').split(',');
 
-      $('li.purchase a').attr('href', eee[1]);
+      if (eee.length) {
 
-      $('li.remove_frame a').attr('href', eee[0]);
+        $('li.purchase a').attr('href', eee[1]);
 
-      $('#iframe').attr('src', eee[0]);
+        $('li.remove_frame a').attr('href', eee[0]);
 
-      $('#theme_list a#template_selector').text($(this).text());
+        $('#iframe').attr('src', eee[0]);
 
-      $('.center ul li ul').hide();
+        $('#theme_list a#template_selector').text($(this).text());
+
+        $('.center ul li ul').hide();
+
+      } // end if;
 
       theme_list_open = false;
 
@@ -256,8 +176,6 @@ let theme_list_open = false;
     });
 
     $('#header-bar').hide();
-
-    const clicked = 'desktop';
 
     const t = {
       desktop: '100%',

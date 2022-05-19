@@ -221,10 +221,16 @@ class Email_Template_Customize_Admin_Page extends Customizer_Admin_Page {
 
 		$settings = $this->get_attributes();
 
+		$custom_logo = wu_get_isset($settings, 'custom_logo');
+
+		$custom_logo_args = wp_get_attachment_image_src($custom_logo, 'full');
+
+		$custom_logo_url = $custom_logo_args ? $custom_logo_args[0] : '';
+
 		$fields = array(
 			'tab'                     => array(
 				'type'              => 'tab-select',
-				'wrapper_classes'   => 'wu-mt-2',
+				'wrapper_classes'   => '',
 				'wrapper_html_attr' => array(
 					'v-cloak' => 1,
 				),
@@ -251,9 +257,11 @@ class Email_Template_Customize_Admin_Page extends Customizer_Admin_Page {
 			),
 			'custom_logo'             => array(
 				'type'              => 'image',
-				'title'             => __('Upload Custom Logo', 'wp-ultimo'),
-				'value'             => '',
-				'img'               => '',
+				'stacked'           => true,
+				'title'             => __('Custom Logo', 'wp-ultimo'),
+				'desc'              => __('The custom logo is used in the email header, if HTML emails are used.', 'wp-ultimo'),
+				'value'             => $custom_logo,
+				'img'               => $custom_logo_url,
 				'wrapper_html_attr' => array(
 					'v-show'  => 'require("tab", "header") && require("use_custom_logo", true)',
 					'v-cloak' => 1,
@@ -357,7 +365,7 @@ class Email_Template_Customize_Admin_Page extends Customizer_Admin_Page {
 			'content_align'           => array(
 				'type'              => 'select',
 				'title'             => __('Content Alignment', 'wp-ultimo'),
-				'tooltip'           => __('Aligment of the font in the main email content.', 'wp-ultimo'),
+				'tooltip'           => __('Alignment of the font in the main email content.', 'wp-ultimo'),
 				'value'             => wu_get_isset($settings, 'content_align', ''),
 				'options'           => array(
 					'left'   => __('Left', 'wp-ultimo'),
@@ -448,7 +456,7 @@ class Email_Template_Customize_Admin_Page extends Customizer_Admin_Page {
 			'footer_align'            => array(
 				'type'              => 'select',
 				'title'             => __('Footer Alignment', 'wp-ultimo'),
-				'tooltip'           => __('Aligment of the font in the main email footer.', 'wp-ultimo'),
+				'tooltip'           => __('Alignment of the font in the main email footer.', 'wp-ultimo'),
 				'value'             => wu_get_isset($settings, 'footer_align', ''),
 				'options'           => array(
 					'left'   => __('Left', 'wp-ultimo'),
@@ -475,6 +483,7 @@ class Email_Template_Customize_Admin_Page extends Customizer_Admin_Page {
 			'position'  => 'side',
 			'fields'    => $fields,
 			'html_attr' => array(
+				'style'                    => 'margin-top: -6px;',
 				'data-wu-app'              => 'email_template_customizer',
 				'data-wu-customizer-panel' => true,
 				'data-state'               => json_encode($state),
@@ -550,6 +559,14 @@ class Email_Template_Customize_Admin_Page extends Customizer_Admin_Page {
 	 */
 	public function handle_save() {
 
+		$_POST['footer_text'] = stripslashes($_POST['footer_text']);
+
+		$_POST['footer_text'] = sanitize_text_field($_POST['footer_text']);
+
+		$_POST['use_custom_logo'] = wu_request('use_custom_logo');
+
+		$_POST['display_company_address'] = wu_request('display_company_address');
+
 		$this->save_settings($_POST);
 
 		$url = add_query_arg('updated', '1');
@@ -613,7 +630,7 @@ class Email_Template_Customize_Admin_Page extends Customizer_Admin_Page {
 	 */
 	public static function get_settings() {
 
-		return WP_Ultimo()->helper->get_option('email_template', array());
+		return wu_get_option('email_template', array());
 
 	} // end get_settings;
 
@@ -630,7 +647,7 @@ class Email_Template_Customize_Admin_Page extends Customizer_Admin_Page {
 
 		if ($setting) {
 
-			$return = WP_Ultimo()->helper->get_option('email_template', array());
+			$return = wu_get_option('email_template', array());
 
 			if ($return && isset($return[$setting])) {
 
@@ -670,7 +687,7 @@ class Email_Template_Customize_Admin_Page extends Customizer_Admin_Page {
 
 		} // end foreach;
 
-		return WP_Ultimo()->helper->save_option('email_template', $settings_to_save);
+		return wu_save_option('email_template', $settings_to_save);
 
 	} // end save_settings;
 

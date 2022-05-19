@@ -31,7 +31,7 @@ class Validator
      * @param \Rakit\Validation\Rule $rule
      * @return void
      */
-    public function setValidator(string $key, \WP_Ultimo\Dependencies\Rakit\Validation\Rule $rule)
+    public function setValidator(string $key, Rule $rule)
     {
         $this->validators[$key] = $rule;
         $rule->setKey($key);
@@ -54,7 +54,7 @@ class Validator
      * @param array $messages
      * @return Validation
      */
-    public function validate(array $inputs, array $rules, array $messages = []) : \WP_Ultimo\Dependencies\Rakit\Validation\Validation
+    public function validate(array $inputs, array $rules, array $messages = []) : Validation
     {
         $validation = $this->make($inputs, $rules, $messages);
         $validation->validate();
@@ -68,10 +68,10 @@ class Validator
      * @param array $messages
      * @return Validation
      */
-    public function make(array $inputs, array $rules, array $messages = []) : \WP_Ultimo\Dependencies\Rakit\Validation\Validation
+    public function make(array $inputs, array $rules, array $messages = []) : Validation
     {
         $messages = \array_merge($this->messages, $messages);
-        $validation = new \WP_Ultimo\Dependencies\Rakit\Validation\Validation($this, $inputs, $rules, $messages);
+        $validation = new Validation($this, $inputs, $rules, $messages);
         $validation->setTranslations($this->getTranslations());
         return $validation;
     }
@@ -82,14 +82,14 @@ class Validator
      * @return Rule
      * @throws RuleNotFoundException
      */
-    public function __invoke(string $rule) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function __invoke(string $rule) : Rule
     {
         $args = \func_get_args();
         $rule = \array_shift($args);
         $params = $args;
         $validator = $this->getValidator($rule);
         if (!$validator) {
-            throw new \WP_Ultimo\Dependencies\Rakit\Validation\RuleNotFoundException("Validator '{$rule}' is not registered", 1);
+            throw new RuleNotFoundException("Validator '{$rule}' is not registered", 1);
         }
         $clonedValidator = clone $validator;
         $clonedValidator->fillParameters($params);
@@ -103,52 +103,52 @@ class Validator
     protected function registerBaseValidators()
     {
         $baseValidator = [
-            'required' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Required(),
-            'required_if' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\RequiredIf(),
-            'required_unless' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\RequiredUnless(),
-            'required_with' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\RequiredWith(),
-            'required_without' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\RequiredWithout(),
-            'required_with_all' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\RequiredWithAll(),
-            'required_without_all' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\RequiredWithoutAll(),
-            'email' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Email(),
-            'alpha' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Alpha(),
-            'numeric' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Numeric(),
-            'alpha_num' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\AlphaNum(),
-            'alpha_dash' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\AlphaDash(),
-            'alpha_spaces' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\AlphaSpaces(),
-            'in' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\In(),
-            'not_in' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\NotIn(),
-            'min' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Min(),
-            'max' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Max(),
-            'between' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Between(),
-            'url' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Url(),
-            'integer' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Integer(),
-            'boolean' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Boolean(),
-            'ip' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Ip(),
-            'ipv4' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Ipv4(),
-            'ipv6' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Ipv6(),
-            'extension' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Extension(),
-            'array' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\TypeArray(),
-            'same' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Same(),
-            'regex' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Regex(),
-            'date' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Date(),
-            'accepted' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Accepted(),
-            'present' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Present(),
-            'different' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Different(),
-            'uploaded_file' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\UploadedFile(),
-            'mimes' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Mimes(),
-            'callback' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Callback(),
-            'before' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Before(),
-            'after' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\After(),
-            'lowercase' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Lowercase(),
-            'uppercase' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Uppercase(),
-            'json' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Json(),
-            'digits' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Digits(),
-            'digits_between' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\DigitsBetween(),
-            'defaults' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Defaults(),
-            'default' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Defaults(),
+            'required' => new Rules\Required(),
+            'required_if' => new Rules\RequiredIf(),
+            'required_unless' => new Rules\RequiredUnless(),
+            'required_with' => new Rules\RequiredWith(),
+            'required_without' => new Rules\RequiredWithout(),
+            'required_with_all' => new Rules\RequiredWithAll(),
+            'required_without_all' => new Rules\RequiredWithoutAll(),
+            'email' => new Rules\Email(),
+            'alpha' => new Rules\Alpha(),
+            'numeric' => new Rules\Numeric(),
+            'alpha_num' => new Rules\AlphaNum(),
+            'alpha_dash' => new Rules\AlphaDash(),
+            'alpha_spaces' => new Rules\AlphaSpaces(),
+            'in' => new Rules\In(),
+            'not_in' => new Rules\NotIn(),
+            'min' => new Rules\Min(),
+            'max' => new Rules\Max(),
+            'between' => new Rules\Between(),
+            'url' => new Rules\Url(),
+            'integer' => new Rules\Integer(),
+            'boolean' => new Rules\Boolean(),
+            'ip' => new Rules\Ip(),
+            'ipv4' => new Rules\Ipv4(),
+            'ipv6' => new Rules\Ipv6(),
+            'extension' => new Rules\Extension(),
+            'array' => new Rules\TypeArray(),
+            'same' => new Rules\Same(),
+            'regex' => new Rules\Regex(),
+            'date' => new Rules\Date(),
+            'accepted' => new Rules\Accepted(),
+            'present' => new Rules\Present(),
+            'different' => new Rules\Different(),
+            'uploaded_file' => new Rules\UploadedFile(),
+            'mimes' => new Rules\Mimes(),
+            'callback' => new Rules\Callback(),
+            'before' => new Rules\Before(),
+            'after' => new Rules\After(),
+            'lowercase' => new Rules\Lowercase(),
+            'uppercase' => new Rules\Uppercase(),
+            'json' => new Rules\Json(),
+            'digits' => new Rules\Digits(),
+            'digits_between' => new Rules\DigitsBetween(),
+            'defaults' => new Rules\Defaults(),
+            'default' => new Rules\Defaults(),
             // alias of defaults
-            'nullable' => new \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Nullable(),
+            'nullable' => new Rules\Nullable(),
         ];
         foreach ($baseValidator as $key => $validator) {
             $this->setValidator($key, $validator);
@@ -161,10 +161,10 @@ class Validator
      * @param \Rakit\Validation\Rule $rule
      * @return void
      */
-    public function addValidator(string $ruleName, \WP_Ultimo\Dependencies\Rakit\Validation\Rule $rule)
+    public function addValidator(string $ruleName, Rule $rule)
     {
         if (!$this->allowRuleOverride && \array_key_exists($ruleName, $this->validators)) {
-            throw new \WP_Ultimo\Dependencies\Rakit\Validation\RuleQuashException("You cannot override a built in rule. You have to rename your rule");
+            throw new RuleQuashException("You cannot override a built in rule. You have to rename your rule");
         }
         $this->setValidator($ruleName, $rule);
     }

@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class RequiredWithout extends \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Required
+class RequiredWithout extends Required
 {
     /** @var bool */
     protected $implicit = \true;
@@ -15,7 +15,7 @@ class RequiredWithout extends \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Req
      * @param array $params
      * @return self
      */
-    public function fillParameters(array $params) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function fillParameters(array $params) : Rule
     {
         $this->params['fields'] = $params;
         return $this;

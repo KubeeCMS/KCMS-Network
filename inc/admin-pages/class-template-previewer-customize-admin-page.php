@@ -92,14 +92,14 @@ class Template_Previewer_Customize_Admin_Page extends Customizer_Admin_Page {
 		$this->add_save_widget('save', array(
 			'fields' => array(
 				'preview_url_parameter' => array(
-					'type'    => 'text',
-					'title'   => __('URL Parameter', 'wp-ultimo'),
-					'tooltip' => __('This is the URL parameter WP Ultimo will use to generate the template preview URLs.', 'wp-ultimo'),
-					'value'   => Template_Previewer::get_instance()->get_setting('preview_url_parameter', 'template-preview'),
+					'type'  => 'text',
+					'title' => __('URL Parameter', 'wp-ultimo'),
+					'desc'  => __('This is the URL parameter WP Ultimo will use to generate the template preview URLs.', 'wp-ultimo'),
+					'value' => Template_Previewer::get_instance()->get_setting('preview_url_parameter', 'template-preview'),
 				),
 				'enabled'               => array(
 					'type'      => 'toggle',
-					'title'     => __('Is Active?', 'wp-ultimo'),
+					'title'     => __('Active', 'wp-ultimo'),
 					'desc'      => __('If your site templates are not loading, you can disable the top-bar using this setting.', 'wp-ultimo'),
 					'value'     => Template_Previewer::get_instance()->get_setting('enabled', true),
 					'html_attr' => array(
@@ -117,7 +117,7 @@ class Template_Previewer_Customize_Admin_Page extends Customizer_Admin_Page {
 		$fields = array(
 			'tab'                         => array(
 				'type'              => 'tab-select',
-				'wrapper_classes'   => 'wu-mt-2',
+				'wrapper_classes'   => '',
 				'wrapper_html_attr' => array(
 					'v-cloak' => 1,
 				),
@@ -197,7 +197,9 @@ class Template_Previewer_Customize_Admin_Page extends Customizer_Admin_Page {
 			),
 			'custom_logo'                 => array(
 				'type'              => 'image',
-				'title'             => __('Upload Custom Logo', 'wp-ultimo'),
+				'stacked'           => true,
+				'title'             => __('Custom Logo', 'wp-ultimo'),
+				'desc'              => __('The logo is displayed on the preview page top-bar.', 'wp-ultimo'),
 				'value'             => $custom_logo_id,
 				'img'               => $custom_logo,
 				'wrapper_html_attr' => array(
@@ -219,6 +221,7 @@ class Template_Previewer_Customize_Admin_Page extends Customizer_Admin_Page {
 			'position'  => 'side',
 			'fields'    => $fields,
 			'html_attr' => array(
+				'style'                    => 'margin-top: -6px;',
 				'data-wu-app'              => 'site_template_customizer',
 				'data-wu-customizer-panel' => true,
 				'data-state'               => json_encode($state),

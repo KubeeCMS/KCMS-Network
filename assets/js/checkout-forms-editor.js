@@ -41,6 +41,7 @@
           preview: false,
           loading_preview: false,
           preview_content: '',
+          iframe_preview_url: '',
         }, wu_checkout_form);
 
       },
@@ -56,6 +57,19 @@
             return memo + step.fields.length;
 
           }, 0);
+
+        },
+      },
+      watch: {
+        steps: {
+
+          handler() {
+
+            this.update_session();
+
+          },
+
+          deep: true,
 
         },
       },
@@ -79,42 +93,34 @@
 
             const that = this;
 
-            $.ajax({
-              method: 'post',
-              url: ajaxurl,
-              data: {
-                action: 'wu_generate_checkout_form_preview',
-                settings: that.steps,
-                type,
-              },
-              success(data) {
+            // eslint-disable-next-line max-len
+            that.iframe_preview_url = that.register_page + '?action=wu_generate_checkout_form_preview' + '&form_id=' + that.form_id + '&type=' + type + '&uniq=' + (Math.random() * 1000);
 
-                that.preview_error = false;
+            $('#wp-ultimo-checkout-preview').on('load', function() {
 
-                that.loading_preview = false;
+              that.loading_preview = false;
 
-                if (data.success) {
+              setTimeout(() => {
 
-                  that.preview_content = data.data.content;
+                const height = document.getElementById('wp-ultimo-checkout-preview').contentWindow.document.body.scrollHeight;
 
-                } else {
+                $('#wp-ultimo-checkout-preview').animate({
+                  height,
+                });
 
-                  that.preview_error = true;
+              }, 1000);
 
-                } // end if;
-
-              },
             });
 
-          } else {
+          }
 
-            // eslint-disable-next-line no-console
-            console.log('no preview');
+          // eslint-disable-next-line no-console
+          console.log('no preview');
 
-          } // end if;
+          // end if;
 
         },
-        add_step(data) {
+        add_step(data, cb = null) {
 
           const existing_step = this.find_step(data.id);
 
@@ -134,16 +140,34 @@
 
           } // end if;
 
-          this.update_session();
+          this.$nextTick(function() {
+
+            if (typeof cb === 'function') {
+
+              cb();
+
+              this.scroll_to(`wp-ultimo-list-table-${ data.id }`);
+
+            } // end if;
+
+          });
 
         },
-        add_field(data) {
+        add_field(data, cb = null) {
 
           const step = _.findWhere(this.steps, {
             id: data.step,
           });
 
-          const existing_field = this.find_field(data.step, data.id);
+          let existing_field = this.find_field(data.step, data.id);
+
+          if (typeof existing_field === 'undefined') {
+
+            existing_field = this.find_field(data.step, data.original_id);
+
+            delete data.original_id;
+
+          } // end if;
 
           if (typeof existing_field !== 'undefined') {
 
@@ -157,7 +181,32 @@
 
           } // end if;
 
-          this.update_session();
+          this.$nextTick(function() {
+
+            if (typeof cb === 'function') {
+
+              cb();
+
+              this.scroll_to(`wp-ultimo-field-${ data.id }`);
+
+            } // end if;
+
+          });
+
+        },
+        scroll_to(element_id) {
+
+          this.$nextTick(function() {
+
+            setTimeout(() => {
+
+              const element = document.getElementById(element_id);
+
+              element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+
+            }, 500);
+
+          });
 
         },
         find_step(step_name) {
@@ -218,7 +267,7 @@
               settings: that.steps,
               form_id: that.form_id,
             },
-            success() {},
+            success() { },
           });
 
         },

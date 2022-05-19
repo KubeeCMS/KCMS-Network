@@ -21,6 +21,8 @@ defined('ABSPATH') || exit;
  */
 class Site_Maintenance_Element extends Base_Element {
 
+	use \WP_Ultimo\Traits\Singleton;
+
 	/**
 	 * The id of the element.
 	 *
@@ -35,6 +37,22 @@ class Site_Maintenance_Element extends Base_Element {
 	 * @var string
 	 */
 	public $id = 'site-maintenance';
+
+	/**
+	 * Initializes the singleton.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function init() {
+
+		if (wu_get_setting('maintenance_mode')) {
+
+			parent::init();
+
+		} // end if;
+
+	} // end init;
 
 	/**
 	 * The icon of the UI element.
@@ -229,7 +247,7 @@ class Site_Maintenance_Element extends Base_Element {
 
 		wp_localize_script('wu-site-maintenance', 'wu_site_maintenance', array(
 			'nonce'   => wp_create_nonce('wu_toggle_maintenance_mode'),
-			'ajaxurl' => get_admin_url(wu_get_main_site_id(), 'admin-ajax.php'),
+			'ajaxurl' => wu_ajax_url(),
 		));
 
 		wp_enqueue_script('wu-site-maintenance');

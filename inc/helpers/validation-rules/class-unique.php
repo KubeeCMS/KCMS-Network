@@ -59,6 +59,15 @@ class Unique extends Rule {
 		// do query
 		$existing = $model::get_by($column, $value);
 
+		/*
+		 * Customize the error message for the customer.
+		 */
+		if ('\WP_Ultimo\Models\Customer' === $model) {
+
+			$this->message = __('A customer with the same email address or username already exists.', 'wp-ultimo');
+
+		} // end if;
+
 		return $existing ? $existing->get_id() === absint($self_id) : true; // phpcs:ignore
 
 	} // end check;

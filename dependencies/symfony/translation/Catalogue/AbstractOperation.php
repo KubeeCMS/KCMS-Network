@@ -24,6 +24,9 @@ use Symfony\Component\Translation\MessageCatalogueInterface;
  */
 abstract class AbstractOperation implements \Symfony\Component\Translation\Catalogue\OperationInterface
 {
+    public const OBSOLETE_BATCH = 'obsolete';
+    public const NEW_BATCH = 'new';
+    public const ALL_BATCH = 'all';
     protected $source;
     protected $target;
     protected $result;
@@ -56,14 +59,14 @@ abstract class AbstractOperation implements \Symfony\Component\Translation\Catal
     /**
      * @throws LogicException
      */
-    public function __construct(\Symfony\Component\Translation\MessageCatalogueInterface $source, \Symfony\Component\Translation\MessageCatalogueInterface $target)
+    public function __construct(MessageCatalogueInterface $source, MessageCatalogueInterface $target)
     {
         if ($source->getLocale() !== $target->getLocale()) {
-            throw new \Symfony\Component\Translation\Exception\LogicException('Operated catalogues must belong to the same locale.');
+            throw new LogicException('Operated catalogues must belong to the same locale.');
         }
         $this->source = $source;
         $this->target = $target;
-        $this->result = new \Symfony\Component\Translation\MessageCatalogue($source->getLocale());
+        $this->result = new MessageCatalogue($source->getLocale());
         $this->messages = [];
     }
     /**
@@ -72,7 +75,16 @@ abstract class AbstractOperation implements \Symfony\Component\Translation\Catal
     public function getDomains()
     {
         if (null === $this->domains) {
-            $this->domains = \array_values(\array_unique(\array_merge($this->source->getDomains(), $this->target->getDomains())));
+            $domains = [];
+            foreach ([$this->source, $this->target] as $catalogue) {
+                foreach ($catalogue->getDomains() as $domain) {
+                    $domains[$domain] = $domain;
+                    if ($catalogue->all($domainIcu = $domain . MessageCatalogueInterface::INTL_DOMAIN_SUFFIX)) {
+                        $domains[$domainIcu] = $domainIcu;
+                    }
+                }
+            }
+            $this->domains = \array_values($domains);
         }
         return $this->domains;
     }
@@ -82,12 +94,12 @@ abstract class AbstractOperation implements \Symfony\Component\Translation\Catal
     public function getMessages(string $domain)
     {
         if (!\in_array($domain, $this->getDomains())) {
-            throw new \Symfony\Component\Translation\Exception\InvalidArgumentException(\sprintf('Invalid domain: "%s".', $domain));
+            throw new InvalidArgumentException(\sprintf('Invalid domain: "%s".', $domain));
         }
-        if (!isset($this->messages[$domain]['all'])) {
+        if (!isset($this->messages[$domain][self::ALL_BATCH])) {
             $this->processDomain($domain);
         }
-        return $this->messages[$domain]['all'];
+        return $this->messages[$domain][self::ALL_BATCH];
     }
     /**
      * {@inheritdoc}
@@ -95,12 +107,12 @@ abstract class AbstractOperation implements \Symfony\Component\Translation\Catal
     public function getNewMessages(string $domain)
     {
         if (!\in_array($domain, $this->getDomains())) {
-            throw new \Symfony\Component\Translation\Exception\InvalidArgumentException(\sprintf('Invalid domain: "%s".', $domain));
+            throw new InvalidArgumentException(\sprintf('Invalid domain: "%s".', $domain));
         }
-        if (!isset($this->messages[$domain]['new'])) {
+        if (!isset($this->messages[$domain][self::NEW_BATCH])) {
             $this->processDomain($domain);
         }
-        return $this->messages[$domain]['new'];
+        return $this->messages[$domain][self::NEW_BATCH];
     }
     /**
      * {@inheritdoc}
@@ -108,12 +120,12 @@ abstract class AbstractOperation implements \Symfony\Component\Translation\Catal
     public function getObsoleteMessages(string $domain)
     {
         if (!\in_array($domain, $this->getDomains())) {
-            throw new \Symfony\Component\Translation\Exception\InvalidArgumentException(\sprintf('Invalid domain: "%s".', $domain));
+            throw new InvalidArgumentException(\sprintf('Invalid domain: "%s".', $domain));
         }
-        if (!isset($this->messages[$domain]['obsolete'])) {
+        if (!isset($this->messages[$domain][self::OBSOLETE_BATCH])) {
             $this->processDomain($domain);
         }
-        return $this->messages[$domain]['obsolete'];
+        return $this->messages[$domain][self::OBSOLETE_BATCH];
     }
     /**
      * {@inheritdoc}
@@ -126,6 +138,40 @@ abstract class AbstractOperation implements \Symfony\Component\Translation\Catal
             }
         }
         return $this->result;
+    }
+    /**
+     * @param self::*_BATCH $batch
+     */
+    public function moveMessagesToIntlDomainsIfPossible(string $batch = self::ALL_BATCH) : void
+    {
+        // If MessageFormatter class does not exists, intl domains are not supported.
+        if (!\class_exists(\MessageFormatter::class)) {
+            return;
+        }
+        foreach ($this->getDomains() as $domain) {
+            $intlDomain = $domain . MessageCatalogueInterface::INTL_DOMAIN_SUFFIX;
+            switch ($batch) {
+                case self::OBSOLETE_BATCH:
+                    $messages = $this->getObsoleteMessages($domain);
+                    break;
+                case self::NEW_BATCH:
+                    $messages = $this->getNewMessages($domain);
+                    break;
+                case self::ALL_BATCH:
+                    $messages = $this->getMessages($domain);
+                    break;
+                default:
+                    throw new \InvalidArgumentException(\sprintf('$batch argument must be one of ["%s", "%s", "%s"].', self::ALL_BATCH, self::NEW_BATCH, self::OBSOLETE_BATCH));
+            }
+            if (!$messages || !$this->source->all($intlDomain) && $this->source->all($domain)) {
+                continue;
+            }
+            $result = $this->getResult();
+            $allIntlMessages = $result->all($intlDomain);
+            $currentMessages = \array_diff_key($messages, $result->all($domain));
+            $result->replace($currentMessages, $domain);
+            $result->replace($allIntlMessages + $messages, $intlDomain);
+        }
     }
     /**
      * Performs operation on source and target catalogues for the given domain and

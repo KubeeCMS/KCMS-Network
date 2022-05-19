@@ -31,12 +31,12 @@ class IntlFormatter implements \Symfony\Component\Translation\Formatter\IntlForm
         }
         if (!($formatter = $this->cache[$locale][$message] ?? null)) {
             if (!($this->hasMessageFormatter ?? ($this->hasMessageFormatter = \class_exists(\MessageFormatter::class)))) {
-                throw new \Symfony\Component\Translation\Exception\LogicException('Cannot parse message translation: please install the "intl" PHP extension or the "symfony/polyfill-intl-messageformatter" package.');
+                throw new LogicException('Cannot parse message translation: please install the "intl" PHP extension or the "symfony/polyfill-intl-messageformatter" package.');
             }
             try {
                 $this->cache[$locale][$message] = $formatter = new \MessageFormatter($locale, $message);
             } catch (\IntlException $e) {
-                throw new \Symfony\Component\Translation\Exception\InvalidArgumentException(\sprintf('Invalid message format (error #%d): ', \intl_get_error_code()) . \intl_get_error_message(), 0, $e);
+                throw new InvalidArgumentException(\sprintf('Invalid message format (error #%d): ', \intl_get_error_code()) . \intl_get_error_message(), 0, $e);
             }
         }
         foreach ($parameters as $key => $value) {
@@ -46,7 +46,7 @@ class IntlFormatter implements \Symfony\Component\Translation\Formatter\IntlForm
             }
         }
         if (\false === ($message = $formatter->format($parameters))) {
-            throw new \Symfony\Component\Translation\Exception\InvalidArgumentException(\sprintf('Unable to format message (error #%s): ', $formatter->getErrorCode()) . $formatter->getErrorMessage());
+            throw new InvalidArgumentException(\sprintf('Unable to format message (error #%s): ', $formatter->getErrorCode()) . $formatter->getErrorMessage());
         }
         return $message;
     }

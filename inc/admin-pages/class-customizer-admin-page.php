@@ -26,6 +26,14 @@ abstract class Customizer_Admin_Page extends Edit_Admin_Page {
 	protected $fold_menu = true;
 
 	/**
+	 * The preview area height.
+	 *
+	 * @since 2.0.0
+	 * @var string
+	 */
+	protected $preview_height = '120vh';
+
+	/**
 	 * Returns the preview URL. This is then added to the iframe.
 	 *
 	 * @since 2.0.0
@@ -66,6 +74,7 @@ abstract class Customizer_Admin_Page extends Edit_Admin_Page {
 
 		wu_get_template('base/edit/editor-customizer', array(
 			'preview_iframe_url' => $this->get_preview_url(),
+			'preview_height'     => $this->preview_height,
 		));
 
 	}  // end display_preview_window;

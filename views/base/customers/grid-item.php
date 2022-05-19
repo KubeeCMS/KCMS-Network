@@ -102,15 +102,18 @@
           <div>
 
             <?php
-		          // Concatenate switch to url
+		          
+              // Concatenate switch to url
 		          $is_modal_switch_to = \WP_Ultimo\User_Switching::get_instance()->check_user_switching_is_activated() ? '' : 'wubox';
-		          $url_switch_to = sprintf('<a class="%s" href="%s">%s</a>', $is_modal_switch_to, \WP_Ultimo\User_Switching::get_instance()->render($item->get_user_id()), __('Switch To', 'wp-ultimo'));
+
+		          $url_switch_to = sprintf('<a title="%s" class="%s" href="%s">%s</a>', __('Switch To', 'wp-ultimo'), $is_modal_switch_to, \WP_Ultimo\User_Switching::get_instance()->render($item->get_user_id()), __('Switch To', 'wp-ultimo'));
 
 		          $actions = array(
-		          	'switch-to' => $url_switch_to,
+		          	'switch-to' => $item->get_user_id() !== get_current_user_id() ? $url_switch_to : __('None', 'wp-ultimo'),
               );
 
-              echo implode("<br />", $actions)
+              echo implode("<br />", $actions);
+
             ?>
 
           </div>

@@ -9,6 +9,8 @@
 
 namespace WP_Ultimo\UI;
 
+use \WP_Ultimo\Database\Sites\Site_Type;
+
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
@@ -18,8 +20,6 @@ defined('ABSPATH') || exit;
  * @since 2.0.0
  */
 abstract class Base_Element {
-
-	use \WP_Ultimo\Traits\Singleton;
 
 	/**
 	 * The id of the element.
@@ -53,12 +53,40 @@ abstract class Base_Element {
 	protected $display = true;
 
 	/**
-	 * Holds the status of the setup functions.
+	 * If the element exists, we pre-load the parameters.
+	 *
+	 * @since 2.0.0
+	 * @var false|array
+	 */
+	protected $pre_loaded_attributes = false;
+
+	/**
+	 * Only load (run the setup method) once,
+	 *
+	 * This is specially true when in the admin context,
 	 *
 	 * @since 2.0.0
 	 * @var boolean
 	 */
-	protected $is_ready = false;
+	protected $loaded = false;
+
+	/**
+	 * Keeps a cached list of metabox ids to shave some time.
+	 *
+	 * @since 2.0.0
+	 * @var array
+	 */
+	protected static $metabox_cache = null;
+
+	/**
+	 * Sometimes we need to know if the element was actually loaded
+	 * - meaning found on a page - even if tall elements are forcefully
+	 * setup.
+	 *
+	 * @since 2.0.11
+	 * @var boolean
+	 */
+	protected $actually_loaded = false;
 
 	/**
 	 * The icon of the UI element.
@@ -175,7 +203,7 @@ abstract class Base_Element {
 	 */
 	public function init() {
 
-		add_action('admin_init', array($this, 'register_form'));
+		add_action('plugins_loaded', array($this, 'register_form'));
 
 		add_action('init', array($this, 'register_shortcode'));
 
@@ -187,9 +215,173 @@ abstract class Base_Element {
 
 		add_action('wp', array($this, 'maybe_setup'));
 
+		add_action('admin_head', array($this, 'setup_for_admin'), 100);
+
+		add_filter('pre_render_block', array($this, 'setup_for_block_editor'), 100, 2);
+
+		add_action('wu_element_preview', array($this, 'setup_preview'));
+
 		do_action('wu_element_loaded', $this);
 
 	} // end init;
+
+	/**
+	 * Sets blocks up for the block editor.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param null  $short_circuit The value passed.
+	 * @param array $block The parsed block data.
+	 * @return null
+	 */
+	public function setup_for_block_editor($short_circuit, $block) {
+
+		$should_load = false;
+
+		if ($block['blockName'] === $this->get_id()) {
+
+			$should_load = true;
+
+		} // end if;
+
+		/**
+		 * We might need to add additional blocks later.
+		 *
+		 * @since 2.0.0
+		 * @return array
+		 */
+		$blocks_to_check = apply_filters('wu_element_block_types_to_check', array(
+			'core/shortcode',
+			'core/paragraph',
+		));
+
+		if (in_array($block['blockName'], $blocks_to_check, true)) {
+
+			if ($this->contains_current_element($block['innerHTML'])) {
+
+				$should_load = true;
+
+			} // end if;
+
+		} // end if;
+
+		if ($should_load) {
+
+			if ($this->is_preview()) {
+
+				$this->setup_preview();
+
+			} else {
+
+				$this->setup();
+
+			} // end if;
+
+		} // end if;
+
+		return $short_circuit;
+
+	} // end setup_for_block_editor;
+
+	/**
+	 * Search for an element id on the list of metaboxes.
+	 *
+	 * Builds a cached list of elements on the first run.
+	 * Then uses the cache to run a simple in_array check.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $element_id The element ID.
+	 * @return bool
+	 */
+	protected static function search_in_metaboxes($element_id) {
+
+		global $wp_meta_boxes, $pagenow;
+
+		/*
+		 * Bail if things don't look normal or in the right context.
+		 */
+		if (!function_exists('get_current_screen')) {
+
+			return;
+
+		} // end if;
+
+		$screen = get_current_screen();
+
+		/*
+		 * First, check on cache, to avoid recalculating it time and time again.
+		 */
+		if (is_array(self::$metabox_cache)) {
+
+			return in_array($element_id, self::$metabox_cache, true);
+
+		} // end if;
+
+		$contains_metaboxes = wu_get_isset($wp_meta_boxes, $screen->id) || wu_get_isset($wp_meta_boxes, $pagenow);
+
+		$elements_to_cache = array();
+
+		$found = false;
+
+		if (is_array($wp_meta_boxes) && $contains_metaboxes && is_array($wp_meta_boxes[$screen->id])) {
+
+			foreach ($wp_meta_boxes[$screen->id] as $position => $priorities) {
+
+				foreach ($priorities as $priority => $metaboxes) {
+
+					foreach ($metaboxes as $metabox_id => $metabox) {
+
+						$elements_to_cache[] = $metabox_id;
+
+						if ($metabox_id === $element_id) {
+
+							$found = true;
+
+						} // end if;
+
+					} // end foreach;
+
+				} // end foreach;
+
+			} // end foreach;
+
+			/**
+			 * Set a local cache so we don't have to loop it all over again.
+			 */
+			self::$metabox_cache = $elements_to_cache;
+
+		} // end if;
+
+		return $found;
+
+	} // end search_in_metaboxes;
+
+	/**
+	 * Setup element on admin pages.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function setup_for_admin() {
+
+		if ($this->loaded === true) {
+
+			return;
+
+		} // end if;
+
+		$element_id = "wp-ultimo-{$this->id}-element";
+
+		if (self::search_in_metaboxes($element_id)) {
+
+			$this->loaded = true;
+
+			$this->setup();
+
+		} // end if;
+
+	} // end setup_for_admin;
 
 	/**
 	 * Maybe run setup, when the shortcode or block is found.
@@ -202,13 +394,13 @@ abstract class Base_Element {
 
 		global $post;
 
-		if (!is_admin() && !is_a($post, 'WP_Post')) {
+		if (is_admin() || empty($post)) {
 
 			return;
 
 		} // end if;
 
-		if ($this->is_ready === false) {
+		if ($this->contains_current_element($post->post_content, $post)) {
 
 			if ($this->is_preview()) {
 
@@ -241,6 +433,150 @@ abstract class Base_Element {
 	public function setup_preview() {} // end setup_preview;
 
 	/**
+	 * Checks content to see if the current element is present.
+	 *
+	 * This check uses different methods, covering classic shortcodes,
+	 * blocks. It also adds a generic filter so developers can
+	 * add additional tests for different builders and so on.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string        $content The content that might contain the element.
+	 * @param null|\WP_Post $post The WP Post, if it exists.
+	 * @return bool
+	 */
+	protected function contains_current_element($content, $post = null) {
+
+		/**
+		 * If parameters where pre-loaded,
+		 * we can skip the entire check and return true.
+		 */
+		if (is_array($this->pre_loaded_attributes)) {
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * First, check for default shortcodes
+		 * saved as regular post content.
+		 */
+		$shortcode = $this->get_shortcode_id();
+
+		if (has_shortcode($content, $shortcode)) {
+
+			$this->pre_loaded_attributes = $this->maybe_extract_arguments($content, 'shortcode');
+
+			$this->actually_loaded = true;
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * Handle the Block Editor
+		 * and Gutenberg.
+		 */
+		$block = $this->get_id();
+
+		if (has_block($block, $content)) {
+
+			$this->pre_loaded_attributes = $this->maybe_extract_arguments($content, 'block');
+
+			$this->actually_loaded = true;
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * Runs generic version so plugins can extend it.
+		 */
+		$this->pre_loaded_attributes = $this->maybe_extract_arguments($content, 'other');
+
+		$contains_element = false;
+
+		/**
+		 * Last option is to check for the post force setting.
+		 */
+		if ($post && get_post_meta($post->ID, '_wu_force_elements_loading', true)) {
+
+			$contains_element = true;
+
+		} // end if;
+
+		/**
+		 * Allow developers to change the results of the initial search.
+		 *
+		 * This is useful for third-party builders and such.
+		 *
+		 * @since 2.0.0
+		 * @param bool $contains_elements If the element is contained on the content.
+		 * @param string $content The content being examined.
+		 * @param self The current element.
+		 */
+		return apply_filters('wu_contains_element', $contains_element, $content, $this, $post);
+
+	} // end contains_current_element;
+
+	/**
+	 * Tries to extract element arguments depending on the element type.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $content The content to parse.
+	 * @param string $type The element type. Can be one of shortcode, block, and other.
+	 * @return false|array
+	 */
+	protected function maybe_extract_arguments($content, $type = 'shortcode') {
+
+		if ($type === 'shortcode') {
+
+			/**
+			 * Tries to parse the shortcode out of the content
+			 * passed using the WordPress shortcode regex.
+			 */
+			$shortcode_regex = get_shortcode_regex(array($this->get_shortcode_id()));
+
+			preg_match_all('/' . $shortcode_regex . '/', $content, $matches, PREG_SET_ORDER);
+
+			return !empty($matches) ? shortcode_parse_atts($matches[0][3]) : false;
+
+		} elseif ($type === 'block') {
+
+			/**
+			 * Next, try to parse attrs from blocks
+			 * by parsing them out and finding the correct one.
+			 */
+			$block_content = parse_blocks($content);
+
+			foreach ($block_content as $block) {
+
+				if ($block['blockName'] === $this->get_id()) {
+
+					return $block['attrs'];
+
+				} // end if;
+
+			} // end foreach;
+
+			return false;
+
+		} // end if;
+
+		/**
+		 * Adds generic filter to allow developers
+		 * to extend this parser to deal with additional
+		 * builders or plugins.
+		 *
+		 * @since 2.0.0
+		 * @return false|array
+		 */
+		return apply_filters('wu_element_maybe_extract_arguments', false, $content, $type, $this);
+
+	} // end maybe_extract_arguments;
+
+	/**
 	 * Adds custom CSS to the signup screen.
 	 *
 	 * @since 2.0.0
@@ -250,25 +586,55 @@ abstract class Base_Element {
 
 		global $post;
 
-		if (!is_a($post, 'WP_Post')) {
+		if (!is_a($post, '\WP_Post')) {
 
 			return;
 
 		} // end if;
 
-		if (has_shortcode($post->post_content, $this->get_shortcode_id())) {
+		$should_enqueue_scripts = apply_filters('wu_element_should_enqueue_scripts', false, $post, $this->get_shortcode_id());
 
+		if ($should_enqueue_scripts || $this->contains_current_element($post->post_content, $post)) {
+
+			/**
+			 * Triggers the enqueue scripts hook.
+			 *
+			 * This is used by the element to hook its
+			 * register_scripts method.
+			 *
+			 * @since 2.0.0
+			 */
 			do_action("wu_{$this->id}_scripts", $post, $this);
-
-		} elseif (has_block($this->get_id(), $post->post_content)) {
-
-			do_action("wu_{$this->id}_scripts", $post, $this);
-
-			add_filter('the_content', 'html_entity_decode', 9999);
 
 		} // end if;
 
 	} // end enqueue_element_scripts;
+
+	/**
+	 * Tries to parse the shortcode content on page load.
+	 *
+	 * This allow us to have access to parameters before the shortcode
+	 * gets actually parsed by the post content functions such as
+	 * the_content(). It is useful if you need to access that
+	 * date way earlier in the page lifecycle.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $name The parameter name.
+	 * @param mixed  $default The default value.
+	 * @return mixed
+	 */
+	public function get_pre_loaded_attribute($name, $default = false) {
+
+		if ($this->pre_loaded_attributes === false || !is_array($this->pre_loaded_attributes)) {
+
+			return false;
+
+		} // end if;
+
+		return wu_get_isset($this->pre_loaded_attributes, $name, $default);
+
+	} // end get_pre_loaded_attribute;
 
 	/**
 	 * Registers the shortcode.
@@ -277,6 +643,12 @@ abstract class Base_Element {
 	 * @return void
 	 */
 	public function register_shortcode() {
+
+		if (wu_get_current_site()->get_type() === Site_Type::CUSTOMER_OWNED && is_admin() === false) {
+
+			return;
+
+		} // end if;
 
 		add_shortcode($this->get_shortcode_id(), array($this, 'display'));
 
@@ -325,9 +697,34 @@ abstract class Base_Element {
 
 		foreach ($fields as $field_slug => &$field) {
 
-			if ($field['type'] === 'header') {
+			if ($field['type'] === 'header' || $field['type'] === 'note') {
 
 				unset($fields[$field_slug]);
+
+				continue;
+
+			} // end if;
+
+			/*
+			 * Additional State.
+			 *
+			 * We need to keep track of the state
+			 * specially when we're dealing with
+			 * complex fields, such as group.
+			 */
+			$additional_state = array();
+
+			if ($field['type'] === 'group') {
+
+				foreach ($field['fields'] as $sub_field_slug => &$sub_field) {
+
+					$sub_field['html_attr'] = array(
+						'v-model.lazy' => "attributes.{$sub_field_slug}",
+					);
+
+					$additional_state[$sub_field_slug] = wu_request($sub_field_slug, wu_get_isset($defaults, $sub_field_slug));
+
+				} // end foreach;
 
 				continue;
 
@@ -345,8 +742,9 @@ abstract class Base_Element {
 		} // end foreach;
 
 		$fields['shortcode_result'] = array(
-			'type' => 'note',
-			'desc' => '<div class="wu-w-full"><h3 class="wu-my-1 wu-text-2xs wu-uppercase wu-block">' . __('Result', 'wp-ultimo') . '</h3><pre v-html="shortcode" id="wu-shortcode" class="wu-text-center wu-overflow-auto wu-p-4 wu-m-0 wu-mt-2 wu-rounded wu-content-center wu-bg-gray-800 wu-text-white wu-font-mono wu-border wu-border-solid wu-border-gray-300 wu-max-h-screen wu-overflow-y-auto"></pre></div>',
+			'type'            => 'note',
+			'wrapper_classes' => 'sm:wu-block',
+			'desc'            => '<div class="wu-w-full"><span class="wu-my-1 wu-text-2xs wu-uppercase wu-font-bold wu-block">' . __('Result', 'wp-ultimo') . '</span><pre v-html="shortcode" id="wu-shortcode" style="overflow-x: scroll !important;" class="wu-text-center wu-p-4 wu-m-0 wu-mt-2 wu-rounded wu-content-center wu-bg-gray-800 wu-text-white wu-font-mono wu-border wu-border-solid wu-border-gray-300 wu-max-h-screen wu-overflow-x-scroll"></pre></div>',
 		);
 
 		$fields['submit_copy'] = array(
@@ -363,7 +761,7 @@ abstract class Base_Element {
 
 		$form = new \WP_Ultimo\UI\Form($this->id, $fields, array(
 			'views'                 => 'admin-pages/fields',
-			'classes'               => 'wu-modal-form wu-widget-list wu-striped wu-m-0 wu-mt-0',
+			'classes'               => 'wu-modal-form wu-widget-list wu-striped wu-m-0 wu-mt-0 wu-w-full',
 			'field_wrapper_classes' => 'wu-w-full wu-box-border wu-items-center wu-flex wu-justify-between wu-p-4 wu-m-0 wu-border-t wu-border-l-0 wu-border-r-0 wu-border-b-0 wu-border-gray-300 wu-border-solid',
 			'html_attr'             => array(
 				'data-wu-app' => "{$this->id}_generator",
@@ -406,6 +804,10 @@ abstract class Base_Element {
 
 		$saved_settings = $this->get_widget_settings();
 
+		$defaults = $this->defaults();
+
+		$state = array_merge($defaults, $saved_settings);
+
 		foreach ($fields as $field_slug => &$field) {
 
 			if ($field['type'] === 'header') {
@@ -426,20 +828,26 @@ abstract class Base_Element {
 
 		} // end foreach;
 
-		$fields['submit'] = array(
-			'type'            => 'submit',
-			'title'           => __('Save Changes', 'wp-ultimo'),
-			'value'           => 'edit',
-			'classes'         => 'button button-primary wu-w-full',
-			'wrapper_classes' => 'wu-items-end wu-pb-1',
-		);
-
-		$fields['restore'] = array(
-			'type'            => 'submit',
-			'title'           => __('Restore Settings', 'wp-ultimo'),
-			'value'           => 'edit',
-			'classes'         => 'button wu-w-full',
-			'wrapper_classes' => 'wu-items-end wu-border-t-0 wu-border-transparent wu-border-0 wu-pt-1',
+		$fields['save_line'] = array(
+			'type'            => 'group',
+			'classes'         => 'wu-justify-between',
+			'wrapper_classes' => 'wu-bg-gray-100',
+			'fields'          => array(
+				'restore' => array(
+					'type'            => 'submit',
+					'title'           => __('Reset Settings', 'wp-ultimo'),
+					'value'           => 'edit',
+					'classes'         => 'button',
+					'wrapper_classes' => 'wu-mb-0',
+				),
+				'submit'  => array(
+					'type'            => 'submit',
+					'title'           => __('Save Changes', 'wp-ultimo'),
+					'value'           => 'edit',
+					'classes'         => 'button button-primary',
+					'wrapper_classes' => 'wu-mb-0',
+				),
+			),
 		);
 
 		$form = new \WP_Ultimo\UI\Form($this->id, $fields, array(
@@ -448,7 +856,7 @@ abstract class Base_Element {
 			'field_wrapper_classes' => 'wu-w-full wu-box-border wu-items-center wu-flex wu-justify-between wu-p-4 wu-m-0 wu-border-t wu-border-l-0 wu-border-r-0 wu-border-b-0 wu-border-gray-300 wu-border-solid',
 			'html_attr'             => array(
 				'data-wu-app' => "{$this->id}_customize",
-				'data-state'  => wu_convert_to_state(),
+				'data-state'  => wu_convert_to_state($state),
 			),
 		));
 
@@ -567,8 +975,6 @@ abstract class Base_Element {
 	 */
 	public function display($atts) {
 
-		$this->maybe_setup();
-
 		if (!$this->should_display()) {
 
 			return; // bail if the display was set to false.
@@ -582,7 +988,7 @@ abstract class Base_Element {
 		/*
 		 * Account for the 'className' Gutenberg attribute.
 		 */
-		$atts['className'] = trim('wu-' . $this->id . ' ' . wu_get_isset($atts, 'className', ''));
+		$atts['className'] = trim('wu-' . $this->id . ' wu-element ' . wu_get_isset($atts, 'className', ''));
 
 		/*
 		 * Pass down the element so we can use helpers.
@@ -662,6 +1068,11 @@ abstract class Base_Element {
 			return;
 
 		} // end if;
+
+		/*
+		 * Run the setup in this case;
+		 */
+		$this->setup();
 
 		if (!$this->should_display()) {
 
@@ -832,7 +1243,7 @@ abstract class Base_Element {
 			$html = '
 				<div class="wu-styling">
 						<div class="wu-widget-inset">
-							<div class="wubox wu-no-underline wu-py-4 wu-bg-gray-200 wu-block wu-mt-4 wu-text-center wu-text-sm wu-text-gray-600 wu-m-auto wu-border-solid wu-border-0 wu-border-t wu-border-gray-400">
+							<div class="wubox wu-no-underline wu-p-4 wu-bg-gray-200 wu-block wu-mt-4 wu-text-center wu-text-sm wu-text-gray-600 wu-m-auto wu-border-solid wu-border-0 wu-border-t wu-border-gray-400">
 								' . $text . '
 							</div>
 					</div>
@@ -889,5 +1300,17 @@ abstract class Base_Element {
 		$this->display = $display;
 
 	} // end set_display;
+
+	/**
+	 * Checks if the current element was actually loaded.
+	 *
+	 * @since 2.0.11
+	 * @return boolean
+	 */
+	public function is_actually_loaded() {
+
+		return $this->actually_loaded;
+
+	} // end is_actually_loaded;
 
 } // end class Base_Element;

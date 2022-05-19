@@ -110,7 +110,7 @@ class Post_Base_Model extends Base_Model {
 	/**
 	 * Set author ID.
 	 *
-	 * @param int $author_id Author ID.
+	 * @param int $author_id The author ID.
 	 */
 	public function set_author_id($author_id) {
 

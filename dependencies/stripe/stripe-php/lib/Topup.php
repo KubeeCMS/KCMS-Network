@@ -28,7 +28,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property string $status The status of the top-up is either <code>canceled</code>, <code>failed</code>, <code>pending</code>, <code>reversed</code>, or <code>succeeded</code>.
  * @property null|string $transfer_group A string that identifies this top-up as part of a group.
  */
-class Topup extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class Topup extends ApiResource
 {
     const OBJECT_NAME = 'topup';
     use ApiOperations\All;
@@ -46,7 +46,7 @@ class Topup extends \WP_Ultimo\Dependencies\Stripe\ApiResource
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return Topup the canceled topup
+     * @return \Stripe\Topup the canceled topup
      */
     public function cancel($params = null, $opts = null)
     {

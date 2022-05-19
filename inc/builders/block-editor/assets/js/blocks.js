@@ -62,6 +62,18 @@
 
     _.each(fields, function(field, field_slug) {
 
+      if (field.type === 'group') {
+
+        const sub_fields = field.fields;
+
+        field = _.first(_.values(sub_fields));
+
+        field.desc = '';
+
+        field_slug = _.first(_.keys(sub_fields));
+
+      } // end if;
+
       const component = wu_get_field_component(field.type, field);
 
       if (! _.isObject(field.required)) {

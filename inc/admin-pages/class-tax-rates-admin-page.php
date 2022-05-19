@@ -111,19 +111,17 @@ class Tax_Rates_Admin_Page extends Base_Admin_Page {
 		do_action('wu_load_tax_rates_list_page');
 
 		$columns = apply_filters('wu_tax_rates_columns', array(
-			'title'    => __('Title', 'wp-ultimo'),
-			'country'  => __('Country Code', 'wp-ultimo'),
-			'state'    => __('State Code', 'wp-ultimo'),
+			'title'    => __('Label', 'wp-ultimo'),
+			'country'  => __('Country', 'wp-ultimo'),
+			'state'    => __('State / Province', 'wp-ultimo'),
+			'city'     => __('City', 'wp-ultimo'),
 			'tax_rate' => __('Tax Rate (%)', 'wp-ultimo'),
-		// 'priority' => __('Priority', 'wp-ultimo') . "<span title='". __('Choose a priority for this tax rate. Only 1 matching rate per priority will be used. To define multiple tax rates for a single area you need to specify a different priority per rate.', 'wp-ultimo') ."' class='wu-tooltip-vue dashicons dashicons-editor-help'></span>",
-		// 'type'     => __('Type', 'wp-ultimo'),
-		// 'compound' => __('Compound', 'wp-ultimo') . "<span title='". __('If this rate is compound (applied on top of all prior taxes) check this box.', 'wp-ultimo') ."' class='wu-tooltip-vue dashicons dashicons-editor-help'></span>"
-		// 'city'     => __('City', 'wp-ultimo'),
-		// 'zip_code' => __('ZIP Code', 'wp-ultimo'),
+			'move'     => '',
 		));
 
 		wu_get_template('taxes/list', array(
 			'columns' => $columns,
+			'screen'  => get_current_screen(),
 			'types'   => Tax::get_instance()->get_tax_rate_types(),
 		));
 
@@ -139,7 +137,7 @@ class Tax_Rates_Admin_Page extends Base_Admin_Page {
 
 		parent::register_scripts();
 
-		wp_register_script('wu-tax-rates', wu_get_asset('tax-rates.js', 'js'), array('wu-admin', 'wu-vue'), wu_get_version(), false);
+		wp_register_script('wu-tax-rates', wu_get_asset('tax-rates.js', 'js'), array('wu-admin', 'wu-vue', 'underscore', 'wu-selectizer'), wu_get_version(), false);
 
 		wp_localize_script('wu-tax-rates', 'wu_tax_ratesl10n', array(
 			'name'                                => __('Tax', 'wp-ultimo'),
@@ -147,8 +145,71 @@ class Tax_Rates_Admin_Page extends Base_Admin_Page {
 			'confirm_delete_tax_category_message' => __('Are you sure you want to delete this tax category?', 'wp-ultimo'),
 		));
 
+		wp_enqueue_script('wu-vue-sortable', '//cdn.jsdelivr.net/npm/sortablejs@1.8.4/Sortable.min.js', array(), wu_get_version());
+
+		wp_enqueue_script('wu-vue-draggable', '//cdnjs.cloudflare.com/ajax/libs/Vue.Draggable/2.20.0/vuedraggable.umd.min.js', array(), wu_get_version());
+
 		wp_enqueue_script('wu-tax-rates');
 
 	} // end register_scripts;
+
+	/**
+	 * Adds field widgets to edit pages with the same Form/Field APIs used elsewhere.
+	 *
+	 * @see Take a look at /inc/ui/form and inc/ui/field for reference.
+	 * @since 2.0.0
+	 *
+	 * @param string $id ID of the widget.
+	 * @param array  $atts Array of attributes to pass to the form.
+	 * @return void
+	 */
+	protected function add_fields_widget($id, $atts = array()) {
+
+		$atts = wp_parse_args($atts, array(
+			'widget_id'             => $id,
+			'before'                => '',
+			'after'                 => '',
+			'title'                 => __('Fields', 'wp-ultimo'),
+			'position'              => 'side',
+			'screen'                => get_current_screen(),
+			'fields'                => array(),
+			'html_attr'             => array(),
+			'classes'               => '',
+			'field_wrapper_classes' => 'wu-w-full wu-box-border wu-items-center wu-flex wu-justify-between wu-p-4 wu-m-0 wu-border-t wu-border-l-0 wu-border-r-0 wu-border-b-0 wu-border-gray-300 wu-border-solid',
+		));
+
+		add_meta_box("wp-ultimo-{$id}-widget", $atts['title'], function() use ($atts) {
+
+			if (wu_get_isset($atts['html_attr'], 'data-wu-app')) {
+
+				$atts['fields']['loading'] = array(
+					'type'              => 'note',
+					'desc'              => sprintf('<div class="wu-block wu-text-center wu-blinking-animation wu-text-gray-600 wu-my-1 wu-text-2xs wu-uppercase wu-font-semibold">%s</div>', __('Loading...', 'wp-ultimo')),
+					'wrapper_html_attr' => array(
+						'v-if' => 0,
+					),
+				);
+
+			} // end if;
+
+			/**
+			 * Instantiate the form for the order details.
+			 *
+			 * @since 2.0.0
+			 */
+			$form = new \WP_Ultimo\UI\Form($atts['widget_id'], $atts['fields'], array(
+				'views'                 => 'admin-pages/fields',
+				'classes'               => 'wu-widget-list wu-striped wu-m-0 wu--mt-2 wu--mb-3 wu--mx-3 ' . $atts['classes'],
+				'field_wrapper_classes' => $atts['field_wrapper_classes'],
+				'html_attr'             => $atts['html_attr'],
+				'before'                => $atts['before'],
+				'after'                 => $atts['after'],
+			));
+
+			$form->render();
+
+		}, $atts['screen']->id, $atts['position'], null);
+
+	} // end add_fields_widget;
 
 } // end class Tax_Rates_Admin_Page;

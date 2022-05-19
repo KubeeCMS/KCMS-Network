@@ -10,7 +10,10 @@
  */
 namespace Symfony\Component\Translation\Command;
 
+use WP_Ultimo\Dependencies\Symfony\Component\Console\CI\GithubActionReporter;
 use WP_Ultimo\Dependencies\Symfony\Component\Console\Command\Command;
+use WP_Ultimo\Dependencies\Symfony\Component\Console\Completion\CompletionInput;
+use WP_Ultimo\Dependencies\Symfony\Component\Console\Completion\CompletionSuggestions;
 use WP_Ultimo\Dependencies\Symfony\Component\Console\Exception\RuntimeException;
 use WP_Ultimo\Dependencies\Symfony\Component\Console\Input\InputArgument;
 use WP_Ultimo\Dependencies\Symfony\Component\Console\Input\InputInterface;
@@ -26,9 +29,10 @@ use Symfony\Component\Translation\Util\XliffUtils;
  * @author Robin Chalas <robin.chalas@gmail.com>
  * @author Javier Eguiluz <javier.eguiluz@gmail.com>
  */
-class XliffLintCommand extends \WP_Ultimo\Dependencies\Symfony\Component\Console\Command\Command
+class XliffLintCommand extends Command
 {
     protected static $defaultName = 'lint:xliff';
+    protected static $defaultDescription = 'Lint an XLIFF file and outputs encountered errors';
     private $format;
     private $displayCorrectFiles;
     private $directoryIteratorProvider;
@@ -46,8 +50,8 @@ class XliffLintCommand extends \WP_Ultimo\Dependencies\Symfony\Component\Console
      */
     protected function configure()
     {
-        $this->setDescription('Lints a XLIFF file and outputs encountered errors')->addArgument('filename', \WP_Ultimo\Dependencies\Symfony\Component\Console\Input\InputArgument::IS_ARRAY, 'A file, a directory or "-" for reading from STDIN')->addOption('format', null, \WP_Ultimo\Dependencies\Symfony\Component\Console\Input\InputOption::VALUE_REQUIRED, 'The output format', 'txt')->setHelp(<<<EOF
-The <info>%command.name%</info> command lints a XLIFF file and outputs to STDOUT
+        $this->setDescription(self::$defaultDescription)->addArgument('filename', InputArgument::IS_ARRAY, 'A file, a directory or "-" for reading from STDIN')->addOption('format', null, InputOption::VALUE_REQUIRED, 'The output format')->setHelp(<<<EOF
+The <info>%command.name%</info> command lints an XLIFF file and outputs to STDOUT
 the first encountered syntax error.
 
 You can validates XLIFF contents passed from STDIN:
@@ -66,22 +70,22 @@ Or of a whole directory:
 EOF
 );
     }
-    protected function execute(\WP_Ultimo\Dependencies\Symfony\Component\Console\Input\InputInterface $input, \WP_Ultimo\Dependencies\Symfony\Component\Console\Output\OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $io = new \WP_Ultimo\Dependencies\Symfony\Component\Console\Style\SymfonyStyle($input, $output);
+        $io = new SymfonyStyle($input, $output);
         $filenames = (array) $input->getArgument('filename');
-        $this->format = $input->getOption('format');
+        $this->format = $input->getOption('format') ?? (GithubActionReporter::isGithubActionEnvironment() ? 'github' : 'txt');
         $this->displayCorrectFiles = $output->isVerbose();
         if (['-'] === $filenames) {
             return $this->display($io, [$this->validate(\file_get_contents('php://stdin'))]);
         }
         if (!$filenames) {
-            throw new \WP_Ultimo\Dependencies\Symfony\Component\Console\Exception\RuntimeException('Please provide a filename or pipe file content to STDIN.');
+            throw new RuntimeException('Please provide a filename or pipe file content to STDIN.');
         }
         $filesInfo = [];
         foreach ($filenames as $filename) {
             if (!$this->isReadable($filename)) {
-                throw new \WP_Ultimo\Dependencies\Symfony\Component\Console\Exception\RuntimeException(\sprintf('File or directory "%s" is not readable.', $filename));
+                throw new RuntimeException(\sprintf('File or directory "%s" is not readable.', $filename));
             }
             foreach ($this->getFiles($filename) as $file) {
                 $filesInfo[] = $this->validate(\file_get_contents($file), $file);
@@ -100,47 +104,54 @@ EOF
         $document = new \DOMDocument();
         $document->loadXML($content);
         if (null !== ($targetLanguage = $this->getTargetLanguageFromFile($document))) {
-            $normalizedLocale = \preg_quote(\str_replace('-', '_', $targetLanguage), '/');
+            $normalizedLocalePattern = \sprintf('(%s|%s)', \preg_quote($targetLanguage, '/'), \preg_quote(\str_replace('-', '_', $targetLanguage), '/'));
             // strict file names require translation files to be named '____.locale.xlf'
             // otherwise, both '____.locale.xlf' and 'locale.____.xlf' are allowed
             // also, the regexp matching must be case-insensitive, as defined for 'target-language' values
             // http://docs.oasis-open.org/xliff/v1.2/os/xliff-core.html#target-language
-            $expectedFilenamePattern = $this->requireStrictFileNames ? \sprintf('/^.*\\.(?i:%s)\\.(?:xlf|xliff)/', $normalizedLocale) : \sprintf('/^(?:.*\\.(?i:%s)|(?i:%s)\\..*)\\.(?:xlf|xliff)/', $normalizedLocale, $normalizedLocale);
+            $expectedFilenamePattern = $this->requireStrictFileNames ? \sprintf('/^.*\\.(?i:%s)\\.(?:xlf|xliff)/', $normalizedLocalePattern) : \sprintf('/^(?:.*\\.(?i:%s)|(?i:%s)\\..*)\\.(?:xlf|xliff)/', $normalizedLocalePattern, $normalizedLocalePattern);
             if (0 === \preg_match($expectedFilenamePattern, \basename($file))) {
                 $errors[] = ['line' => -1, 'column' => -1, 'message' => \sprintf('There is a mismatch between the language included in the file name ("%s") and the "%s" value used in the "target-language" attribute of the file.', \basename($file), $targetLanguage)];
             }
         }
-        foreach (\Symfony\Component\Translation\Util\XliffUtils::validateSchema($document) as $xmlError) {
+        foreach (XliffUtils::validateSchema($document) as $xmlError) {
             $errors[] = ['line' => $xmlError['line'], 'column' => $xmlError['column'], 'message' => $xmlError['message']];
         }
         \libxml_clear_errors();
         \libxml_use_internal_errors($internal);
         return ['file' => $file, 'valid' => 0 === \count($errors), 'messages' => $errors];
     }
-    private function display(\WP_Ultimo\Dependencies\Symfony\Component\Console\Style\SymfonyStyle $io, array $files)
+    private function display(SymfonyStyle $io, array $files)
     {
         switch ($this->format) {
             case 'txt':
                 return $this->displayTxt($io, $files);
             case 'json':
                 return $this->displayJson($io, $files);
+            case 'github':
+                return $this->displayTxt($io, $files, \true);
             default:
-                throw new \Symfony\Component\Translation\Exception\InvalidArgumentException(\sprintf('The format "%s" is not supported.', $this->format));
+                throw new InvalidArgumentException(\sprintf('The format "%s" is not supported.', $this->format));
         }
     }
-    private function displayTxt(\WP_Ultimo\Dependencies\Symfony\Component\Console\Style\SymfonyStyle $io, array $filesInfo)
+    private function displayTxt(SymfonyStyle $io, array $filesInfo, bool $errorAsGithubAnnotations = \false)
     {
         $countFiles = \count($filesInfo);
         $erroredFiles = 0;
+        $githubReporter = $errorAsGithubAnnotations ? new GithubActionReporter($io) : null;
         foreach ($filesInfo as $info) {
             if ($info['valid'] && $this->displayCorrectFiles) {
                 $io->comment('<info>OK</info>' . ($info['file'] ? \sprintf(' in %s', $info['file']) : ''));
             } elseif (!$info['valid']) {
                 ++$erroredFiles;
                 $io->text('<error> ERROR </error>' . ($info['file'] ? \sprintf(' in %s', $info['file']) : ''));
-                $io->listing(\array_map(function ($error) {
+                $io->listing(\array_map(function ($error) use($info, $githubReporter) {
                     // general document errors have a '-1' line number
-                    return -1 === $error['line'] ? $error['message'] : \sprintf('Line %d, Column %d: %s', $error['line'], $error['column'], $error['message']);
+                    $line = -1 === $error['line'] ? null : $error['line'];
+                    if ($githubReporter) {
+                        $githubReporter->error($error['message'], $info['file'], $line, null !== $line ? $error['column'] : null);
+                    }
+                    return null === $line ? $error['message'] : \sprintf('Line %d, Column %d: %s', $line, $error['column'], $error['message']);
                 }, $info['messages']));
             }
         }
@@ -151,7 +162,7 @@ EOF
         }
         return \min($erroredFiles, 1);
     }
-    private function displayJson(\WP_Ultimo\Dependencies\Symfony\Component\Console\Style\SymfonyStyle $io, array $filesInfo)
+    private function displayJson(SymfonyStyle $io, array $filesInfo)
     {
         $errors = 0;
         \array_walk($filesInfo, function (&$v) use(&$errors) {
@@ -204,5 +215,11 @@ EOF
             }
         }
         return null;
+    }
+    public function complete(CompletionInput $input, CompletionSuggestions $suggestions) : void
+    {
+        if ($input->mustSuggestOptionValuesFor('format')) {
+            $suggestions->suggestValues(['txt', 'json', 'github']);
+        }
     }
 }

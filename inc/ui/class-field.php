@@ -45,6 +45,21 @@ class Field implements \JsonSerializable {
 	 */
 	public function __construct($id, $atts) {
 
+		$this->set_attributes($id, $atts);
+
+	} // end __construct;
+
+	/**
+	 * Set and the attributes passed via the constructor.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $id Field id. This is going to be used to retrieve the value from the database later.
+	 * @param array  $atts Field attributes.
+	 * @return void
+	 */
+	public function set_attributes($id, $atts) {
+
 		$this->atts = wp_parse_args($atts, array(
 			'id'                => $id,
 			'type'              => 'text',
@@ -62,6 +77,7 @@ class Field implements \JsonSerializable {
 			'sortable'          => false,
 			'placeholder'       => false,
 			'options'           => false,
+			'options_template'  => false,
 			'require'           => false,
 			'button'            => false,
 			'width'             => false,
@@ -79,16 +95,49 @@ class Field implements \JsonSerializable {
 			'validation'        => false,
 			'meter'             => false,
 			'href'              => false,
+			'raw'               => false,
 			'money'             => false,
+			'stacked'           => false, // If the field is inside a restricted container
 			'columns'           => 1,
 			'classes'           => '',
 			'wrapper_classes'   => '',
 			'html_attr'         => array(),
 			'wrapper_html_attr' => array(),
 			'sub_fields'        => array(),
+			'prefix'            => '',
+			'suffix'            => '',
+			'prefix_html_attr'  => array(),
+			'suffix_html_attr'  => array(),
 		));
 
-	} // end __construct;
+	} // end set_attributes;
+
+	/**
+	 * Set a particular attribute.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $att The attribute name.
+	 * @param mixed  $value The new attribute value.
+	 * @return void
+	 */
+	public function set_attribute($att, $value) {
+
+		$this->atts[$att] = $value;
+
+	} // end set_attribute;
+
+	/**
+	 * Returns the list of field attributes.
+	 *
+	 * @since 2.0.0
+	 * @return array
+	 */
+	public function get_attributes() {
+
+		return $this->atts;
+
+	} // end get_attributes;
 
 	/**
 	 * Makes sure old fields remain compatible.
@@ -112,12 +161,22 @@ class Field implements \JsonSerializable {
 			'checkbox'            => 'toggle',
 		);
 
+		$deprecated = array(
+			'heading',
+			'heading_collapsible',
+			'select2',
+		);
+
 		if (array_key_exists($this->type, $aliases)) {
 
 			$new_type_name = $aliases[$this->type];
 
-			// translators: The %1$s placeholder is the old type name, the second, the new type name.
-			_doing_it_wrong('wu_add_field', sprintf(__('The field type "%1$s" is no longer supported, use "%2$s" instead.'), $this->type, $new_type_name), '2.0.0');
+			if (array_key_exists($this->type, $deprecated)) {
+
+				// translators: The %1$s placeholder is the old type name, the second, the new type name.
+				_doing_it_wrong('wu_add_field', sprintf(__('The field type "%1$s" is no longer supported, use "%2$s" instead.'), $this->type, $new_type_name), '2.0.0');
+
+			} // end if;
 
 			/*
 			 * Back Compat for Select2 Fields
@@ -180,6 +239,7 @@ class Field implements \JsonSerializable {
 			'validation',
 			'value',
 			'html_attr',
+			'img',
 		);
 
 		$attr = isset($this->atts[$att]) ? $this->atts[$att] : false;
@@ -192,7 +252,19 @@ class Field implements \JsonSerializable {
 
 		if ($att === 'wrapper_classes' && isset($this->atts['wrapper_html_attr']['v-show'])) {
 
-			$this->atts['wrapper_classes'] = $this->atts['wrapper_classes'] . ' wu-requires-other wu-border-l-4';
+			$this->atts['wrapper_classes'] = $this->atts['wrapper_classes'] . ' wu-requires-other';
+
+		} // end if;
+
+		if ($att === 'type' && $this->atts[$att] === 'submit') {
+
+			$this->atts['wrapper_classes'] = $this->atts['wrapper_classes'] . ' wu-submit-field';
+
+		} // end if;
+
+		if ($att === 'type' && $this->atts[$att] === 'tab-select') {
+
+			$this->atts['wrapper_classes'] = $this->atts['wrapper_classes'] . ' wu-tab-field';
 
 		} // end if;
 
@@ -269,7 +341,11 @@ class Field implements \JsonSerializable {
 
 		$this->value = $value;
 
-		$this->sanitize();
+		if (!$this->raw) {
+
+			$this->sanitize();
+
+		} // end if;
 
 		return $this;
 
@@ -294,18 +370,6 @@ class Field implements \JsonSerializable {
 		} // end if;
 
 	} // end sanitize;
-
-	/**
-	 * Returns the list of field attributes.
-	 *
-	 * @since 2.0.0
-	 * @return array
-	 */
-	public function get_attributes() {
-
-		return $this->atts;
-
-	} // end get_attributes;
 
 	/**
 	 * Sanitization callback for fields of type number.
@@ -397,17 +461,11 @@ class Field implements \JsonSerializable {
 		 */
 		if ($this->money !== false) {
 
-			$attributes['data-money'] = true;
+			$attributes['v-bind'] = 'money_settings';
 
 		} // end if;
 
-		$attributes = array_map(function($key, $value) {
-
-			return $key . '="' . htmlspecialchars($value) . '"';
-
-		}, array_keys($attributes), $attributes);
-
-		return implode(' ', $attributes);
+		return wu_array_to_html_attrs($attributes);
 
 	} // end get_html_attributes;
 
@@ -423,13 +481,7 @@ class Field implements \JsonSerializable {
 
 		unset($this->atts['wrapper_html_attr']['class']);
 
-		$attributes = array_map(function($key, $value) {
-
-			return $key . '="' . htmlspecialchars($value) . '"';
-
-		}, array_keys($attributes), $attributes);
-
-		return implode(' ', $attributes);
+		return wu_array_to_html_attrs($attributes);
 
 	} // end get_wrapper_html_attributes;
 

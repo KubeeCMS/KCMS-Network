@@ -20,7 +20,7 @@ class IniFileLoader extends \Symfony\Component\Translation\Loader\FileLoader
     /**
      * {@inheritdoc}
      */
-    protected function loadResource($resource)
+    protected function loadResource(string $resource)
     {
         return \parse_ini_file($resource, \true);
     }

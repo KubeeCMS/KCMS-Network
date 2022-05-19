@@ -1,6 +1,6 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Promise\Exception;
+namespace React\Promise\Exception;
 
 class LengthException extends \LengthException
 {

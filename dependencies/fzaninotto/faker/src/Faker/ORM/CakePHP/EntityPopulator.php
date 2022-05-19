@@ -132,6 +132,6 @@ class EntityPopulator
         if (!empty($this->connectionName)) {
             $options['connection'] = $this->connectionName;
         }
-        return \WP_Ultimo\Dependencies\Cake\ORM\TableRegistry::get($class, $options);
+        return TableRegistry::get($class, $options);
     }
 }

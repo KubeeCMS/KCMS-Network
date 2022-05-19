@@ -74,8 +74,8 @@ final class Posts_Table extends Table {
 			title tinytext NOT NULL DEFAULT '',
 			content longtext NOT NULL default '',
 			excerpt longtext NOT NULL default '',
-			date_created datetime NOT NULL default '0000-00-00 00:00:00',
-			date_modified datetime NOT NULL default '0000-00-00 00:00:00',
+			date_created datetime NULL,
+			date_modified datetime NULL,
 			list_order tinyint default 10,
 			status varchar(100) NOT NULL default 'draft',
 			PRIMARY KEY (id)";

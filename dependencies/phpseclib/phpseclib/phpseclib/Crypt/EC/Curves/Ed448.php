@@ -5,8 +5,6 @@
  *
  * PHP version 5 and 7
  *
- * @category  Crypt
- * @package   EC
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -14,24 +12,24 @@
 namespace phpseclib3\Crypt\EC\Curves;
 
 use phpseclib3\Crypt\EC\BaseCurves\TwistedEdwards;
-use phpseclib3\Math\BigInteger;
 use phpseclib3\Crypt\Hash;
 use phpseclib3\Crypt\Random;
-class Ed448 extends \phpseclib3\Crypt\EC\BaseCurves\TwistedEdwards
+use phpseclib3\Math\BigInteger;
+class Ed448 extends TwistedEdwards
 {
     const HASH = 'shake256-912';
     const SIZE = 57;
     public function __construct()
     {
         // 2^448 - 2^224 - 1
-        $this->setModulo(new \phpseclib3\Math\BigInteger('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE' . 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', 16));
+        $this->setModulo(new BigInteger('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE' . 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', 16));
         $this->setCoefficients(
-            new \phpseclib3\Math\BigInteger(1),
+            new BigInteger(1),
             // -39081
-            new \phpseclib3\Math\BigInteger('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE' . 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF6756', 16)
+            new BigInteger('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE' . 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF6756', 16)
         );
-        $this->setBasePoint(new \phpseclib3\Math\BigInteger('4F1970C66BED0DED221D15A622BF36DA9E146570470F1767EA6DE324' . 'A3D3A46412AE1AF72AB66511433B80E18B00938E2626A82BC70CC05E', 16), new \phpseclib3\Math\BigInteger('693F46716EB6BC248876203756C9C7624BEA73736CA3984087789C1E' . '05A0C2D73AD3FF1CE67C39C4FDBD132C4ED7C8AD9808795BF230FA14', 16));
-        $this->setOrder(new \phpseclib3\Math\BigInteger('3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' . '7CCA23E9C44EDB49AED63690216CC2728DC58F552378C292AB5844F3', 16));
+        $this->setBasePoint(new BigInteger('4F1970C66BED0DED221D15A622BF36DA9E146570470F1767EA6DE324' . 'A3D3A46412AE1AF72AB66511433B80E18B00938E2626A82BC70CC05E', 16), new BigInteger('693F46716EB6BC248876203756C9C7624BEA73736CA3984087789C1E' . '05A0C2D73AD3FF1CE67C39C4FDBD132C4ED7C8AD9808795BF230FA14', 16));
+        $this->setOrder(new BigInteger('3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' . '7CCA23E9C44EDB49AED63690216CC2728DC58F552378C292AB5844F3', 16));
     }
     /**
      * Recover X from Y
@@ -44,7 +42,7 @@ class Ed448 extends \phpseclib3\Crypt\EC\BaseCurves\TwistedEdwards
      * @param boolean $sign
      * @return object[]
      */
-    public function recoverX(\phpseclib3\Math\BigInteger $y, $sign)
+    public function recoverX(BigInteger $y, $sign)
     {
         $y = $this->factory->newInteger($y);
         $y2 = $y->multiply($y);
@@ -58,7 +56,7 @@ class Ed448 extends \phpseclib3\Crypt\EC\BaseCurves\TwistedEdwards
             return clone $this->zero;
         }
         // find the square root
-        $exp = $this->getModulo()->add(new \phpseclib3\Math\BigInteger(1));
+        $exp = $this->getModulo()->add(new BigInteger(1));
         $exp = $exp->bitwise_rightShift(2);
         $x = $x2->pow($exp);
         if (!$x->multiply($x)->subtract($x2)->equals($this->zero)) {
@@ -87,7 +85,7 @@ class Ed448 extends \phpseclib3\Crypt\EC\BaseCurves\TwistedEdwards
         // 1.  Hash the 57-byte private key using SHAKE256(x, 114), storing the
         //     digest in a 114-octet large buffer, denoted h.  Only the lower 57
         //     bytes are used for generating the public key.
-        $hash = new \phpseclib3\Crypt\Hash('shake256-912');
+        $hash = new Hash('shake256-912');
         $h = $hash->hash($str);
         $h = \substr($h, 0, 57);
         // 2.  Prune the buffer: The two least significant bits of the first
@@ -99,8 +97,7 @@ class Ed448 extends \phpseclib3\Crypt\EC\BaseCurves\TwistedEdwards
         $h[1] = $h[1] | \chr(0x80);
         // 3.  Interpret the buffer as the little-endian integer, forming a
         //     secret scalar s.
-        $dA = new \phpseclib3\Math\BigInteger($h, 256);
-        $dA = $this->factory->newInteger($dA);
+        $dA = new BigInteger($h, 256);
         $dA->secret = $str;
         return $dA;
     }
@@ -127,7 +124,7 @@ class Ed448 extends \phpseclib3\Crypt\EC\BaseCurves\TwistedEdwards
      */
     public function createRandomMultiplier()
     {
-        return $this->extractSecret(\phpseclib3\Crypt\Random::string(57));
+        return $this->extractSecret(Random::string(57));
     }
     /**
      * Converts an affine point to an extended homogeneous coordinate

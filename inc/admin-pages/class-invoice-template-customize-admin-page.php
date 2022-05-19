@@ -158,7 +158,7 @@ class Invoice_Template_Customize_Admin_Page extends Customizer_Admin_Page {
 		$fields = array(
 			'tab'             => array(
 				'type'              => 'tab-select',
-				'wrapper_classes'   => 'wu-mt-2',
+				'wrapper_classes'   => '',
 				'wrapper_html_attr' => array(
 					'v-cloak' => 1,
 				),
@@ -243,9 +243,11 @@ class Invoice_Template_Customize_Admin_Page extends Customizer_Admin_Page {
 			),
 			'custom_logo'     => array(
 				'type'              => 'image',
-				'title'             => __('Upload Custom Logo', 'wp-ultimo'),
+				'title'             => __('Custom Logo', 'wp-ultimo'),
+				'desc'              => __('This will be added to the top of the generated PDF.', 'wp-ultimo'),
 				'value'             => '',
 				'img'               => $custom_logo_url,
+				'stacked'           => true,
 				'wrapper_html_attr' => array(
 					'v-show'  => 'require("tab", "images") && require("use_custom_logo", true)',
 					'v-cloak' => 1,
@@ -275,6 +277,7 @@ class Invoice_Template_Customize_Admin_Page extends Customizer_Admin_Page {
 			'position'  => 'side',
 			'fields'    => $fields,
 			'html_attr' => array(
+				'style'                    => 'margin-top: -6px;',
 				'data-wu-app'              => 'invoice_customizer',
 				'data-wu-customizer-panel' => true,
 				'data-state'               => json_encode($state),

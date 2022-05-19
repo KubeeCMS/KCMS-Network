@@ -47,7 +47,7 @@ class EntityPopulator
      * @param Mandango $mandango
      * @return array
      */
-    public function guessColumnFormatters(\Faker\Generator $generator, \WP_Ultimo\Dependencies\Mandango\Mandango $mandango)
+    public function guessColumnFormatters(\Faker\Generator $generator, Mandango $mandango)
     {
         $formatters = array();
         $nameGuesser = new \Faker\Guesser\Name($generator);
@@ -72,7 +72,7 @@ class EntityPopulator
             $referenceClass = $reference['class'];
             $formatters[$referenceName] = function ($insertedEntities) use($referenceClass) {
                 if (isset($insertedEntities[$referenceClass])) {
-                    return \Faker\Provider\Base::randomElement($insertedEntities[$referenceClass]);
+                    return Base::randomElement($insertedEntities[$referenceClass]);
                 }
             };
         }
@@ -82,7 +82,7 @@ class EntityPopulator
      * Insert one new record using the Entity class.
      * @param Mandango $mandango
      */
-    public function execute(\WP_Ultimo\Dependencies\Mandango\Mandango $mandango, $insertedEntities)
+    public function execute(Mandango $mandango, $insertedEntities)
     {
         $metadata = $mandango->getMetadata($this->class);
         $obj = $mandango->create($this->class);

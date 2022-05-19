@@ -5,7 +5,7 @@
  * @since 2.0.0
  */
 ?>
-<div id="wp-ultimo-wrap" class="wrap wu-wrap <?php echo esc_attr($classes); ?>">
+<div id="wp-ultimo-wrap" class="<?php wu_wrap_use_container() ?> wrap wu-wrap <?php echo esc_attr($classes); ?>">
 
   <h1 class="wp-heading-inline">
 
@@ -52,10 +52,21 @@
   </h1>
 
   <?php if (isset($_GET['deleted'])) : ?>
-    <div id="message" class="updated notice notice-success is-dismissible below-h2">
+    <div id="message" class="updated notice wu-admin-notice notice-success is-dismissible below-h2">
       <p><?php echo $page->get_labels()['deleted_message']; ?></p>
     </div>
   <?php endif; ?>
+
+  <?php
+  /**
+   * Allow plugin developers to add additional handlers to URL query redirects
+   *
+   * @since 2.0.0
+   *
+   * @param WP_Ultimo\Admin_Pages\Base_Admin_Page $page The page object.
+   */
+  do_action('wu_page_list_redirect_handlers', $page);
+  ?>
 
   <hr class="wp-header-end">
 

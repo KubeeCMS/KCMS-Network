@@ -2,6 +2,7 @@
 <?php 
 namespace WP_Ultimo\Dependencies;
 
+use WP_Ultimo\Dependencies\Carbon\Cli\Invoker;
 $dir = __DIR__ . '/..';
 if (!\file_exists($dir . '/autoload.php')) {
     $dir = __DIR__ . '/../vendor';
@@ -14,4 +15,4 @@ if (!\file_exists($dir . '/autoload.php')) {
     exit(1);
 }
 require $dir . '/autoload.php';
-exit((new \WP_Ultimo\Dependencies\Carbon\Cli\Invoker())(...$argv) ? 0 : 1);
+exit((new Invoker())(...$argv) ? 0 : 1);

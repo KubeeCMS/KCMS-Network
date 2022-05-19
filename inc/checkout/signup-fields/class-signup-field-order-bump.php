@@ -10,6 +10,7 @@
 namespace WP_Ultimo\Checkout\Signup_Fields;
 
 use \WP_Ultimo\Checkout\Signup_Fields\Base_Signup_Field;
+use \WP_Ultimo\Managers\Field_Templates_Manager;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -71,9 +72,23 @@ class Signup_Field_Order_Bump extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('PT Description', 'wp-ultimo');
+		return __('Adds a product offer that the customer can click to add to the current cart.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Adds a product offer that the customer can click to add to the current cart.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -85,7 +100,7 @@ class Signup_Field_Order_Bump extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-wu-price-tag';
+		return 'dashicons-wu-gift';
 
 	} // end get_icon;
 
@@ -101,7 +116,7 @@ class Signup_Field_Order_Bump extends Base_Signup_Field {
 	public function defaults() {
 
 		return array(
-			''
+			'order_bump_template' => 'simple',
 		);
 
 	} // end defaults;
@@ -115,7 +130,7 @@ class Signup_Field_Order_Bump extends Base_Signup_Field {
 	public function default_fields() {
 
 		return array(
-			'id',
+			// 'id',
 			'name',
 		);
 
@@ -130,10 +145,24 @@ class Signup_Field_Order_Bump extends Base_Signup_Field {
 	public function force_attributes() {
 
 		return array(
-			'required' => true,
+			'order_bump_template' => 'simple',
 		);
 
-	}  // end force_attributes;
+	} // end force_attributes;
+
+	/**
+	 * Returns the list of available pricing table templates.
+	 *
+	 * @since 2.0.0
+	 * @return array
+	 */
+	public function get_templates() {
+
+		$available_templates = Field_Templates_Manager::get_instance()->get_templates_as_options('order_bump');
+
+		return $available_templates;
+
+	} // end get_templates;
 
 	/**
 	 * Returns the list of additional fields specific to this type.
@@ -143,12 +172,14 @@ class Signup_Field_Order_Bump extends Base_Signup_Field {
 	 */
 	public function get_fields() {
 
-		return array(
+		$editor_fields = array(
 			'product'               => array(
 				'type'        => 'model',
 				'title'       => __('Product', 'wp-ultimo'),
-				'placeholder' => __('Product', 'wp-ultimo'),
+				'placeholder' => __('e.g. Premium', 'wp-ultimo'),
+				'desc'        => __('Select the product that will be presented to the customer as an add-on option.', 'wp-ultimo'),
 				'tooltip'     => '',
+				'order'       => 12,
 				'html_attr'   => array(
 					'data-model'        => 'product',
 					'data-value-field'  => 'id',
@@ -158,13 +189,42 @@ class Signup_Field_Order_Bump extends Base_Signup_Field {
 				),
 			),
 			'display_product_image' => array(
-				'type'    => 'toggle',
-				'title'   => __('Display Product Image?', 'wp-ultimo'),
-				'desc'    => __('Set as the primary domain.', 'wp-ultimo'),
-				'tooltip' => __('Setting this as the primary domain will remove any other domain mapping marked as the primary domain for this site.', 'wp-ultimo'),
-				'value'   => 1,
+				'order' => 14,
+				'type'  => 'toggle',
+				'title' => __('Display Product Image', 'wp-ultimo'),
+				'desc'  => __('Toggle to display the product image as well, if one is available.', 'wp-ultimo'),
+				'value' => 1,
 			),
 		);
+
+		// $editor_fields['order_bump_template'] = array(
+		// 'type'   => 'group',
+		// 'desc'   => Field_Templates_Manager::get_instance()->render_preview_block('order_bump'),
+		// 'order'  => 98,
+		// 'fields' => array(
+		// 'order_bump_template' => array(
+		// 'type'            => 'select',
+		// 'title'           => __('Layout', 'wp-ultimo'),
+		// 'placeholder'     => __('Select your Layout', 'wp-ultimo'),
+		// 'options'         => array($this, 'get_templates'),
+		// 'wrapper_classes' => 'wu-flex-grow',
+		// 'html_attr'       => array(
+		// 'v-model' => 'order_bump_template',
+		// ),
+		// ),
+		// ),
+		// );
+
+		// @todo: re-add developer notes.
+		// $editor_fields['_dev_note_develop_your_own_template_order_bump'] = array(
+		// 'type'            => 'note',
+		// 'order'           => 99,
+		// 'wrapper_classes' => 'sm:wu-p-0 sm:wu-block',
+		// 'classes'         => '',
+		// 'desc'            => sprintf('<div class="wu-p-4 wu-bg-blue-100 wu-text-grey-600">%s</div>', __('Want to add customized order bump templates?<br><a target="_blank" class="wu-no-underline" href="https://help.wpultimo.com/article/343-customize-your-checkout-flow-using-field-templates">See how you can do that here</a>.', 'wp-ultimo')),
+		// );
+
+		return $editor_fields;
 
 	} // end get_fields;
 
@@ -188,39 +248,17 @@ class Signup_Field_Order_Bump extends Base_Signup_Field {
 
 		} // end if;
 
-		$link = sprintf('<a class="button btn" href="#wu-checkout-add-%s">Add to Cart</a>', $product->get_slug());
+		$attributes['product'] = $product;
 
-		$image = '';
+		$template_class = Field_Templates_Manager::get_instance()->get_template_class('order_bump', $attributes['order_bump_template']);
 
-		if ($attributes['display_product_image']) {
-
-			$image = $product->get_featured_image('thumbnail');
-
-			if ($image) {
-
-				$image = sprintf('<div class="wu-w-thumb wu-h-thumb wu-rounded wu-overflow-hidden wu-text-center wu-inline-block wu-mr-4">
-					<img src="%s" class="wu-h-full">
-				</div>', $image);
-
-			} // end if;
-
-		} // end if;
-
-		$html = sprintf('<div class="wu-bg-gray-100 wu-my-2 wu-flex wu-px-4 wu-py-4 wu-border wu-border-solid wu-block wu-rounded wu-border-gray-400 wu-items-center wu-justify-between">
-			<div class="wu-flex wu-items-center">
-				%s
-				<span>
-					%s <span class="wu-block wu-text-xs">%s</span>
-				</span>
-			</div> 
-			<div>%s</div>
-			<input type="checkbox" style="display: none;" name="products[]" value="%s" v-model="products">
-		</div>', $image, $attributes['name'], $product->get_price_description(), $link, $product->get_slug());
+		$content = $template_class ? $template_class->render_container($attributes) : __('Template does not exist.', 'wp-ultimo');
 
 		return array(
-			'order_bump' => array(
-				'type' => 'note',
-				'desc' => $html,
+			$attributes['id'] => array(
+				'type'            => 'note',
+				'desc'            => $content,
+				'wrapper_classes' => $attributes['element_classes'],
 			),
 		);
 

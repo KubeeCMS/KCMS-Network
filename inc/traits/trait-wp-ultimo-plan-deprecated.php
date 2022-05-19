@@ -1,6 +1,6 @@
 <?php
 /**
- * A trait to be included in entities to WP_Plans Class depecrated methods.
+ * A trait to be included in entities to WP_Plans Class deprecated methods.
  *
  * @package WP_Ultimo
  * @subpackage Deprecated
@@ -21,6 +21,78 @@ trait WP_Ultimo_Plan_Deprecated {
 	 * @var bool
 	 */
 	protected $featured_plan;
+
+	/**
+	 * Magic getter to provide backwards compatibility for plans.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @throws \Exception Throws an exception when trying to get a key that is not available or back-compat.
+	 * @param string $key Property to get.
+	 * @return mixed
+	 */
+	public function __get($key) {
+
+		$value = null;
+
+		switch ($key) {
+
+			case 'title':
+				$value = $this->get_name();
+				break;
+
+			case 'id':
+			case 'ID':
+				$value = $this->get_id();
+				break;
+
+			case 'free':
+				$value = $this->get_pricing_type() === 'free';
+				break;
+
+			case 'price_1':
+			case 'price_3':
+			case 'price_12':
+				$value = 20;
+				break;
+
+			case 'top_deal':
+				$value = $this->is_featured_plan();
+				break;
+
+			case 'feature_list':
+				$value = $this->get_feature_list();
+				break;
+
+			case 'quotas':
+				$value = array(
+					// 'sites'  => 300,
+					'upload' => 1024 * 1024 * 1024,
+					'visits' => 300,
+				);
+				break;
+			case 'post':
+				$value = (object) array(
+					'ID'         => $this->get_id(),
+					'post_title' => $this->get_name(),
+				);
+				break;
+
+			default:
+				$value = $this->get_meta('wpu_' . $key, false, true);
+
+		} // end switch;
+
+		/**
+		 * Let developers know that this is not going to be supported in the future.
+		 *
+		 * @since 2.0.0
+		 */
+		_doing_it_wrong($key, __('Product keys should not be accessed directly', 'wp-ultimo'), '2.0.0');
+
+		return $value;
+
+	} // end __get;
 
 	/**
 	 * Get the featured status for this product.
@@ -67,89 +139,6 @@ trait WP_Ultimo_Plan_Deprecated {
 		return $this->get_pricing_type() === 'contact_us';
 
 	} // end is_contact_us;
-
-	/**
-	 * Magic getter to provide backwards compatibility for plans.
-	 *
-	 * @since 2.0.0
-	 *
-	 * @throws \Exception Throws an exception when trying to get a key that is not available or back-compat.
-	 * @param string $key Property to get.
-	 * @return mixed
-	 */
-	public function __get($key) {
-
-		$value = null;
-
-		switch ($key) {
-
-			case 'title':
-				$value = $this->get_name();
-				break;
-
-			case 'id':
-			case 'ID':
-				$value = $this->get_id();
-				break;
-
-			case 'free':
-				$value = $this->get_pricing_type() === 'free';
-				break;
-
-			case 'price_1':
-			case 'price_3':
-			case 'price_12':
-				$value = 20;
-				break;
-
-			case 'top_deal':
-				$value = $this->is_featured_plan();
-				break;
-
-			case 'feature_list':
-				$value = $this->get_feature_list();
-				break;
-
-			case 'quotas':
-				$value = array(
-					'sites'  => 300,
-					'upload' => 1024 * 1024 * 1024,
-					'visits' => 300,
-				);
-				break;
-			case 'post':
-				$value = (object) array(
-					'ID'         => $this->get_id(),
-					'post_title' => $this->get_name(),
-				);
-				break;
-
-			default:
-				$value = $this->get_meta('wpu_' . $key, false, true);
-
-		} // end switch;
-
-		if ($value === null) {
-
-			// translators: the placeholder is the key.
-			$message = sprintf(__('Products do not have a %s parameter', 'wp-ultimo'), $key);
-
-			// throw new \Exception($message);
-
-			return false;
-
-		} // end if;
-
-		/**
-		 * Let developers know that this is not going to be supported in the future.
-		 *
-		 * @since 2.0.0
-		 */
-		// _doing_it_wrong($key, __('Product keys should not be accessed directly', 'wp-ultimo'), '2.0.0');
-
-		return $value;
-
-	} // end __get;
 
 	/**
 	 * Get the pricing table lines to be displayed on the pricing tables
@@ -231,10 +220,10 @@ trait WP_Ultimo_Plan_Deprecated {
 		 */
 		if (wu_get_setting('enable_multiple_sites') && $this->should_display_quota_on_pricing_tables('sites')) {
 
-			$value = $this->quotas['sites'] == 0 ? __('Unlimited', 'wp-ultimo') : $this->quotas['sites'];
+			$value = $this->get_quota('sites') == 0 ? __('Unlimited', 'wp-ultimo') : $this->get_quota('sites');
 
 			// Add Line
-			$pricing_table_lines[] = sprintf('<strong>%s %s</strong>', $value, _n('Site', 'Sites', $this->quotas['sites'], 'wp-ultimo'));
+			$pricing_table_lines[] = sprintf('<strong>%s %s</strong>', $value, _n('Site', 'Sites', $this->get_quota('sites'), 'wp-ultimo'));
 
 		} // end if;
 
@@ -243,7 +232,7 @@ trait WP_Ultimo_Plan_Deprecated {
 		 */
 		if ($this->should_display_quota_on_pricing_tables('upload')) {
 
-			$disk_space = size_format($this->get_quota('disk_space') * 1024 * 1024);
+			$disk_space = size_format(absint($this->get_quota('disk_space')) * 1024 * 1024);
 
 			// Add Line
 			$pricing_table_lines[] = sprintf(__('%s <strong>Disk Space</strong>', 'wp-ultimo'), $disk_space);
@@ -307,6 +296,39 @@ trait WP_Ultimo_Plan_Deprecated {
 	} // end get_pricing_table_lines;
 
 	/**
+	 * Deprecated: A quota to get.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @deprecated 2.0.0
+	 * @param string $quota_name The quota name.
+	 * @return mixed
+	 */
+	public function get_quota($quota_name) {
+
+		if ($quota_name === 'visits') {
+
+			$limit = (float) $this->get_limitations()->visits->get_limit();
+
+		} elseif ($quota_name === 'disk_space') {
+
+			$limit = (float) $this->get_limitations()->disk_space->get_limit();
+
+		} elseif ($quota_name === 'sites') {
+
+			$limit = (float) $this->get_limitations()->sites->get_limit();
+
+		} else {
+
+			$limit = (float) $this->get_limitations()->post_types->{$quota_name}->number;
+
+		} // end if;
+
+		return $limit;
+
+	} // end get_quota;
+
+	/**
 	 * Returns wether or not we should display a given quota type in the Quotas and Limits widgets
 	 *
 	 * @since 1.5.4
@@ -335,7 +357,6 @@ trait WP_Ultimo_Plan_Deprecated {
 		return isset( $elements[$quota_type] ) && $elements[$quota_type];
 
 	} // end should_display_quota_on_pricing_tables;
-
 
 	/**
 	 * Checks if this plan allows unlimited extra users

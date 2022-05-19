@@ -22,7 +22,7 @@ namespace WP_Ultimo\Dependencies\BerlinDB\Database;
  *
  * @since 1.0.0
  */
-class Schema extends \WP_Ultimo\Dependencies\BerlinDB\Database\Base
+class Schema extends Base
 {
     /**
      * Array of database column objects to turn into Column.
@@ -48,8 +48,8 @@ class Schema extends \WP_Ultimo\Dependencies\BerlinDB\Database\Base
         // Loop through columns and create objects from them
         foreach ($columns as $column) {
             if (\is_array($column)) {
-                $this->columns[] = new \WP_Ultimo\Dependencies\BerlinDB\Database\Column($column);
-            } elseif ($column instanceof \WP_Ultimo\Dependencies\BerlinDB\Database\Column) {
+                $this->columns[] = new Column($column);
+            } elseif ($column instanceof Column) {
                 $this->columns[] = $column;
             }
         }

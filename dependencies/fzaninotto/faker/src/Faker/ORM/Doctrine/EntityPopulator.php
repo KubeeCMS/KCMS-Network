@@ -26,7 +26,7 @@ class EntityPopulator
      *
      * @param ClassMetadata $class
      */
-    public function __construct(\WP_Ultimo\Dependencies\Doctrine\Common\Persistence\Mapping\ClassMetadata $class)
+    public function __construct(ClassMetadata $class)
     {
         $this->class = $class;
     }
@@ -152,7 +152,7 @@ class EntityPopulator
      * @param bool $generateId
      * @return EntityPopulator
      */
-    public function execute(\WP_Ultimo\Dependencies\Doctrine\Common\Persistence\ObjectManager $manager, $insertedEntities, $generateId = \false)
+    public function execute(ObjectManager $manager, $insertedEntities, $generateId = \false)
     {
         $obj = $this->class->newInstance();
         $this->fillColumns($obj, $insertedEntities);
@@ -197,7 +197,7 @@ class EntityPopulator
      * @param ObjectManager $manager
      * @return int|null
      */
-    private function generateId($obj, $column, \WP_Ultimo\Dependencies\Doctrine\Common\Persistence\ObjectManager $manager)
+    private function generateId($obj, $column, ObjectManager $manager)
     {
         /* @var $repository \Doctrine\Common\Persistence\ObjectRepository */
         $repository = $manager->getRepository(\get_class($obj));

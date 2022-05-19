@@ -5,8 +5,6 @@
  *
  * PHP version 5 and 7
  *
- * @category  Math
- * @package   BigInteger
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -18,11 +16,9 @@ use phpseclib3\Math\BigInteger\Engines\BCMath;
 /**
  * Built-In BCMath Modular Exponentiation Engine
  *
- * @package BCMath
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-abstract class BuiltIn extends \phpseclib3\Math\BigInteger\Engines\BCMath
+abstract class BuiltIn extends BCMath
 {
     /**
      * Performs modular exponentiation.
@@ -32,9 +28,9 @@ abstract class BuiltIn extends \phpseclib3\Math\BigInteger\Engines\BCMath
      * @param BCMath $n
      * @return BCMath
      */
-    protected static function powModHelper(\phpseclib3\Math\BigInteger\Engines\BCMath $x, \phpseclib3\Math\BigInteger\Engines\BCMath $e, \phpseclib3\Math\BigInteger\Engines\BCMath $n)
+    protected static function powModHelper(BCMath $x, BCMath $e, BCMath $n)
     {
-        $temp = new \phpseclib3\Math\BigInteger\Engines\BCMath();
+        $temp = new BCMath();
         $temp->value = \bcpowmod($x->value, $e->value, $n->value);
         return $x->normalize($temp);
     }

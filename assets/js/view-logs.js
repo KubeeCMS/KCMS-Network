@@ -26,8 +26,6 @@
 
           const block = wu_block_ui('#wu_payload_content');
 
-          const val = $(this).val();
-
           const app = this;
 
           app.loading = true;
@@ -50,7 +48,7 @@
 
               try {
 
-                history.pushState({}, null, '?' + 'page=wp-ultimo-view-logs&log_file=' + val);
+                history.pushState({}, null, '?' + 'page=wp-ultimo-view-logs&log_file=' + app.log);
 
               } catch (err) {
 

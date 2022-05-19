@@ -9,10 +9,6 @@
 
 namespace WP_Ultimo\UI;
 
-use WP_Ultimo\Logger;
-use WP_Ultimo\UI\Base_Element;
-use WP_Ultimo\License;
-
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
@@ -99,9 +95,11 @@ class Tours {
 			wp_localize_script('wu-tours', 'wu_tours', $this->tours);
 
 			wp_localize_script('wu-tours', 'wu_tours_vars', array(
-				'nonce' => wp_create_nonce('wu_tour_finished'),
-				'i18n'  => array(
-					'next' => __('Next', 'wp-ultimo')
+				'ajaxurl' => wu_ajax_url(),
+				'nonce'   => wp_create_nonce('wu_tour_finished'),
+				'i18n'    => array(
+					'next'   => __('Next', 'wp-ultimo'),
+					'finish' => __('Close', 'wp-ultimo')
 				),
 			));
 
@@ -145,9 +143,17 @@ class Tours {
 
 		add_action('in_admin_header', function() use ($id, $steps, $once) {
 
-			$finished = get_user_setting("wu_tour_$id", false);
+			$force_hide = wu_get_setting('hide_tours', false);
 
-			$finished = wu_string_to_bool(apply_filters('wu_tour_finished', $finished, $id, get_current_user_id()));
+			if ($force_hide) {
+
+				return;
+
+			} // end if;
+
+			$finished = (bool) get_user_setting("wu_tour_$id", false);
+
+			$finished = apply_filters('wu_tour_finished', $finished, $id, get_current_user_id());
 
 			if (!$finished || !$once) {
 

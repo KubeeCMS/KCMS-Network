@@ -153,7 +153,7 @@ class Domain_List_Table extends Base_List_Table {
 
 		$class = $item->get_stage_class();
 
-		return "<span class='wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono $class'>{$label}</span>";
+		return "<span class='wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-leading-none wu-font-mono $class'>{$label}</span>";
 
 	} // end column_stage;
 

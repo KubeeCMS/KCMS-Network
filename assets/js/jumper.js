@@ -55,7 +55,7 @@
 
         jQuery.ajax({
           // eslint-disable-next-line no-undef
-          url: ajaxurl,
+          url: wu_jumper_vars.ajaxurl,
           type: 'POST',
           data: {
             action: 'wu_search',
@@ -89,7 +89,7 @@
     }; // end is_local_url
 
     // Every time the value changes, we need to redirect the user
-    $jumper.change(function() {
+    $jumper.on('change', function() {
 
       // Check if we need to open this in a new tab
       if (is_local_url($(this).val())) {

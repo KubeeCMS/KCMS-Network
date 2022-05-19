@@ -62,7 +62,7 @@ class Jumper {
 	 */
 	protected function is_jumper_enabled() {
 
-		return apply_filters('wu_is_jumper_enabled', License::get_instance()->allowed() && current_user_can('manage_network'));
+		return apply_filters('wu_is_jumper_enabled', wu_get_setting('enable_jumper', true) && License::get_instance()->allowed() && current_user_can('manage_network'));
 
 	} // end is_jumper_enabled;
 
@@ -236,14 +236,14 @@ class Jumper {
 
 			foreach ($settings_tabs as $tab => $tab_label) {
 
-				$url = network_admin_url('admin.php?page=wp-ultimo&wu-tab=' . $tab);
+				$url = network_admin_url('admin.php?page=wp-ultimo-settings&wu-tab=' . $tab);
 
 				// translators: The placeholder represents the title of the Settings tab.
 				$links['WP Ultimo'][$url] = sprintf(__('Settings: %s', 'wp-ultimo'), $tab_label);
 
 			} // end foreach;
 
-			$links['WP Ultimo'][ network_admin_url('admin.php?page=wp-ultimo&wu-tab=tools') ] = __('Settings: Webhooks', 'wp-ultimo');
+			$links['WP Ultimo'][ network_admin_url('admin.php?page=wp-ultimo-settings&wu-tab=tools') ] = __('Settings: Webhooks', 'wp-ultimo');
 
 			$links['WP Ultimo'][ network_admin_url('admin.php?page=wp-ultimo-system-info&wu-tab=logs') ] = __('System Info: Logs', 'wp-ultimo');
 
@@ -351,6 +351,7 @@ class Jumper {
 			'not_found_message' => __('Nothing found for', 'wp-ultimo'),
 			'trigger_key'       => $this->get_defined_trigger_key(),
 			'network_base_url'  => network_admin_url(),
+			'ajaxurl'           => wu_ajax_url(),
 			'base_url'          => get_admin_url(get_current_site()->blog_id),
 		));
 
@@ -380,7 +381,7 @@ class Jumper {
 	 */
 	public function output() {
 
-		WP_Ultimo()->helper->render('ui/jumper', array(
+		wu_get_template('ui/jumper', array(
 			'menu_groups' => $this->get_link_list(),
 		));
 
@@ -539,11 +540,21 @@ class Jumper {
 			'type'  => 'header',
 		));
 
+		wu_register_settings_field('tools', 'enable_jumper', array(
+			'title'   => __('Enable Jumper', 'wp-ultimo'),
+			'desc'    => __('Turn this option on to make the Jumper available on your network.', 'wp-ultimo'),
+			'type'    => 'toggle',
+			'default' => 1,
+		));
+
 		wu_register_settings_field('tools', 'jumper_key', array(
 			'title'   => __('Trigger Key', 'wp-ultimo'),
 			'desc'    => __('Change the keyboard key used in conjunction with ctrl + alt (or cmd + option), to trigger the Jumper box.', 'wp-ultimo'),
 			'type'    => 'text',
 			'default' => 'g',
+			'require' => array(
+				'enable_jumper' => 1,
+			),
 		));
 
 		wu_register_settings_field('tools', 'jumper_custom_links', array(
@@ -553,6 +564,9 @@ class Jumper {
 			'type'        => 'textarea',
 			'html_attr'   => array(
 				'rows' => 4,
+			),
+			'require'     => array(
+				'enable_jumper' => 1,
 			),
 		));
 

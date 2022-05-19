@@ -7,41 +7,63 @@
 ?>
 <div id="wu-dns-table" class="wu-widget-list-table wu-advanced-filters wu--m-3 wu-mt-2 wu--mb-3 wu-border-0 wu-border-t wu-border-solid wu-border-gray-400">
 
-  <div v-show="loading" class="wu-p-6 wu-block wu-text-center wu-bg-gray-100">
-
-    <?php _e('Loading DNS entries...', 'wp-ultimo'); ?>
-
-  </div>
-
-  <table class="wp-list-table widefat fixed striped wu-border-t-0" v-cloak v-if="!loading">
+  <table class="wp-list-table widefat fixed striped wu-border-t-0" v-cloak>
 
     <thead>
       <tr>
-        <th class=""><?php _e('Host', 'wp-ultimo'); ?></th>
-        <th class=""><?php _e('Type', 'wp-ultimo'); ?></th>
-        <th class="wu-w-1/2"><?php _e('IP / Target', 'wp-ultimo'); ?></th>
-        <th class=""><?php _e('TTL', 'wp-ultimo'); ?></th>
+        <th class="wu-w-4/12"><?php _e('Host', 'wp-ultimo'); ?></th>
+        <th class="wu-w-2/12"><?php _e('Type', 'wp-ultimo'); ?></th>
+        <th class="wu-w-4/12"><?php _e('IP / Target', 'wp-ultimo'); ?></th>
+        <th class="wu-w-2/12"><?php _e('TTL', 'wp-ultimo'); ?></th>
       </tr>
     </thead>
 
-    <tbody>
+    <tbody v-if="loading">
+      
+      <tr>
+      
+        <td colspan="4">
+
+          <?php _e('Loading DNS entries...', 'wp-ultimo'); ?>
+
+        </td>
+        
+      </tr>
+      
+    </tbody>
+
+    <tbody v-if="!loading && error">
+
+      <tr>
+      
+        <td colspan="4">
+
+          <div class="wu-mt-0 wu-p-4 wu-bg-red-100 wu-border wu-border-solid wu-border-red-200 wu-rounded-sm wu-text-red-500" v-html="error[0].message"></div>
+
+        </td>
+        
+      </tr>
+
+    </tbody>
+
+    <tbody v-if="!loading && !error">
 
       <tr v-for="dns in results.entries">
-        <td>{{ dns.host }}</td>
+        <td>{{ dns.host }}<span v-html="dns.tag" v-if="dns.tag"></span></td>
         <td>{{ dns.type }}</td>
         <td>{{ dns.data }}</td>
         <td>{{ dns.ttl }}</td>
       </tr>
 
       <tr v-for="dns in results.auth">
-        <td>{{ dns.host }}</td>
+        <td>{{ dns.host }}<span v-html="dns.tag" v-if="dns.tag"></span></td>
         <td>{{ dns.type }}</td>
         <td>{{ dns.data }}</td>
         <td>{{ dns.ttl }}</td>
       </tr>
 
       <tr v-for="dns in results.additional">
-        <td>{{ dns.host }}</td>
+        <td>{{ dns.host }}<span v-html="dns.tag" v-if="dns.tag"></span></td>
         <td>{{ dns.type }}</td>
         <td>{{ dns.data }}</td>
         <td>{{ dns.ttl }}</td>
@@ -65,8 +87,16 @@
   wu_dns_table = new Vue({
     el: '#wu-dns-table',
     data: {
+      error: null,
       results: {},
       loading: true,
+    },
+    updated() {
+      this.$nextTick(function() {
+
+        window.wu_initialize_tooltip();
+        
+      });
     }
   })
 
@@ -86,6 +116,10 @@
 
           Vue.set(wu_dns_table, 'results', data.data);
 
+        } else {
+          
+          Vue.set(wu_dns_table, 'error', data.data);
+          
         } // end if;
 
       },

@@ -5,7 +5,7 @@ namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 use WP_Ultimo\Dependencies\Rakit\Validation\Helper;
 use WP_Ultimo\Dependencies\Rakit\Validation\MimeTypeGuesser;
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class Mimes extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class Mimes extends Rule
 {
     use Traits\FileTrait;
     /** @var string */
@@ -22,7 +22,7 @@ class Mimes extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
      * @param array $params
      * @return self
      */
-    public function fillParameters(array $params) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function fillParameters(array $params) : Rule
     {
         $this->allowTypes($params);
         return $this;
@@ -33,7 +33,7 @@ class Mimes extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
      * @param mixed $types
      * @return self
      */
-    public function allowTypes($types) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function allowTypes($types) : Rule
     {
         if (\is_string($types)) {
             $types = \explode('|', $types);
@@ -52,7 +52,7 @@ class Mimes extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
         $allowedTypes = $this->parameter('allowed_types');
         if ($allowedTypes) {
             $or = $this->validation ? $this->validation->getTranslation('or') : 'or';
-            $this->setParameterText('allowed_types', \WP_Ultimo\Dependencies\Rakit\Validation\Helper::join(\WP_Ultimo\Dependencies\Rakit\Validation\Helper::wraps($allowedTypes, "'"), ', ', ", {$or} "));
+            $this->setParameterText('allowed_types', Helper::join(Helper::wraps($allowedTypes, "'"), ', ', ", {$or} "));
         }
         // below is Required rule job
         if (!$this->isValueFromUploadedFiles($value) or $value['error'] == \UPLOAD_ERR_NO_FILE) {
@@ -66,7 +66,7 @@ class Mimes extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
             return \false;
         }
         if (!empty($allowedTypes)) {
-            $guesser = new \WP_Ultimo\Dependencies\Rakit\Validation\MimeTypeGuesser();
+            $guesser = new MimeTypeGuesser();
             $ext = $guesser->getExtension($value['type']);
             unset($guesser);
             if (!\in_array($ext, $allowedTypes)) {

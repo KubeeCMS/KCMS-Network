@@ -79,7 +79,7 @@ class Core_Installer extends Base_Installer {
 		);
 
 		$steps['sunrise'] = array(
-			'done'        => defined('SUNRISE') && SUNRISE && defined('WPULTIMO_SUNRISE_VERSION'),
+			'done'        => defined('SUNRISE') && SUNRISE && defined('WP_ULTIMO_SUNRISE_VERSION'),
 			'title'       => __('Install <code>sunrise.php</code> File', 'wp-ultimo'),
 			'description' => __('We need to add our own sunrise.php file to the wp-content folder in order to be able to control access to sites and plugins before anything else happens on WordPress. ', 'wp-ultimo'),
 			'pending'     => __('Pending', 'wp-ultimo'),
@@ -133,7 +133,7 @@ class Core_Installer extends Base_Installer {
 	} // end _install_database_tables;
 
 	/**
-	 * Copies the sunsire.php file and adds the SUNRISE constant.
+	 * Copies the sunrise.php file and adds the SUNRISE constant.
 	 *
 	 * @since 2.0.0
 	 * @throws \Exception When sunrise copying fails.

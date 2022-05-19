@@ -55,8 +55,8 @@ class Populator
         if (null === $con) {
             $con = $this->getConnection();
         }
-        $isInstancePoolingEnabled = \WP_Ultimo\Dependencies\Propel\Runtime\Propel::isInstancePoolingEnabled();
-        \WP_Ultimo\Dependencies\Propel\Runtime\Propel::disableInstancePooling();
+        $isInstancePoolingEnabled = Propel::isInstancePoolingEnabled();
+        Propel::disableInstancePooling();
         $insertedEntities = array();
         $con->beginTransaction();
         foreach ($this->quantities as $class => $number) {
@@ -66,7 +66,7 @@ class Populator
         }
         $con->commit();
         if ($isInstancePoolingEnabled) {
-            \WP_Ultimo\Dependencies\Propel\Runtime\Propel::enableInstancePooling();
+            Propel::enableInstancePooling();
         }
         return $insertedEntities;
     }
@@ -78,6 +78,6 @@ class Populator
             throw new \RuntimeException('No class found from entities. Did you add entities to the Populator ?');
         }
         $peer = $class::TABLE_MAP;
-        return \WP_Ultimo\Dependencies\Propel\Runtime\Propel::getConnection($peer::DATABASE_NAME, \WP_Ultimo\Dependencies\Propel\Runtime\ServiceContainer\ServiceContainerInterface::CONNECTION_WRITE);
+        return Propel::getConnection($peer::DATABASE_NAME, ServiceContainerInterface::CONNECTION_WRITE);
     }
 }

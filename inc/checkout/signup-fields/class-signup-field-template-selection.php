@@ -10,6 +10,7 @@
 namespace WP_Ultimo\Checkout\Signup_Fields;
 
 use \WP_Ultimo\Checkout\Signup_Fields\Base_Signup_Field;
+use \WP_Ultimo\Managers\Field_Templates_Manager;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -57,7 +58,7 @@ class Signup_Field_Template_Selection extends Base_Signup_Field {
 	 */
 	public function get_title() {
 
-		return __('Template Selection', 'wp-ultimo');
+		return __('Templates', 'wp-ultimo');
 
 	} // end get_title;
 
@@ -71,9 +72,23 @@ class Signup_Field_Template_Selection extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('Add a template selection field to the sign-up flow.', 'wp-ultimo');
+		return __('Adds a template selection section. This allows the customer to choose a pre-built site to be used as a template for the site being currently created.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Adds a template selection section. This allows the customer to choose a pre-built site to be used as a template for the site being currently created.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -85,7 +100,7 @@ class Signup_Field_Template_Selection extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-wu-dial-pad';
+		return 'dashicons-wu-layout';
 
 	} // end get_icon;
 
@@ -101,8 +116,10 @@ class Signup_Field_Template_Selection extends Base_Signup_Field {
 	public function defaults() {
 
 		return array(
-			'template_selection_sites'    => array(),
-			'template_selection_template' => 'checkout/partials/legacy-template-selection',
+			'template_selection_sites'                  => implode(',', wu_get_site_templates(array('fields' => 'ids'))),
+			'template_selection_template'               => 'clean',
+			'cols'                                      => 3,
+			'hide_template_selection_when_pre_selected' => false,
 		);
 
 	} // end defaults;
@@ -116,7 +133,7 @@ class Signup_Field_Template_Selection extends Base_Signup_Field {
 	public function default_fields() {
 
 		return array(
-			'name',
+			// 'name',
 		);
 
 	} // end default_fields;
@@ -131,6 +148,7 @@ class Signup_Field_Template_Selection extends Base_Signup_Field {
 
 		return array(
 			'id'       => 'template_selection',
+			'name'     => __('Template Selection', 'wp-ultimo'),
 			'required' => true,
 		);
 
@@ -144,11 +162,9 @@ class Signup_Field_Template_Selection extends Base_Signup_Field {
 	 */
 	public function get_template_selection_templates() {
 
-		$templates = array(
-			'checkout/partials/legacy-template-selection' => __('Simple List', 'wp-ultimo'),
-		);
+		$available_templates = Field_Templates_Manager::get_instance()->get_templates_as_options('template_selection');
 
-		return apply_filters('wu_get_template_selection_templates', $templates);
+		return $available_templates;
 
 	} // end get_template_selection_templates;
 
@@ -162,35 +178,89 @@ class Signup_Field_Template_Selection extends Base_Signup_Field {
 
 		$editor_fields = array();
 
+		$editor_fields['cols'] = array(
+			'type' => 'hidden',
+		);
+
 		$editor_fields['template_selection_sites'] = array(
 			'type'        => 'model',
 			'title'       => __('Template Sites', 'wp-ultimo'),
-			'placeholder' => __('Template Sites', 'wp-ultimo'),
-			'tooltip'     => '',
+			'placeholder' => __('e.g. Template Site 1, My Agency', 'wp-ultimo'),
+			'desc'        => __('Be sure to add the templates in the order you want them to show up.', 'wp-ultimo'),
+			'order'       => 22,
 			'html_attr'   => array(
+				'v-model'           => 'template_selection_sites',
 				'data-model'        => 'site',
 				'data-value-field'  => 'blog_id',
 				'data-label-field'  => 'title',
 				'data-search-field' => 'title',
-				'data-max-items'    => 10,
+				'data-max-items'    => 999,
+				'data-include'      => implode(',', wu_get_site_templates(array(
+					'fields' => 'blog_id',
+				))),
+			),
+		);
+
+		$editor_fields['hide_template_selection_when_pre_selected'] = array(
+			'type'      => 'toggle',
+			'title'     => __('Hide when Pre-Selected', 'wp-ultimo'),
+			'desc'      => __('Prevent customers from seeing this field when a template was already selected via the URL.', 'wp-ultimo'),
+			'tooltip'   => __('If the template selection field is the only field in the current step, the step will be skipped.', 'wp-ultimo'),
+			'value'     => 0,
+			'order'     => 23,
+			'html_attr' => array(
+				'v-model' => 'hide_template_selection_when_pre_selected',
 			),
 		);
 
 		$editor_fields['template_selection_template'] = array(
-			'type'        => 'select',
-			'title'       => __('Template Selector Template', 'wp-ultimo'),
-			'placeholder' => __('Select your Template', 'wp-ultimo'),
-			'options'     => array($this, 'get_template_selection_templates'),
+			'type'   => 'group',
+			'order'  => 24,
+			'desc'   => Field_Templates_Manager::get_instance()->render_preview_block('template_selection'),
+			'fields' => array(
+				'template_selection_template' => array(
+					'type'            => 'select',
+					'title'           => __('Template Selector Template', 'wp-ultimo'),
+					'placeholder'     => __('Select your Template', 'wp-ultimo'),
+					'options'         => array($this, 'get_template_selection_templates'),
+					'wrapper_classes' => 'wu-flex-grow',
+					'html_attr'       => array(
+						'v-model' => 'template_selection_template',
+					),
+				),
+			),
 		);
 
-		$editor_fields['_dev_note_develop_your_own_template'] = array(
-			'type' => 'note',
-			'desc' => sprintf('<div class="wu-p-2 wu-bg-blue-100 wu-text-blue-600 wu-rounded wu-w-full">%s</div>', __('Want to add customized site selection templates? <a href="#">See how you can do that here</a>.', 'wp-ultimo')),
-		);
+		// @todo: re-add developer notes.
+		// $editor_fields['_dev_note_develop_your_own_template_1'] = array(
+		// 'type'            => 'note',
+		// 'order'           => 99,
+		// 'wrapper_classes' => 'sm:wu-p-0 sm:wu-block',
+		// 'classes'         => '',
+		// 'desc'            => sprintf('<div class="wu-p-4 wu-bg-blue-100 wu-text-grey-600">%s</div>', __('Want to add customized template selection templates?<br><a target="_blank" class="wu-no-underline" href="https://help.wpultimo.com/article/343-customize-your-checkout-flow-using-field-templates">See how you can do that here</a>.', 'wp-ultimo')),
+		// );
 
 		return $editor_fields;
 
 	} // end get_fields;
+
+	/**
+	 * Treat the attributes array to avoid reaching the input var limits.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $attributes The attributes.
+	 * @return array
+	 */
+	public function reduce_attributes($attributes) {
+
+		$array_sites = json_decode(json_encode($attributes['sites']), true);
+
+		$attributes['sites'] = array_values(array_column($array_sites, 'blog_id'));
+
+		return $attributes;
+
+	} // end reduce_attributes;
 
 	/**
 	 * Returns the field/element actual field array to be used on the checkout form.
@@ -202,21 +272,55 @@ class Signup_Field_Template_Selection extends Base_Signup_Field {
 	 */
 	public function to_fields_array($attributes) {
 
+		$checkout_fields = array();
+
+		$checkout_fields['template_id'] = array(
+			'type'      => 'hidden',
+			'html_attr' => array(
+				'v-model' => 'template_id',
+			),
+		);
+
+		/**
+		 * Hide when pre-selected.
+		 */
+		if ($attributes['hide_template_selection_when_pre_selected'] && wu_request('wu_preselected') === 'template_id') {
+
+			return $checkout_fields;
+
+		} // end if;
+
+		wp_register_script('wu-legacy-signup', wu_get_asset('legacy-signup.js', 'js'), array('jquery', 'wu-functions'));
+
+		wp_localize_script('wu-legacy-signup', 'wpu', array(
+			'default_pricing_option' => 1,
+		));
+
+		wp_enqueue_script('wu-legacy-signup');
+
+		wp_enqueue_style('legacy-shortcodes', wu_get_asset('legacy-shortcodes.css', 'css'), array('dashicons'));
+
 		$site_list = explode(',', $attributes['template_selection_sites']);
 
 		$sites = array_map('wu_get_site', $site_list);
 
 		$sites = array_filter($sites);
 
-		$content = wu_get_template_contents($attributes['template_selection_template'], array(
+		$template_attributes = array(
 			'sites'      => $sites,
 			'name'       => $attributes['name'],
-			'categories' => \WP_Ultimo\Models\Site::get_all_categories(),
-		));
+			'cols'       => $attributes['cols'],
+			'categories' => \WP_Ultimo\Models\Site::get_all_categories($sites),
+		);
+
+		$template_class = Field_Templates_Manager::get_instance()->get_template_class('template_selection', $attributes['template_selection_template']);
+
+		$content = $template_class ? $template_class->render_container($template_attributes, $this) : __('Template does not exist.', 'wp-ultimo');
 
 		$checkout_fields[$attributes['id']] = array(
-			'type' => 'note',
-			'desc' => $content,
+			'type'            => 'note',
+			'desc'            => $content,
+			'wrapper_classes' => $attributes['element_classes'],
 		);
 
 		return $checkout_fields;

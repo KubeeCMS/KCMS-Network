@@ -21,7 +21,7 @@ class QtFileDumper extends \Symfony\Component\Translation\Dumper\FileDumper
     /**
      * {@inheritdoc}
      */
-    public function formatCatalogue(\Symfony\Component\Translation\MessageCatalogue $messages, string $domain, array $options = [])
+    public function formatCatalogue(MessageCatalogue $messages, string $domain, array $options = [])
     {
         $dom = new \DOMDocument('1.0', 'utf-8');
         $dom->formatOutput = \true;

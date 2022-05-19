@@ -6,8 +6,10 @@
  */
 namespace WP_Ultimo\Dependencies\Carbon\Doctrine;
 
+use WP_Ultimo\Dependencies\Carbon\Carbon;
 use WP_Ultimo\Dependencies\Doctrine\DBAL\Types\VarDateTimeType;
-class DateTimeType extends \WP_Ultimo\Dependencies\Doctrine\DBAL\Types\VarDateTimeType implements \WP_Ultimo\Dependencies\Carbon\Doctrine\CarbonDoctrineType
+class DateTimeType extends VarDateTimeType implements CarbonDoctrineType
 {
+    /** @use CarbonTypeConverter<Carbon> */
     use CarbonTypeConverter;
 }

@@ -43,7 +43,7 @@ class EntityPopulator
      * @param Locator $locator
      * @param $useExistingData
      */
-    public function __construct(\WP_Ultimo\Dependencies\Spot\Mapper $mapper, \WP_Ultimo\Dependencies\Spot\Locator $locator, $useExistingData = \false)
+    public function __construct(Mapper $mapper, Locator $locator, $useExistingData = \false)
     {
         $this->mapper = $mapper;
         $this->locator = $locator;
@@ -102,10 +102,10 @@ class EntityPopulator
      * @param Generator $generator
      * @return array
      */
-    public function guessColumnFormatters(\Faker\Generator $generator)
+    public function guessColumnFormatters(Generator $generator)
     {
         $formatters = array();
-        $nameGuesser = new \Faker\Guesser\Name($generator);
+        $nameGuesser = new Name($generator);
         $columnTypeGuesser = new \Faker\ORM\Spot\ColumnTypeGuesser($generator);
         $fields = $this->mapper->fields();
         foreach ($fields as $fieldName => $field) {
@@ -126,7 +126,7 @@ class EntityPopulator
         $relations = $entityName::relations($this->mapper, $entity);
         foreach ($relations as $relation) {
             // We don't need any other relation here.
-            if ($relation instanceof \WP_Ultimo\Dependencies\Spot\Relation\BelongsTo) {
+            if ($relation instanceof BelongsTo) {
                 $fieldName = $relation->localKey();
                 $entityName = $relation->entityName();
                 $field = $fields[$fieldName];

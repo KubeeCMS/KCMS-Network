@@ -114,6 +114,8 @@ trait Rest_Api {
 
 		} // end if;
 
+		do_action('wu_rest_register_routes_general', $routes, $this->get_rest_base(), 'create', $this);
+
 	} // end register_routes_general;
 
 	/**
@@ -168,6 +170,8 @@ trait Rest_Api {
 
 		} // end if;
 
+		do_action('wu_rest_register_routes_with_id', $routes, $this->get_rest_base(), 'update', $this);
+
 	} // end register_routes_with_id;
 
 	/**
@@ -183,7 +187,9 @@ trait Rest_Api {
 		$item = $this->model_class::get_by_id($request['id']);
 
 		if (empty($item)) {
-			return new \WP_Error("wu_rest_{$this->slug}_invalid_id", __('Invalid ID.', 'wp-ultimo'), array('status' => 404));
+
+			return new \WP_Error("wu_rest_{$this->slug}_invalid_id", __('Item not found.', 'wp-ultimo'), array('status' => 404));
+
 		} // end if;
 
 		return rest_ensure_response($item);
@@ -218,8 +224,23 @@ trait Rest_Api {
 
 		$body = json_decode($request->get_body(), true);
 
-		$item  = new $this->model_class($body);
-		$saved = $item->save();
+		$model_name = (new $this->model_class(array()))->model;
+
+		$saver_function = "wu_create_{$model_name}";
+
+		if (function_exists($saver_function)) {
+
+			$item = call_user_func($saver_function, $body);
+
+			$saved = is_wp_error($item) ? $item : true;
+
+		} else {
+
+			$item = new $this->model_class($body);
+
+			$saved = $item->save();
+
+		} // end if;
 
 		if (is_wp_error($saved)) {
 
@@ -229,7 +250,7 @@ trait Rest_Api {
 
 		if (!$saved) {
 
-			return new \WP_Error("wu_rest_{$this->slug}", __('Something went wrong.', 'wp-ultimo'));
+			return new \WP_Error("wu_rest_{$this->slug}", __('Something went wrong (Code 1).', 'wp-ultimo'), array('status' => 400));
 
 		} // end if;
 
@@ -253,7 +274,7 @@ trait Rest_Api {
 
 		if (empty($item)) {
 
-			return new \WP_Error("wu_rest_{$this->slug}_invalid_id", __('Invalid ID.', 'wp-ultimo'), array('status' => 404));
+			return new \WP_Error("wu_rest_{$this->slug}_invalid_id", __('Item not found.', 'wp-ultimo'), array('status' => 404));
 
 		} // end if;
 
@@ -287,7 +308,7 @@ trait Rest_Api {
 				return new \WP_Error(
 					"wu_rest_{$this->slug}_invalid_set_method",
 					$error_message,
-					array('status' => 404)
+					array('status' => 400)
 				);
 
 			} // end if;
@@ -304,7 +325,7 @@ trait Rest_Api {
 
 		if (!$saved) {
 
-			return new \WP_Error("wu_rest_{$this->slug}", __('Something went wrong.', 'wp-ultimo'));
+			return new \WP_Error("wu_rest_{$this->slug}", __('Something went wrong (Code 2).', 'wp-ultimo'));
 
 		} // end if;
 
@@ -326,7 +347,7 @@ trait Rest_Api {
 
 		if (empty($item)) {
 
-			return new \WP_Error("wu_rest_{$this->slug}_invalid_id", __('Invalid ID.', 'wp-ultimo'), array('status' => 404));
+			return new \WP_Error("wu_rest_{$this->slug}_invalid_id", __('Item not found.', 'wp-ultimo'), array('status' => 404));
 
 		} // end if;
 
@@ -514,8 +535,16 @@ trait Rest_Api {
 
 		$arr = array(
 			'id',
-			'blog_id',
 		);
+
+		if ($this->slug === 'site') {
+
+			$arr = array(
+				'id',
+				'blog_id',
+			);
+
+		} // end if;
 
 		return !in_array($value, $arr, true);
 
@@ -531,14 +560,144 @@ trait Rest_Api {
 	 */
 	public function get_arguments_schema($edit = false) {
 
-		$args = array_filter(
-			$this->model_class::get_arguments_for_rest($edit),
-			array($this, 'is_not_id_key'),
-			ARRAY_FILTER_USE_KEY
-		);
+		$schema = wu_rest_get_endpoint_schema($this->model_class, $edit ? 'update' : 'create', true);
+
+		$args = array_filter($schema, array($this, 'is_not_id_key'), ARRAY_FILTER_USE_KEY);
+
+		return $this->filter_schema_arguments($args);
+
+	} // end get_arguments_schema;
+
+	/**
+	 * Remove some properties from the API schema.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $args Schema array.
+	 * @return array
+	 */
+	public function filter_schema_arguments($args) {
+
+		/**
+		 * Filter the original api arguments.
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param array $args API Arguments for this manager.
+		 * @param object $this This manager.
+		 */
+		apply_filters('wu_before_' . $this->slug . '_api_arguments', $args, $this);
+
+		if ($this->slug !== 'broadcast' && isset($args['author_id'])) {
+
+			unset($args['author_id']);
+
+		} // end if;
+
+		if (isset($args['list_order'])) {
+
+			unset($args['list_order']);
+
+		} // end if;
+
+		$remove_status = apply_filters("wu_api_{$this->slug}_remove_status", array(
+			'broadcast',
+			'membership',
+			'product',
+			'payment',
+		));
+
+		if (!in_array($this->slug, $remove_status, true) && isset($args['status'])) {
+
+			unset($args['status']);
+
+		} // end if;
+
+		$remove_slug = apply_filters("wu_api_{$this->slug}_remove_slug", array(
+			'broadcast',
+			'product',
+			'checkout_form',
+			'event',
+		));
+
+		if (!in_array($this->slug, $remove_slug, true) && isset($args['slug'])) {
+
+			unset($args['slug']);
+
+		} // end if;
+
+		if ($this->slug === 'product' && isset($args['price_variations'])) {
+
+			unset($args['price_variations']);
+
+		} // end if;
+
+		if ($this->slug === 'payment' && isset($args['line_items'])) {
+
+			unset($args['line_items']);
+
+		} // end if;
+
+		if ($this->slug === 'site') {
+
+			if (isset($args['duplication_arguments'])) {
+
+				unset($args['duplication_arguments']);
+
+			} // end if;
+
+			if (isset($args['transient'])) {
+
+				unset($args['transient']);
+
+			} // end if;
+
+		} // end if;
+
+		if ($this->slug === 'email') {
+
+			if (isset($args['status'])) {
+
+				unset($args['status']);
+
+			} // end if;
+
+			if (isset($args['email_schedule'])) {
+
+				unset($args['email_schedule']);
+
+			} // end if;
+
+		} // end if;
+
+		if ($this->slug === 'broadcast') {
+
+			if (isset($args['message_targets'])) {
+
+				unset($args['message_targets']);
+
+			} // end if;
+
+		} // end if;
+
+		if (isset($args['billing_address'])) {
+
+			unset($args['billing_address']);
+
+		} // end if;
+
+		/**
+		 * Filter after being changed.
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param array $args API Arguments for this manager.
+		 * @param object $this This manager.
+		 */
+		apply_filters('wu_after_' . $this->slug . '_api_arguments', $args, $this);
 
 		return $args;
 
-	} // end get_arguments_schema;
+	} // end filter_schema_arguments;
 
 } // end trait Rest_Api;

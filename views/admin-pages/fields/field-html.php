@@ -5,27 +5,29 @@
  * @since 2.0.0
  */
 ?>
-<li class="<?php echo esc_attr($field->wrapper_classes); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
+<li class="<?php echo esc_attr(trim($field->wrapper_classes)); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
   <div class="wu-block wu-w-full">
 
-    <h3 class="wu-my-1 wu-text-2xs wu-uppercase">
+    <?php
 
-      <?php echo $field->title; ?>
+    /**
+     * Adds the partial title template.
+     * @since 2.0.0
+     */
+    wu_get_template('admin-pages/fields/partials/field-title', array(
+      'field' => $field,
+    ));
 
-      <?php if ($field->tooltip) : ?>
+    /**
+     * Adds the partial title template.
+     * @since 2.0.0
+     */
+    wu_get_template('admin-pages/fields/partials/field-description', array(
+      'field' => $field,
+    ));
 
-        <?php echo wu_tooltip($field->tooltip); ?>
-
-      <?php endif; ?>
-
-    </h3>
-
-    <?php if ($field->desc) : ?>
-
-      <?php echo $field->desc; ?>
-
-    <?php endif; ?>
+    ?>
 
     <div class="wu-block wu-w-full wu-mt-4 <?php echo esc_attr($field->classes); ?>">
 

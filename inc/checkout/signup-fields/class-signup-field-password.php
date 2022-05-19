@@ -86,9 +86,23 @@ class Signup_Field_Password extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('Password Description', 'wp-ultimo');
+		return __('Adds a password field, with options for enforcing password strength and adding password confirmation field. This password is then used to create the WordPress user.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Adds a password field, with options for enforcing password strength and adding password confirmation field. This password is then used to create the WordPress user.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -100,7 +114,7 @@ class Signup_Field_Password extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-wu-key';
+		return 'dashicons-wu-lock1';
 
 	} // end get_icon;
 
@@ -163,18 +177,16 @@ class Signup_Field_Password extends Base_Signup_Field {
 
 		return array(
 			'password_strength_meter' => array(
-				'type'    => 'toggle',
-				'title'   => __('Display Password Strength Meter?', 'wp-ultimo'),
-				'desc'    => __('Set as the primary domain.', 'wp-ultimo'),
-				'tooltip' => __('Setting this as the primary domain will remove any other domain mapping marked as the primary domain for this site.', 'wp-ultimo'),
-				'value'   => 1,
+				'type'  => 'toggle',
+				'title' => __('Display Password Strength Meter', 'wp-ultimo'),
+				'desc'  => __('Adds a password strength meter below the password field. Enabling this option also enforces passwords to be strong.', 'wp-ultimo'),
+				'value' => 1,
 			),
 			'password_confirm_field'  => array(
-				'type'    => 'toggle',
-				'title'   => __('Display Password Confirm Field?', 'wp-ultimo'),
-				'desc'    => __('Set as the primary domain.', 'wp-ultimo'),
-				'tooltip' => __('Setting this as the primary domain will remove any other domain mapping marked as the primary domain for this site.', 'wp-ultimo'),
-				'value'   => 1,
+				'type'  => 'toggle',
+				'title' => __('Display Password Confirm Field', 'wp-ultimo'),
+				'desc'  => __('Adds a "Confirm your Password" field below the default password field to reduce the chance or making a mistake.', 'wp-ultimo'),
+				'value' => 1,
 			),
 		);
 
@@ -201,25 +213,41 @@ class Signup_Field_Password extends Base_Signup_Field {
 		$checkout_fields = array();
 
 		$checkout_fields['password'] = array(
-			'type'        => 'password',
-			'id'          => 'password',
-			'name'        => $attributes['name'],
-			'placeholder' => $attributes['placeholder'],
-			'tooltip'     => $attributes['tooltip'],
-			'meter'       => $attributes['password_strength_meter'],
-			'required'    => true,
+			'type'              => 'password',
+			'id'                => 'password',
+			'name'              => $attributes['name'],
+			'placeholder'       => $attributes['placeholder'],
+			'tooltip'           => $attributes['tooltip'],
+			'meter'             => $attributes['password_strength_meter'],
+			'required'          => true,
+			'wrapper_classes'   => wu_get_isset($attributes, 'wrapper_element_classes', ''),
+			'classes'           => wu_get_isset($attributes, 'element_classes', ''),
+			'html_attr'         => array(
+				'autocomplete' => 'new-password',
+			),
+			'wrapper_html_attr' => array(
+				'style' => $this->calculate_style_attr(),
+			),
 		);
 
 		if ($attributes['password_confirm_field']) {
 
 			$checkout_fields['password_conf'] = array(
-				'type'        => 'password',
-				'id'          => 'password_conf',
-				'name'        => $attributes['password_confirm_label'],
-				'placeholder' => '',
-				'tooltip'     => '',
-				'meter'       => false,
-				'required'    => true,
+				'type'              => 'password',
+				'id'                => 'password_conf',
+				'name'              => $attributes['password_confirm_label'],
+				'placeholder'       => '',
+				'tooltip'           => '',
+				'meter'             => false,
+				'required'          => true,
+				'wrapper_classes'   => wu_get_isset($attributes, 'wrapper_element_classes', ''),
+				'classes'           => wu_get_isset($attributes, 'element_classes', ''),
+				'html_attr'         => array(
+					'autocomplete' => 'new-password',
+				),
+				'wrapper_html_attr' => array(
+					'style' => $this->calculate_style_attr(),
+				),
 			);
 
 		} // end if;

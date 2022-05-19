@@ -64,8 +64,10 @@ class Current {
 		 * Add rewrite rules
 		 */
 		add_action('init', array($this, 'add_rewrite_rules'));
-		add_action('query_vars', array($this, 'add_query_vars'));
-		add_action('wu_after_save_settings', 'flush_rewrite_rules');
+		add_filter('query_vars', array($this, 'add_query_vars'));
+
+		add_action('wu_after_save_settings', array($this, 'flush_rewrite_rules_on_update'));
+		add_action('wu_core_update', array($this, 'flush_rewrite_rules_on_update'));
 
 		/*
 		 * Instantiate the currents.
@@ -74,6 +76,24 @@ class Current {
 		add_action('wp', array($this, 'load_currents'));
 
 	} // end init;
+
+	/**
+	 * Flush rewrite rules to make sure any newly added ones get installed on update.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function flush_rewrite_rules_on_update() {
+
+		/**
+		 * Warning! The log message below CANNOT be localized
+		 * using __(). Doing that will crash Ultimo on new installs.
+		 */
+		wu_log_add('wp-ultimo-core', 'Flushing rewrite rules...');
+
+		flush_rewrite_rules();
+
+	} // end flush_rewrite_rules_on_update;
 
 	/**
 	 * Adds a new rewrite rule to allow for pretty links.
@@ -93,6 +113,16 @@ class Current {
 			'top'
 		);
 
+		if (is_subdomain_install() === false) {
+
+			add_rewrite_rule(
+				"blog/(.?.+?)/{$site_url_param}/([0-9a-zA-Z]+)/?$",
+				'index.php?name=$matches[1]&site_hash=$matches[2]',
+				'top'
+			);
+
+		} // end if;
+
 	} // end add_rewrite_rules;
 
 	/**
@@ -106,6 +136,11 @@ class Current {
 	public function add_query_vars($query_vars) {
 
 		$query_vars[] = 'site_hash';
+		$query_vars[] = 'products';
+		$query_vars[] = 'duration';
+		$query_vars[] = 'duration_unit';
+		$query_vars[] = 'template_name';
+		$query_vars[] = 'wu_preselected';
 
 		return $query_vars;
 
@@ -145,7 +180,7 @@ class Current {
 
 		if (!is_admin()) {
 
-			$current_url = wu_get_current_url();
+			$current_url = rtrim(wu_get_current_url(), '/');
 
 			$url_param = self::param_key($type);
 
@@ -158,13 +193,27 @@ class Current {
 
 			} // end if;
 
-			$pretty_url = $current_url . $url_param . '/' . $site_hash;
+			$pretty_url = $current_url . '/' . $url_param . '/' . $site_hash;
 
-			return get_option('permalink_structure') ? $pretty_url : add_query_arg($url_param, $site_hash);
+			$manage_site_url = get_option('permalink_structure') ? $pretty_url : add_query_arg($url_param, $site_hash);
+
+		} else {
+
+			$manage_site_url = get_admin_url($id);
 
 		} // end if;
 
-		return get_admin_url($id);
+		/**
+		 * Allow developers to modify the manage site URL parameters.
+		 *
+		 * @since 2.0.9
+		 *
+		 * @param string $manage_site_url The manage site URL.
+		 * @param int $id The site ID.
+		 * @param string $site_hash The site hash.
+		 * @return string The modified manage URL.
+		 */
+		return apply_filters('wu_current_site_get_manage_url', $manage_site_url, $id, $site_hash);
 
 	} // end get_manage_url;
 
@@ -176,7 +225,7 @@ class Current {
 	 */
 	public function load_currents() {
 
-		$site = wu_get_current_site();
+		$site = false;
 
 		/**
 		 * On the front-end, we need to check for url overrides.
@@ -199,9 +248,17 @@ class Current {
 
 			} // end if;
 
+		} else {
+
+			$site = wu_get_current_site();
+
 		} // end if;
 
-		$this->set_site($site);
+		if ($site) {
+
+			$this->set_site($site);
+
+		} // end if;
 
 		$customer = wu_get_current_customer();
 
@@ -251,6 +308,18 @@ class Current {
 	 */
 	public function set_site($site) {
 
+		/**
+		 * Allow developers to modify the default behavior and set
+		 * the current site differently.
+		 *
+		 * @since 2.0.9
+		 *
+		 * @param \WP_Ultimo\Models\Site $site The current site to set.
+		 * @param self The Current class instance.
+		 * @return \WP_Ultimo\Models\Site
+		 */
+		$site = apply_filters('wu_current_set_site', $site, $this);
+
 		$this->site = $site;
 
 	} // end set_site;
@@ -287,6 +356,18 @@ class Current {
 	 * @return void
 	 */
 	public function set_customer($customer) {
+
+		/**
+		 * Allow developers to modify the default behavior and set
+		 * the current customer differently.
+		 *
+		 * @since 2.0.9
+		 *
+		 * @param \WP_Ultimo\Models\Customer $customer The current customer to set.
+		 * @param self The Current class instance.
+		 * @return \WP_Ultimo\Models\Customer
+		 */
+		$customer = apply_filters('wu_current_set_customer', $customer, $this);
 
 		$this->customer = $customer;
 

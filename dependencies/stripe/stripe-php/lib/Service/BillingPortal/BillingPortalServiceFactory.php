@@ -6,6 +6,7 @@ namespace WP_Ultimo\Dependencies\Stripe\Service\BillingPortal;
 /**
  * Service factory class for API resources in the BillingPortal namespace.
  *
+ * @property ConfigurationService $configurations
  * @property SessionService $sessions
  */
 class BillingPortalServiceFactory extends \WP_Ultimo\Dependencies\Stripe\Service\AbstractServiceFactory
@@ -13,7 +14,7 @@ class BillingPortalServiceFactory extends \WP_Ultimo\Dependencies\Stripe\Service
     /**
      * @var array<string, string>
      */
-    private static $classMap = ['sessions' => \WP_Ultimo\Dependencies\Stripe\Service\BillingPortal\SessionService::class];
+    private static $classMap = ['configurations' => ConfigurationService::class, 'sessions' => SessionService::class];
     protected function getServiceClass($name)
     {
         return \array_key_exists($name, self::$classMap) ? self::$classMap[$name] : null;

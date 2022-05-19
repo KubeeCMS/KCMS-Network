@@ -153,7 +153,13 @@ abstract class Wizard_Admin_Page extends Base_Admin_Page {
 
 		$screen = get_current_screen();
 
-		add_meta_box('wp-ultimo-wizard-body', $this->current_section['title'], array($this, 'output_default_widget_body'), $screen->id, 'normal', null);
+		if (wu_get_isset($this->current_section, 'separator')) {
+
+			return;
+
+		} // end if;
+
+		add_meta_box('wp-ultimo-wizard-body', wu_get_isset($this->current_section, 'title', __('Section', 'wp-ultimo')), array($this, 'output_default_widget_body'), $screen->id, 'normal', null);
 
 	} // end register_widgets;
 
@@ -207,7 +213,7 @@ abstract class Wizard_Admin_Page extends Base_Admin_Page {
 			'labels'               => $this->get_labels(),
 			'sections'             => $this->get_sections(),
 			'current_section'      => $this->get_current_section(),
-			'classes'              => 'wu-w-8/12 wu-mx-auto wu-mt-8 wu-max-w-screen-lg',
+			'classes'              => 'wu-w-full wu-mx-auto sm:wu-w-11/12 xl:wu-w-8/12 wu-mt-8 sm:wu-max-w-screen-lg',
 			'clickable_navigation' => $this->clickable_navigation,
 			'form_id'              => $this->form_id,
 		));
@@ -243,6 +249,12 @@ abstract class Wizard_Admin_Page extends Base_Admin_Page {
 	public function get_current_section() {
 
 		$sections = $this->get_sections();
+
+		$sections = array_filter($sections, function($item) {
+
+			return wu_get_isset($item, 'addon') === false;
+
+		});
 
 		$current_section = isset($_GET[$this->section_slug]) ? sanitize_key($_GET[$this->section_slug]) : current(array_keys($sections));
 

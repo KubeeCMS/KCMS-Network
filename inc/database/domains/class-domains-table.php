@@ -74,8 +74,8 @@ final class Domains_Table extends Table {
 			primary_domain tinyint(4) default 0,
 			secure tinyint(4) default 0,
 			stage enum('checking-dns', 'checking-ssl-cert', 'done', 'failed', 'done-without-ssl') DEFAULT 'checking-dns',
-			date_created datetime NOT NULL default '0000-00-00 00:00:00',
-			date_modified datetime NOT NULL default '0000-00-00 00:00:00',
+			date_created datetime NULL,
+			date_modified datetime NULL,
 			PRIMARY KEY (id),
 			KEY blog_id (blog_id,domain,active),
 			KEY domain (domain)";

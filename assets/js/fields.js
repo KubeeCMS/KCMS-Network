@@ -1,42 +1,46 @@
 /* global Vue */
 
-/**
- * Registers the ColorPicker component.
- *
- * @since 2.0.0
- */
-Vue.component('colorPicker', {
-  props: ['value'],
-  template: '<input type="text">',
-  mounted() {
+if (typeof window.Vue !== 'undefined') {
 
-    const vm = this;
+  /**
+   * Registers the ColorPicker component.
+   *
+   * @since 2.0.0
+   */
+  Vue.component('colorPicker', {
+    props: ['value'],
+    template: '<input type="text">',
+    mounted() {
 
-    $(this.$el)
-      .val(this.value)
-      .wpColorPicker({
-        width: 200,
-        defaultColor: this.value,
-        change(event, ui) {
+      const vm = this;
 
-          // emit change event on color change using mouse
-          vm.$emit('input', ui.color.toString());
+      $(this.$el)
+        .val(this.value)
+        .wpColorPicker({
+          width: 200,
+          defaultColor: this.value,
+          change(event, ui) {
 
-        },
-      });
+            // emit change event on color change using mouse
+            vm.$emit('input', ui.color.toString());
 
-  },
-  watch: {
-    value(value) {
-
-      // update value
-      $(this.$el).wpColorPicker('color', value);
+          },
+        });
 
     },
-  },
-  destroyed() {
+    watch: {
+      value(value) {
 
-    $(this.$el).off().wpColorPicker('destroy'); // (!) Not tested
+        // update value
+        $(this.$el).wpColorPicker('color', value);
 
-  },
-});
+      },
+    },
+    destroyed() {
+
+      $(this.$el).off().wpColorPicker('destroy'); // (!) Not tested
+
+    },
+  });
+
+} // end if;

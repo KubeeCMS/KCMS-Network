@@ -14,7 +14,8 @@ use WP_Ultimo\Dependencies\Carbon\Exceptions\InvalidCastException;
 use WP_Ultimo\Dependencies\Carbon\Exceptions\InvalidTimeZoneException;
 use DateTimeInterface;
 use DateTimeZone;
-class CarbonTimeZone extends \DateTimeZone
+use Throwable;
+class CarbonTimeZone extends DateTimeZone
 {
     public function __construct($timezone = null)
     {
@@ -23,13 +24,13 @@ class CarbonTimeZone extends \DateTimeZone
     protected static function parseNumericTimezone($timezone)
     {
         if ($timezone <= -100 || $timezone >= 100) {
-            throw new \WP_Ultimo\Dependencies\Carbon\Exceptions\InvalidTimeZoneException('Absolute timezone offset cannot be greater than 100.');
+            throw new InvalidTimeZoneException('Absolute timezone offset cannot be greater than 100.');
         }
-        return ($timezone >= 0 ? '+' : '') . $timezone . ':00';
+        return ($timezone >= 0 ? '+' : '') . \ltrim($timezone, '+') . ':00';
     }
     protected static function getDateTimeZoneNameFromMixed($timezone)
     {
-        if (\is_null($timezone)) {
+        if ($timezone === null) {
             return \date_default_timezone_get();
         }
         if (\is_string($timezone)) {
@@ -54,10 +55,10 @@ class CarbonTimeZone extends \DateTimeZone
     public function cast(string $className)
     {
         if (!\method_exists($className, 'instance')) {
-            if (\is_a($className, \DateTimeZone::class, \true)) {
+            if (\is_a($className, DateTimeZone::class, \true)) {
                 return new $className($this->getName());
             }
-            throw new \WP_Ultimo\Dependencies\Carbon\Exceptions\InvalidCastException("{$className} has not the instance() method needed to cast the date.");
+            throw new InvalidCastException("{$className} has not the instance() method needed to cast the date.");
         }
         return $className::instance($this);
     }
@@ -80,16 +81,16 @@ class CarbonTimeZone extends \DateTimeZone
         if ($tz === null) {
             return new static();
         }
-        if (!$tz instanceof \DateTimeZone) {
+        if (!$tz instanceof DateTimeZone) {
             $tz = static::getDateTimeZoneFromName($object);
         }
-        if ($tz === \false) {
-            if (\WP_Ultimo\Dependencies\Carbon\Carbon::isStrictModeEnabled()) {
-                throw new \WP_Ultimo\Dependencies\Carbon\Exceptions\InvalidTimeZoneException('Unknown or bad timezone (' . ($objectDump ?: $object) . ')');
-            }
-            return \false;
+        if ($tz !== \false) {
+            return new static($tz->getName());
         }
-        return new static($tz->getName());
+        if (Carbon::isStrictModeEnabled()) {
+            throw new InvalidTimeZoneException('Unknown or bad timezone (' . ($objectDump ?: $object) . ')');
+        }
+        return \false;
     }
     /**
      * Returns abbreviated name of the current timezone according to DST setting.
@@ -130,9 +131,9 @@ class CarbonTimeZone extends \DateTimeZone
      *
      * @return string
      */
-    public function toOffsetName(\DateTimeInterface $date = null)
+    public function toOffsetName(DateTimeInterface $date = null)
     {
-        return static::getOffsetNameFromMinuteOffset($this->getOffset($date ?: \WP_Ultimo\Dependencies\Carbon\Carbon::now($this)) / 60);
+        return static::getOffsetNameFromMinuteOffset($this->getOffset($date ?: Carbon::now($this)) / 60);
     }
     /**
      * Returns a new CarbonTimeZone object using the offset string instead of region string.
@@ -141,7 +142,7 @@ class CarbonTimeZone extends \DateTimeZone
      *
      * @return CarbonTimeZone
      */
-    public function toOffsetTimeZone(\DateTimeInterface $date = null)
+    public function toOffsetTimeZone(DateTimeInterface $date = null)
     {
         return new static($this->toOffsetName($date));
     }
@@ -156,19 +157,19 @@ class CarbonTimeZone extends \DateTimeZone
      *
      * @return string|false
      */
-    public function toRegionName(\DateTimeInterface $date = null, $isDst = 1)
+    public function toRegionName(DateTimeInterface $date = null, $isDst = 1)
     {
         $name = $this->getName();
         $firstChar = \substr($name, 0, 1);
         if ($firstChar !== '+' && $firstChar !== '-') {
             return $name;
         }
-        $date = $date ?: \WP_Ultimo\Dependencies\Carbon\Carbon::now($this);
+        $date = $date ?: Carbon::now($this);
         // Integer construction no longer supported since PHP 8
         // @codeCoverageIgnoreStart
         try {
             $offset = @$this->getOffset($date) ?: 0;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $offset = 0;
         }
         // @codeCoverageIgnoreEnd
@@ -177,7 +178,7 @@ class CarbonTimeZone extends \DateTimeZone
             return $name;
         }
         foreach (\timezone_identifiers_list() as $timezone) {
-            if (\WP_Ultimo\Dependencies\Carbon\Carbon::instance($date)->tz($timezone)->getOffset() === $offset) {
+            if (Carbon::instance($date)->tz($timezone)->getOffset() === $offset) {
                 return $timezone;
             }
         }
@@ -190,16 +191,16 @@ class CarbonTimeZone extends \DateTimeZone
      *
      * @return CarbonTimeZone|false
      */
-    public function toRegionTimeZone(\DateTimeInterface $date = null)
+    public function toRegionTimeZone(DateTimeInterface $date = null)
     {
         $tz = $this->toRegionName($date);
-        if ($tz === \false) {
-            if (\WP_Ultimo\Dependencies\Carbon\Carbon::isStrictModeEnabled()) {
-                throw new \WP_Ultimo\Dependencies\Carbon\Exceptions\InvalidTimeZoneException('Unknown timezone for offset ' . $this->getOffset($date ?: \WP_Ultimo\Dependencies\Carbon\Carbon::now($this)) . ' seconds.');
-            }
-            return \false;
+        if ($tz !== \false) {
+            return new static($tz);
         }
-        return new static($tz);
+        if (Carbon::isStrictModeEnabled()) {
+            throw new InvalidTimeZoneException('Unknown timezone for offset ' . $this->getOffset($date ?: Carbon::now($this)) . ' seconds.');
+        }
+        return \false;
     }
     /**
      * Cast to string (get timezone name).
@@ -230,7 +231,7 @@ class CarbonTimeZone extends \DateTimeZone
      */
     public static function createFromHourOffset(float $hourOffset)
     {
-        return static::createFromMinuteOffset($hourOffset * \WP_Ultimo\Dependencies\Carbon\Carbon::MINUTES_PER_HOUR);
+        return static::createFromMinuteOffset($hourOffset * Carbon::MINUTES_PER_HOUR);
     }
     /**
      * Create a CarbonTimeZone from int/float minute offset.

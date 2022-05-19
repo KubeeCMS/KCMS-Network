@@ -28,7 +28,7 @@ class User_Switching {
 	 */
 	public function __construct() {
 
-		add_action('admin_init', array($this, 'register_forms'));
+		add_action('plugins_loaded', array($this, 'register_forms'));
 
 	} // end __construct;
 
@@ -41,9 +41,9 @@ class User_Switching {
 	 */
 	public function check_user_switching_is_activated() {
 
-		return is_plugin_active_for_network('user-switching/user-switching.php');
+		return class_exists('user_switching');
 
-	}  // end check_user_switching_is_activated;
+	} // end check_user_switching_is_activated;
 
 	/**
 	 * Register forms

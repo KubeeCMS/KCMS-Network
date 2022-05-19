@@ -191,7 +191,7 @@ class Membership_List_Table_Widget extends Base_List_Table {
 
 			$message = sprintf(
 				// translators: %1$s is the formatted price, %2$s the duration, and %3$s the duration unit (day, week, month, etc)
-                _n('every %2$s', 'every %1$s %2$ss', $duration, 'wp-ultimo'), // phpcs:ignore
+        _n('every %2$s', 'every %1$s %2$s', $duration, 'wp-ultimo'), // phpcs:ignore
 				$duration,
 				$item->get_duration_unit()
 			);

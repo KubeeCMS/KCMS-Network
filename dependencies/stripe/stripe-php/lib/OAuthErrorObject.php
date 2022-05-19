@@ -8,7 +8,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property string $error
  * @property string $error_description
  */
-class OAuthErrorObject extends \WP_Ultimo\Dependencies\Stripe\StripeObject
+class OAuthErrorObject extends StripeObject
 {
     /**
      * Refreshes this object using the provided values.

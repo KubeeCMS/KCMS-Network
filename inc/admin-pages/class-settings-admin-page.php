@@ -9,9 +9,9 @@
 
 namespace WP_Ultimo\Admin_Pages;
 
-use WP_Ultimo\Settings;
-use WP_Ultimo\UI\Form;
-use WP_Ultimo\UI\Field;
+use \WP_Ultimo\Settings;
+use \WP_Ultimo\UI\Form;
+use \WP_Ultimo\UI\Field;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -63,7 +63,7 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 	 * @var array
 	 */
 	protected $supported_panels = array(
-		'network_admin_menu' => 'manage_network',
+		'network_admin_menu' => 'wu_read_settings',
 	);
 
 	/**
@@ -99,6 +99,29 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 	protected $clickable_navigation = true;
 
 	/**
+	 * Allow child classes to register scripts and styles that can be loaded on the output function, for example.
+	 *
+	 * @since 1.8.2
+	 * @return void
+	 */
+	public function register_scripts() {
+
+		wp_enqueue_editor();
+
+		parent::register_scripts();
+
+		/*
+		 * Adds Vue.
+		 */
+		wp_enqueue_script('wu-vue-apps');
+
+		wp_enqueue_script('wu-fields');
+
+		wp_enqueue_style('wp-color-picker');
+
+	} // end register_scripts;
+
+	/**
 	 * Registers widgets to the edit page.
 	 *
 	 * This implementation register the default save widget.
@@ -132,6 +155,11 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 			'render' => array($this, 'render_site_template_side_panel'),
 		));
 
+		wu_register_settings_side_panel('sites', array(
+			'title'  => __('Placeholder Editor', 'wp-ultimo'),
+			'render' => array($this, 'render_site_placeholders_side_panel'),
+		));
+
 		wu_register_settings_side_panel('payment-gateways', array(
 			'title'  => __('Invoices', 'wp-ultimo'),
 			'render' => array($this, 'render_invoice_side_panel'),
@@ -140,11 +168,6 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 		wu_register_settings_side_panel('payment-gateways', array(
 			'title'  => __('Additional Gateways', 'wp-ultimo'),
 			'render' => array($this, 'render_gateways_addons_side_panel'),
-		));
-
-		wu_register_settings_side_panel('taxes', array(
-			'title'  => __('Tax Rates', 'wp-ultimo'),
-			'render' => array($this, 'render_taxes_side_panel'),
 		));
 
 		wu_register_settings_side_panel('emails', array(
@@ -188,9 +211,9 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 				</div>
 
 				<p class="wu-text-gray-600 wu-p-0 wu-m-0">
-					<?php _e('You can extend WP Ultimo\'s functionality by installing one our add-ons!', 'wp-ultimo'); ?>
+					<?php _e('You can extend WP Ultimo\'s functionality by installing one of our add-ons!', 'wp-ultimo'); ?>
 				</p>
-				
+
 			</div>
 
 			<div class="wu-p-4 wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-300">
@@ -211,7 +234,7 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 	 * @since 2.0.0
 	 * @return void
 	 */
-	public function render_account_side_panel() { 
+	public function render_account_side_panel() {
 		/*
 		 * Get Freemius Customer
 		 */
@@ -226,25 +249,45 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 
 		<div class="wu-widget-inset">
 
-			<div class="wu-p-4">
+			<?php if (empty($customer) || empty($license)) : ?>
 
-				<span class="wu-text-gray-700 wu-font-bold wu-uppercase wu-tracking-wide wu-text-xs">
-					<?php _e('Registered to', 'wp-ultimo'); ?>
-				</span>
+				<div class="wu-p-4">
 
-				<p class="wu-text-gray-700 wu-p-0 wu-m-0 wu-mt-2">
-					<?php printf('%s %s', $customer->first, $customer->last); ?>
-					<span class="wu-text-xs wu-text-gray-600 wu-block"><?php echo $customer->email; ?></span>
-					<span class="wu-text-xs wu-py-1 wu-px-2 wu-bg-gray-100 wu-rounded wu-mt-3 wu-text-gray-600 wu-block wu-border wu-border-solid wu-border-gray-300"><?php echo substr_replace($license->secret_key, str_repeat('*', 16), 4, 24); ?></span>
-				</p>
-				
-			</div>
+					<span class="wu-p-2 wu-bg-red-100 wu-text-red-600 wu-rounded wu-block">
+						<?php _e('Your copy of WP Ultimo is not currently active. That means you will not have access to plugin updates and add-ons.', 'wp-ultimo'); ?>
+					</span>
 
-			<div class="wu-p-4 wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-300">
-				<a class="button wu-w-full wu-text-center" href="<?php echo wu_network_admin_url('wp-ultimo-account'); ?>">
-					<?php _e('Manage your Account &rarr;', 'wp-ultimo'); ?>
-				</a>
-			</div>
+				</div>
+
+				<div class="wu-p-4 wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-300">
+					<a id="wu-activate-license-key-button" class="button wu-w-full wu-text-center wubox" title="<?php esc_attr_e('Activate WP Ultimo', 'wp-ultimo'); ?>" href="<?php echo wu_get_form_url('license_activation'); ?>">
+						<?php _e('Activate WP Ultimo &rarr;', 'wp-ultimo'); ?>
+					</a>
+				</div>
+
+			<?php else : ?>
+
+				<div class="wu-p-4">
+
+					<span class="wu-text-gray-700 wu-font-bold wu-uppercase wu-tracking-wide wu-text-xs">
+						<?php _e('Registered to', 'wp-ultimo'); ?>
+					</span>
+
+					<p class="wu-text-gray-700 wu-p-0 wu-m-0 wu-mt-2">
+						<?php printf('%s %s', $customer->first, $customer->last); ?>
+						<span class="wu-text-xs wu-text-gray-600 wu-block"><?php echo $customer->email; ?></span>
+						<span class="wu-text-xs wu-py-1 wu-px-2 wu-bg-gray-100 wu-rounded wu-mt-3 wu-text-gray-600 wu-block wu-border wu-border-solid wu-border-gray-300"><?php echo substr_replace($license->secret_key, str_repeat('*', 16), 4, 24); ?></span>
+					</p>
+
+				</div>
+
+				<div class="wu-p-4 wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-300">
+					<a id="wu-manage-account-button" class="button wu-w-full wu-text-center" href="<?php echo wu_network_admin_url('wp-ultimo-account'); ?>">
+						<?php _e('Manage your Account &rarr;', 'wp-ultimo'); ?>
+					</a>
+				</div>
+
+			<?php endif; ?>
 
 		</div>
 
@@ -275,7 +318,7 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 				<p class="wu-text-gray-600 wu-p-0 wu-m-0">
 					<?php _e('We are constantly adding support to new payment gateways that can be installed as add-ons.', 'wp-ultimo'); ?>
 				</p>
-				
+
 			</div>
 
 			<div class="wu-p-4 wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-300">
@@ -311,9 +354,9 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 				</div>
 
 				<p class="wu-text-gray-600 wu-p-0 wu-m-0">
-					<?php _e('You can create multiple Checkout Forms for different occasions (season campaigns, launches, etc)!', 'wp-ultimo'); ?>
+					<?php _e('You can create multiple Checkout Forms for different occasions (seasonal campaigns, launches, etc)!', 'wp-ultimo'); ?>
 				</p>
-				
+
 			</div>
 
 			<div class="wu-p-4 wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-300">
@@ -351,7 +394,7 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 				<p class="wu-text-gray-600 wu-p-0 wu-m-0">
 					<?php _e('Did you know that you can customize colors, logos, and more options of the Site Template Previewer top-bar?', 'wp-ultimo'); ?>
 				</p>
-				
+
 			</div>
 
 			<div class="wu-p-4 wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-300">
@@ -365,6 +408,44 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 		<?php
 
 	} // end render_site_template_side_panel;
+
+	/**
+	 * Renders the site placeholder side panel
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function render_site_placeholders_side_panel() { ?>
+
+		<div class="wu-widget-inset">
+
+			<div class="wu-p-4">
+
+				<span class="wu-text-gray-700 wu-font-bold wu-uppercase wu-tracking-wide wu-text-xs">
+					<?php _e('Customize the Template Placeholders', 'wp-ultimo'); ?>
+				</span>
+
+				<div class="wu-py-2">
+					<img class="wu-w-full" alt="<?php esc_attr_e('Customize the Template Placeholders', 'wp-ultimo'); ?>" src="<?php echo wu_get_asset('sidebar/template-placeholders.png'); ?>">
+				</div>
+
+				<p class="wu-text-gray-600 wu-p-0 wu-m-0">
+					<?php _e('If you are using placeholder substitutions inside your site templates, use this tool to add, remove, or change the default content of those placeholders.', 'wp-ultimo'); ?>
+				</p>
+
+			</div>
+
+			<div class="wu-p-4 wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-300">
+				<a class="button wu-w-full wu-text-center" target="_blank" href="<?php echo wu_network_admin_url('wp-ultimo-template-placeholders'); ?>">
+					<?php _e('Edit Placeholders &rarr;', 'wp-ultimo'); ?>
+				</a>
+			</div>
+
+		</div>
+
+		<?php
+
+	} // end render_site_placeholders_side_panel;
 
 	/**
 	 * Renders the invoice side panel
@@ -389,7 +470,7 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 				<p class="wu-text-gray-600 wu-p-0 wu-m-0">
 					<?php _e('Did you know that you can customize colors, logos, and more options of the Invoice PDF template?', 'wp-ultimo'); ?>
 				</p>
-				
+
 			</div>
 
 			<div class="wu-p-4 wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-300">
@@ -403,64 +484,6 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 		<?php
 
 	} // end render_invoice_side_panel;
-
-	/**
-	 * Render the tax side panel.
-	 *
-	 * @since 2.0.0
-	 * @return void
-	 */
-	public function render_taxes_side_panel() { ?>
-
-		<div id="wu-taxes-side-panel" class="wu-widget-inset">
-
-			<div class="wu-p-4">
-
-				<span class="wu-text-gray-700 wu-font-bold wu-uppercase wu-tracking-wide wu-text-xs">
-					<?php _e('Manage Tax Rates', 'wp-ultimo'); ?>
-				</span>
-
-				<div class="wu-py-2">
-					<img class="wu-w-full" alt="<?php esc_attr_e('Manage Tax Rates', 'wp-ultimo'); ?>" src="<?php echo wu_get_asset('sidebar/invoices.png'); ?>">
-				</div>
-
-				<p class="wu-text-gray-600 wu-p-0 wu-m-0">
-					<?php _e('Add different tax rates depending on the country of your customers.', 'wp-ultimo'); ?>
-				</p>
-				
-			</div>
-
-			<div v-cloak v-show="enabled == 0" class="wu-mx-4 wu-p-2 wu-bg-blue-100 wu-text-blue-600 wu-rounded wu-mb-4">
-				<?php _e('You need to activate tax support first.', 'wp-ultimo'); ?>
-			</div>
-
-			<div class="wu-p-4 wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-300">
-				<a disable="disable" :disabled="enabled == 0" class="button wu-w-full wu-text-center" target="_blank" href="<?php echo wu_network_admin_url('wp-ultimo-tax-rates'); ?>">
-					<?php _e('Manage Tax Rates &rarr;', 'wp-ultimo'); ?>
-				</a>
-			</div>
-
-		</div>
-
-		<script>
-			(function($) {
-				$(document).ready(function() {
-					new Vue({
-						el: "#wu-taxes-side-panel",
-						data: {},
-						computed: {
-							enabled: function() {
-								return <?php echo json_encode(wu_get_setting('enable_taxes')); ?>
-							}
-						}
-					});
-				});
-			}(jQuery));
-		</script>
-
-		<?php
-
-	} // end render_taxes_side_panel;
 
 	/**
 	 * Renders system emails side panel.
@@ -485,7 +508,7 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 				<p class="wu-text-gray-600 wu-p-0 wu-m-0">
 					<?php _e('You can completely customize the contents of the emails sent out by WP Ultimo when particular events occur, such as Account Creation, Payment Failures, etc.', 'wp-ultimo'); ?>
 				</p>
-				
+
 			</div>
 
 			<div class="wu-p-4 wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-300">
@@ -523,7 +546,7 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 				<p class="wu-text-gray-600 wu-p-0 wu-m-0">
 					<?php _e('If your network is using the HTML email option, you can customize the look and feel of the email template.', 'wp-ultimo'); ?>
 				</p>
-				
+
 			</div>
 
 			<div class="wu-p-4 wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-300">
@@ -615,6 +638,18 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 	 */
 	public function default_handler() {
 
+		if (!current_user_can('wu_edit_settings')) {
+
+			wp_die(__('You do not have the permissions required to change settings.', 'wp-ultimo'));
+
+		} // end if;
+
+		if (!isset($_POST['active_gateways']) && wu_request('tab') === 'payment-gateways') {
+
+			$_POST['active_gateways'] = array();
+
+		} // end if;
+
 		WP_Ultimo()->settings->save_settings($_POST);
 
 		wp_redirect(add_query_arg('updated', 1, wu_get_current_url()));
@@ -651,8 +686,8 @@ class Settings_Admin_Page extends Wizard_Admin_Page {
 		$fields['save'] = array(
 			'type'            => 'submit',
 			'title'           => __('Save Settings', 'wp-ultimo'),
-			'classes'         => 'button button-primary button-large wu-ml-auto',
-			'wrapper_classes' => 'wu-sticky wu-bottom-0 wu-save-button wu-mr-px wu-flex',
+			'classes'         => 'button button-primary button-large wu-ml-auto wu-w-full md:wu-w-auto',
+			'wrapper_classes' => 'wu-sticky wu-bottom-0 wu-save-button wu-mr-px wu-w-full md:wu-w-auto',
 			'html_attr'       => array(
 				'v-on:click' => 'send("window", "wu_block_ui", "#wpcontent")'
 			),

@@ -25,7 +25,31 @@ use \WP_Ultimo\Dependencies\Arrch\Arrch as Array_Search;
 class Cart implements \JsonSerializable {
 
 	/**
-	 * Type of registration: new, renewal, upgrade, display.
+	 * Holds a list of errors.
+	 *
+	 * These errors do not include
+	 * validation errors, only errors
+	 * that happen while we try to setup
+	 * the cart object.
+	 *
+	 * @since 2.0.0
+	 * @var \WP_Error
+	 */
+	public $errors;
+
+	/**
+	 * Cart Attributes.
+	 *
+	 * List of attributes passed to the
+	 * constructor.
+	 *
+	 * @since 2.0.0
+	 * @var object
+	 */
+	private $attributes;
+
+	/**
+	 * Type of registration: new, renewal, upgrade, downgrade, retry, and display.
 	 *
 	 * The display type is used to create the tables that show the products purchased on a membership
 	 * and payment screens.
@@ -33,15 +57,15 @@ class Cart implements \JsonSerializable {
 	 * @since 2.0.0
 	 * @var string
 	 */
-	protected $cart_type = 'new';
+	protected $cart_type;
 
 	/**
-	 * The id of the plan being hired.
+	 * The customer object, if that exists.
 	 *
 	 * @since 2.0.0
-	 * @var int
+	 * @var null|\WP_Ultimo\Models\Customer
 	 */
-	protected $plan_id;
+	protected $customer;
 
 	/**
 	 * The membership object, if that exists.
@@ -50,9 +74,28 @@ class Cart implements \JsonSerializable {
 	 * and more.
 	 *
 	 * @since 2.0.0
-	 * @var null|\WP_Ultimo\Models\Memberships
+	 * @var null|\WP_Ultimo\Models\Membership
 	 */
 	protected $membership;
+
+	/**
+	 * The payment object, if that exists.
+	 *
+	 * This is used to pre-populate fields such as products
+	 * and more.
+	 *
+	 * @since 2.0.0
+	 * @var null|\WP_Ultimo\Models\Payment
+	 */
+	protected $payment;
+
+	/**
+	 * The discount code object, if any.
+	 *
+	 * @since 2.0.0
+	 * @var null|\WP_Ultimo\Models\Discount_Code
+	 */
+	protected $discount_code;
 
 	/**
 	 * The country of the customer.
@@ -63,12 +106,20 @@ class Cart implements \JsonSerializable {
 	protected $country;
 
 	/**
-	 * The discount code object, if any.
+	 * The state of the customer.
 	 *
-	 * @since 2.0.0
-	 * @var null|\WP_Ultimo\Models\Discount_Code
+	 * @since 2.0.11
+	 * @var string
 	 */
-	protected $discount_code;
+	protected $state;
+
+	/**
+	 * The city of the customer.
+	 *
+	 * @since 2.0.11
+	 * @var string
+	 */
+	protected $city;
 
 	/**
 	 * The currency of this purchase.
@@ -84,7 +135,7 @@ class Cart implements \JsonSerializable {
 	 * @since 2.0.0
 	 * @var integer
 	 */
-	protected $duration = 1;
+	protected $duration;
 
 	/**
 	 * The billing cycle duration unit.
@@ -92,17 +143,25 @@ class Cart implements \JsonSerializable {
 	 * @since 2.0.0
 	 * @var string
 	 */
-	protected $duration_unit = 'month';
+	protected $duration_unit;
 
 	/**
-	 * The number of billign cycles.
+	 * The number of billing cycles.
 	 *
-	 * 0 means unlimited cycles (a.k.a until canceled).
+	 * 0 means unlimited cycles (a.k.a until cancelled).
 	 *
 	 * @since 2.0.0
 	 * @var integer
 	 */
 	protected $billing_cycles = 0;
+
+	/**
+	 * The id of the plan being hired.
+	 *
+	 * @since 2.0.0
+	 * @var int
+	 */
+	protected $plan_id;
 
 	/**
 	 * The cart products.
@@ -121,112 +180,925 @@ class Cart implements \JsonSerializable {
 	protected $line_items = array();
 
 	/**
-	 * Creates the cart object using the products, discount code.
+	 * If this cart should auto-renew.
 	 *
-	 * Memberships are optional and used when dealing with
-	 * upgrades and downgrades. Payment ID is used when trying to recover a pending payment.
+	 * This flag tells the gateways that support
+	 * subscriptions to go ahead and try to set up
+	 * a new one.
+	 *
+	 * @since 2.0.0
+	 * @var bool
+	 */
+	protected $auto_renew = true;
+
+	/**
+	 * Extra parameters to send to front-end.
+	 *
+	 * @since 2.0.0
+	 * @var array
+	 */
+	protected $extra = array();
+
+	/**
+	 * Construct our cart/order object.
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param array $atts Check the wp_parse_args below for the accepted parameters.
+	 * @param array $args An array containing the cart arguments.
 	 */
-	public function __construct($atts) {
+	public function __construct($args) {
+		/*
+		 * Why are we using shortcode atts, you might ask?
+		 *
+		 * Well, shortcode atts cleans the array, allowing only
+		 * the keys we list on the defaults array.
+		 *
+		 * Since we're passing over the entire $_POST array
+		 * this helps us to keep things cleaner and secure.
+		 */
+		$args = shortcode_atts(array(
 
-		$atts = wp_parse_args($atts, array(
+			/*
+			 * Cart Type.
+			 */
+			'cart_type'     => 'new',
+
+			/*
+			 * The list of products being bought.
+			 */
 			'products'      => array(),
-			'memberships'   => array(),
+
+			/*
+			 * The duration parameters
+			 * This will dictate which price variations we are going to use.
+			 */
+			'duration'      => false,
+			'duration_unit' => false,
+
+			/*
+			 * The membership ID.
+			 * This is passed when we want to handle a upgrade/downgrade/addon.
+			 */
+			'membership_id' => false,
+
+			/*
+			 * Payment ID.
+			 * This is passed when we are trying to recovered a abandoned/pending payment.
+			 */
 			'payment_id'    => false,
+
+			/*
+			 * The discount code to be used.
+			 */
 			'discount_code' => false,
+
+			/*
+			 * If we should auto-renew or not.
+			 */
+			'auto_renew'    => true,
+
+			/*
+			 * The country, state, and city of the customer.
+			 * Used for taxation purposes.
+			 */
 			'country'       => '',
-			'cart_type'     => '',
-		));
+			'state'         => '',
+			'city'          => '',
+
+			/*
+			 * Currency
+			 */
+			'currency'      => '',
+
+		), $args);
 
 		/*
-		 * Try to figure out based on the parameters if this cart is a
-		 * new order or a upgrade/downgrade.
+		 * Checks for errors
 		 */
-		$this->set_cart_type($atts['cart_type']);
+		$this->errors = new \WP_Error;
 
-		if (wu_get_isset($atts, 'discount_code')) {
+		/*
+		 * Save arguments in memory
+		 */
+		$this->attributes = (object) $args;
 
-			$this->add_discount_code(wu_get_isset($atts, 'discount_code'));
+		/**
+		 * Allow developers to make additional changes to
+		 * the checkout object.
+		 *
+		 * @since 2.0.0
+		 * @param self The cart object.
+		 */
+		do_action('wu_cart_setup', $this);
+
+		/*
+		 * Set the country, duration and duration_unit.
+		 */
+		$this->cart_type     = $this->attributes->cart_type;
+		$this->country       = $this->attributes->country;
+		$this->state         = $this->attributes->state;
+		$this->city          = $this->attributes->city;
+		$this->currency      = $this->attributes->currency;
+		$this->duration      = $this->attributes->duration;
+		$this->duration_unit = $this->attributes->duration_unit;
+
+		/*
+		 * Loads the current customer, if it exists.
+		 */
+		$this->customer = wu_get_current_customer();
+
+		/*
+		 * At this point, we have almost everything we can ready.
+		 * It's time to deal with discount codes.
+		 */
+		$this->set_discount_code($this->attributes->discount_code);
+
+		/*
+		 * Delegates the logic to another
+		 * method that builds up the cart.
+		 */
+		$this->build_cart();
+
+		/*
+		 * Also set the auto-renew status.
+		 *
+		 * This setting can be forced if the settings say so,
+		 * so we only set it if that is not enabled.
+		 */
+		if (!wu_get_setting('force_auto_renew', true)) {
+
+			$this->auto_renew = wu_string_to_bool($this->attributes->auto_renew);
 
 		} // end if;
 
-		$this->country = $atts['country'];
-
-		// Set the country based on the customer, if empty
-		if (!$this->country && !empty($this->memberships)) {
-
-			$membership = current($this->memberships);
-
-			$customer = $membership->get_customer();
-
-			$this->country = $customer->get_meta('ip_country');
-
-		} // end if;
-
-		foreach ($atts['products'] as $product_id) {
-
-			$this->add_product($product_id);
-
-		} // end foreach;
-
-		foreach ($atts['memberships'] as $membership_id) {
-
-			$this->add_membership($membership_id);
-
-		} // end foreach;
-
 		/*
-		 * Checks if this is a payment recovery.
+		 * Calculate-totals.
+		 *
+		 * This will make sure our cart is ready to be consumed
+		 * by other parts of the code.
 		 */
-		$this->maybe_recover_payment();
+		$this->calculate_totals();
+
+		/**
+		 * Allow developers to make additional changes to
+		 * the checkout object.
+		 *
+		 * @since 2.0.0
+		 * @param self The cart object.
+		 */
+		do_action('wu_cart_after_setup', $this);
 
 	} // end __construct;
 
 	/**
-	 * Gets a membership and adds it to the membership list associated with the order.
-	 *
-	 * We need the product_id here as well to be able to tell which membership related to which
-	 * product when dealing with multi-products checkouts.
+	 * Get additional parameters set by integrations and add-ons.
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param int $membership_id ID of a given membership.
+	 * @param string  $key The parameter key.
+	 * @param boolean $default The default value.
+	 * @return mixed
+	 */
+	public function get_param($key, $default = false) {
+
+		return wu_get_isset($this->attributes, $key, $default);
+
+	} // end get_param;
+
+	/**
+	 * Set additional parameters set by integrations and add-ons.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $key The key to set.
+	 * @param mixed  $value The value to set.
 	 * @return void
 	 */
-	public function add_membership($membership_id) {
+	public function set_param($key, $value) {
 
-		$membership = wu_get_membership($membership_id);
+		$this->extra[] = $key;
 
-		if ($membership) {
+		$this->attributes->{$key} = $value;
 
-			$this->memberships[] = $membership;
+	} // end set_param;
 
-			$products = $membership->get_all_products();
+	/**
+	 * Gets the tax exempt status of the current cart.
+	 *
+	 * @since 2.0.0
+	 * @return boolean
+	 */
+	public function is_tax_exempt() {
 
-			foreach ($products as $line_item) {
+		return apply_filters('wu_cart_is_tax_exempt', false, $this);
 
-				$this->add_product($line_item['product']->get_id());
+	} // end is_tax_exempt;
+
+	/**
+	 * Builds the cart.
+	 *
+	 * Here, we try to determine the type of
+	 * cart so we can properly set it up, based
+	 * on the payment, membership, and products passed.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	protected function build_cart() {
+		/*
+		 * Maybe deal with payment recovery first.
+		 */
+		$is_recovery_cart = $this->build_from_payment($this->attributes->payment_id);
+
+		/*
+		 * If we are recovering a payment, we stop right here.
+		 * The pending payment object has all the info we need
+		 * in order to build the proper cart.
+		 */
+		if ($is_recovery_cart) {
+
+			return;
+
+		} // end if;
+
+		/*
+		 * The next step is to deal with membership changes.
+		 * These include downgrades/upgrades and addons.
+		 */
+		$is_membership_change = $this->build_from_membership($this->attributes->membership_id);
+
+		/*
+		 * If this is a membership change,
+		 * we can return as our work is done.
+		 */
+		if ($is_membership_change) {
+
+			return;
+
+		} // end if;
+
+		/*
+		 * Otherwise, we add the the products normally,
+		 * and set the cart as new.
+		 */
+		$this->cart_type = 'new';
+
+		if (is_array($this->attributes->products)) {
+		  /*
+			 * Otherwise, we add the products to build the cart.
+			 */
+			foreach ($this->attributes->products as $product_id) {
+
+				$this->add_product($product_id);
 
 			} // end foreach;
 
 		} // end if;
 
-	} // end add_membership;
+	} // end build_cart;
 
 	/**
-	 * Returns the list of memberships associated with this cart.
+	 * Creates a string that describes the cart.
+	 *
+	 * Some gateways require a description that you need
+	 * to match after the payment confirmation.
+	 *
+	 * This method generates such a string based on
+	 * the products on the cart.
 	 *
 	 * @since 2.0.0
-	 * @return array
+	 * @return string
 	 */
-	public function get_memberships() {
+	public function get_cart_descriptor() {
 
-		return $this->memberships;
+		$desc = wu_get_setting('company_name', __('Subscription', 'wp-ultimo'));
 
-	} // end get_memberships;
+		$products = array();
+
+		foreach ($this->get_line_items() as $line_item) {
+
+			$product = $line_item->get_product();
+
+			if (!$product) {
+
+				continue;
+
+			} // end if;
+
+			$products[] = $line_item->get_title();
+
+		} // end foreach;
+
+		$descriptor = $desc . ' - ' . implode(', ', $products);
+
+		return trim($descriptor);
+
+	} // end get_cart_descriptor;
+
+	/**
+	 * Decides if we are trying to recover a payment.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param int $payment_id A valid payment ID.
+	 * @return bool
+	 */
+	protected function build_from_payment($payment_id) {
+
+		if ($this->cart_type === 'downgrade') {
+
+			return false;
+
+		} // end if;
+
+		/*
+		 * No valid payment id passed, so we
+		 * are not trying to recover a payment.
+		 */
+		if (empty($payment_id)) {
+
+			return false;
+
+		} // end if;
+
+		/*
+		 * We got here, that means
+		 * the intend behind this cart was to actually
+		 * recover a payment.
+		 *
+		 * That means we can safely set the cart type to retry.
+		 */
+		$this->cart_type = 'retry';
+
+		/*
+		 * Now, let's try to fetch the payment in question.
+		 */
+		$payment = wu_get_payment($payment_id);
+
+		if (!$payment) {
+
+			$this->errors->add('payment_not_found', __('The payment in question was not found.', 'wp-ultimo'));
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * The payment exists, set it globally.
+		 */
+		$this->payment = $payment;
+
+		/*
+		 * Check for payment status.
+		 *
+		 * We want to make sure we only allow for repayment of pending,
+		 * cancelled, or abandoned payments
+		 */
+		$allowed_status = apply_filters('wu_cart_set_payment_allowed_status', array(
+			'pending',
+		));
+
+		if (!in_array($payment->get_status(), $allowed_status, true)) {
+
+			$this->errors->add('invalid_status', __('The payment in question has an invalid status.', 'wp-ultimo'));
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * Adds the country to calculate taxes.
+		 */
+		$this->country = $this->country ? $this->country : ($this->customer ? $this->customer->get_country() : '');
+
+		/*
+		 * Check for the correct permissions.
+		 *
+		 * For obvious reasons, only the customer that owns
+		 * a payment can pay it. Let's check for that.
+		 */
+		if (empty($this->customer) || $this->customer->get_id() !== $payment->get_customer_id()) {
+
+			$this->errors->add('lacks_permission', __('You are not allowed to modify this payment.', 'wp-ultimo'));
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * Sets the membership as well, to prevent issues
+		 */
+		$membership = $payment->get_membership();
+
+		if (!$membership) {
+
+			$this->errors->add('membership_not_found', __('The membership in question was not found.', 'wp-ultimo'));
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * If the membership is active
+		 * this can't be a retry, so we skip
+		 * the rest.
+		 */
+		if ($membership->get_status() === 'active') {
+
+			return false;
+
+		} // end if;
+
+		/*
+		 * Sets membership globally.
+		 */
+		$this->membership    = $membership;
+		$this->duration      = $membership->get_duration();
+		$this->duration_unit = $membership->get_duration_unit();
+
+		/*
+		 * Finally, copy the line items from the payment.
+		 */
+		foreach ($payment->get_line_items() as $line_item) {
+
+			$product = $line_item->get_product();
+
+			if ($product) {
+
+				$this->products[] = $product;
+
+			} // end if;
+
+			$this->add_line_item($line_item);
+
+		} // end foreach;
+
+		return true;
+
+	} // end build_from_payment;
+
+	/**
+	 * Uses the membership to decide if this is a upgrade/downgrade/addon cart.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param int $membership_id A valid membership ID.
+	 * @return bool
+	 */
+	protected function build_from_membership($membership_id) {
+		/*
+		 * No valid membership id passed, so we
+		 * are not trying to change a membership.
+		 */
+		if (empty($membership_id)) {
+
+			return false;
+
+		} // end if;
+
+		/*
+		 * We got here, that means
+		 * the intend behind this cart was to actually
+		 * change a membership.
+		 *
+		 * We can set the cart type provisionally.
+		 * This assignment might change in the future, as we make
+		 * additional assertions about the contents of the cart.
+		 */
+		$this->cart_type = 'upgrade';
+
+		/*
+		 * Now, let's try to fetch the membership in question.
+		 */
+		$membership = wu_get_membership($membership_id);
+
+		if (!$membership) {
+
+			$this->errors->add('membership_not_found', __('The membership in question was not found.', 'wp-ultimo'));
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * The membership exists, set it globally.
+		 */
+		$this->membership = $membership;
+
+		/*
+		 * In the case of membership changes,
+		 * the status is not that relevant, as customers
+		 * might want to make changes to memberships that are
+		 * active, cancelled, etc.
+		 *
+		 * We do need to check for permissions, though.
+		 * Only the customer that owns a membership can change it.
+		 */
+		if (empty($this->customer) || $this->customer->get_id() !== $membership->get_customer_id()) {
+
+			$this->errors->add('lacks_permission', __('You are not allowed to modify this membership.', 'wp-ultimo'));
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * Adds the country to calculate taxes.
+		 */
+		$this->country = $this->country ? $this->country : $this->customer->get_country();
+
+		/*
+		 * If we get to this point, we now need to assess
+		 * what are the changes being made.
+		 *
+		 * First, we need to see if there are actual products
+		 * being added, and process those.
+		 */
+		if (empty($this->attributes->products)) {
+
+			$this->errors->add('no_changes', __('This cart proposes no changes to the current membership.', 'wp-ultimo'));
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * Sets the durations to avoid problems
+		 * with addon purchases.
+		 */
+		$plan_product = $membership->get_plan();
+
+		if ($plan_product) {
+
+			$this->duration      = $plan_product->get_duration();
+			$this->duration_unit = $plan_product->get_duration_unit();
+
+		} // end if;
+
+		/*
+		 * Otherwise, we add the products to build the cart.
+		 */
+		foreach ($this->attributes->products as $product_id) {
+
+			$this->add_product($product_id);
+
+		} // end foreach;
+
+		/*
+		 * With products added, let's check if this is an addon.
+		 *
+		 * An addon cart adds a new product or service to the current membership.
+		 * If this cart, after adding the products, doesn't have a plan, it means
+		 * it should continue to use the membership plan, and the other products
+		 * must be added to the membership.
+		 */
+		if (empty($this->plan_id)) {
+
+			if (count($this->products) === 0) {
+
+				$this->errors->add('no_changes', __('This cart proposes no changes to the current membership.', 'wp-ultimo'));
+
+				return true;
+
+			} // end if;
+
+			/*
+			 * Set the type to addon.
+			 */
+			$this->cart_type = 'addon';
+
+			/*
+			 * Checks the membership to see if we need to add back the
+			 * setup fee.
+			 *
+			 * If the membership was already successfully charged once,
+			 * it probably means that the setup fee was already paid, so we can skip it.
+			 */
+			add_filter('wu_apply_signup_fee', function() use ($membership) {
+
+				return $membership->get_times_billed() <= 0;
+
+			});
+
+			/*
+			 * Adds the membership plan back in, for completeness.
+			 * This is also useful to make sure we present
+			 * the totals correctly for the customer.
+			 */
+			$this->add_product($membership->get_plan_id());
+
+			/*
+			 * Adds the credit line, after
+			 * calculating pro-rate.
+			 */
+			$this->calculate_prorate_credits();
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * With products added, let's check if the plan is changing.
+		 *
+		 * A plan change implies a upgrade or a downgrade, which we will determine
+		 * below.
+		 *
+		 * A plan change can take many forms.
+		 * - Different plan altogether;
+		 * - Same plan with different periodicity;
+		 * - upgrade to lifetime;
+		 * - downgrade to free;
+		 */
+		$is_plan_change = false;
+
+		if ($membership->get_plan_id() !== $this->plan_id) {
+
+			$is_plan_change = true;
+
+		} // end if;
+
+		/*
+		 * Checks for periodicity changes.
+		 */
+		$old_periodicity = sprintf('%s-$s', $membership->get_duration(), $membership->get_duration_unit());
+		$new_periodicity = sprintf('%s-$s', $this->duration, $this->duration_unit);
+
+		if ($old_periodicity !== $new_periodicity) {
+
+			$is_plan_change = true;
+
+		} // end if;
+
+		/*
+		 * If there is no plan change, but the product count is > 1
+		 * We know that there is another product in this cart other than the
+		 * plan, so this is again an addon cart.
+		 */
+		if (count($this->products) > 1 && $is_plan_change === false) {
+			/*
+			 * Set the type to addon.
+			 */
+			$this->cart_type = 'addon';
+
+			/*
+			 * Checks the membership to see if we need to add back the
+			 * setup fee.
+			 *
+			 * If the membership was already successfully charged once,
+			 * it probably means that the setup fee was already paid, so we can skip it.
+			 */
+			add_filter('wu_apply_signup_fee', function() use ($membership) {
+
+				return $membership->get_times_billed() <= 0;
+
+			});
+
+			/*
+			 * Adds the credit line, after
+			 * calculating pro-rate.
+			 */
+			$this->calculate_prorate_credits();
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * We'll probably never enter in this if, but we
+		 * hev it here to prevent bugs.
+		 */
+		if (!$is_plan_change) {
+
+			$this->products   = array();
+			$this->line_items = array();
+
+			$this->errors->add('no_changes', __('This cart proposes no changes to the current membership.', 'wp-ultimo'));
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * Upgrade to Lifetime.
+		 */
+		if (!$this->has_recurring() && !$this->is_free()) {
+			/*
+			 * Adds the credit line, after
+			 * calculating pro-rate.
+			 */
+			$this->calculate_prorate_credits();
+
+			return true;
+
+		} // end if;
+
+		/*
+		 * If we get to this point, we know that this is either
+		 * an upgrade or a downgrade, so we need to determine which.
+		 *
+		 * Since by default we set the value to upgrade,
+		 * we just need to check for a downgrade scenario.
+		 */
+		$days_in_old_cycle = wu_get_days_in_cycle($membership->get_duration_unit(), $membership->get_duration());
+
+		$days_in_new_cycle = wu_get_days_in_cycle($this->duration_unit, $this->duration);
+
+		$old_price_per_day = $days_in_old_cycle > 0 ? $membership->get_amount() / $days_in_old_cycle : $membership->get_amount();
+
+		$new_price_per_day = $days_in_new_cycle > 0 ? $this->get_recurring_total() / $days_in_new_cycle : $this->get_recurring_total();
+
+		/*
+		 * If the old price is greater than the new price, this is a downgrade.
+		 */
+		if ($old_price_per_day > $new_price_per_day) {
+
+			$this->cart_type = 'downgrade';
+
+		} // end if;
+
+		/*
+		 * All set!
+		 */
+		return true;
+
+	} // end build_from_membership;
+
+	/**
+	 * Calculate pro-rate credits.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	protected function calculate_prorate_credits() {
+		/*
+		 * Now we come to the craziest part: pro-rating!
+		 *
+		 * This is super hard to get right, but we basically need to add
+		 * new line items to account for the time using the old plan.
+		 */
+		if ($this->membership->is_lifetime() || !$this->membership->is_recurring()) {
+
+			$credit = $this->membership->get_initial_amount();
+
+		} else {
+
+			$days_unused = $this->membership->get_remaining_days_in_cycle();
+
+			$days_in_old_cycle = wu_get_days_in_cycle($this->membership->get_duration_unit(), $this->membership->get_duration());
+
+			$old_price_per_day = $days_in_old_cycle > 0 ? $this->membership->get_amount() / $days_in_old_cycle : $this->membership->get_amount();
+
+			$credit = $days_unused * $old_price_per_day;
+
+			if ($credit > $this->membership->get_amount()) {
+
+				$credit = $this->membership->get_amount();
+
+			} // end if;
+
+		} // end if;
+
+		/*
+		 * No credits
+		 */
+		if (empty($credit)) {
+
+			return;
+
+		} // end if;
+
+		/*
+		 * Checks if we need to add back the value of the
+		 * setup fee
+		 */
+		$has_setup_fee = $this->get_line_items_by_type('fee');
+
+		if (!empty($has_setup_fee) || $this->get_cart_type() === 'upgrade') {
+
+			$product = $this->membership->get_plan();
+
+			if ($product) {
+
+				$setup_fee_price = $product->get_setup_fee();
+
+				$new_line_item = new Line_Item(array(
+					'product'     => $product,
+					'type'        => 'fee',
+					'description' => '--',
+					'title'       => '',
+					'taxable'     => $product->is_taxable(),
+					'recurring'   => false,
+					'unit_price'  => $product->get_setup_fee(),
+					'quantity'    => 1,
+				));
+
+				$new_line_item = $this->apply_taxes_to_item($new_line_item);
+
+				$new_line_item->recalculate_totals();
+
+				$credit += $new_line_item->get_total();
+
+			} // end if;
+
+		} // end if;
+
+		/**
+		 * Allow plugin developers to meddle with the credit value.
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param int  $credit The credit amount.
+		 * @param self $cart This cart object.
+		 */
+		$credit = apply_filters('wu_checkout_calculate_prorate_credits', $credit, $this);
+
+		/*
+		 * No credits
+		 */
+		if (empty($credit)) {
+
+			return;
+
+		} // end if;
+
+		$line_item_params = apply_filters('wu_checkout_credit_line_item_params', array(
+			'type'         => 'credit',
+			'title'        => __('Credit', 'wp-ultimo'),
+			'description'  => __('Prorated amount based on the previous membership.', 'wp-ultimo'),
+			'discountable' => false,
+			'taxable'      => false,
+			'quantity'     => 1,
+			'unit_price'   => -$credit,
+		));
+
+		/*
+		 * Finally, we add the credit to the purchase.
+		 */
+		$credit_line_item = new Line_Item($line_item_params);
+
+		$this->add_line_item($credit_line_item);
+
+	} // end calculate_prorate_credits;
+
+	/**
+	 * Adds a discount code to the cart.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param int|string $code A valid discount code ID or code.
+	 * @return void
+	 */
+	protected function set_discount_code($code) {
+
+		if (empty($code)) {
+
+			return;
+
+		} // end if;
+
+		$code = strtoupper($code);
+
+		$discount_code = wu_get_discount_code_by_code($code);
+
+		if (empty($discount_code)) {
+
+			// translators: %s is the coupon code being used, all-caps. e.g. PROMO10OFF
+			$this->errors->add('discount_code', sprintf(__('The code %s do not exist or is no longer valid.', 'wp-ultimo'), $code));
+
+			return false;
+
+		} // end if;
+
+		$is_valid = $discount_code->is_valid();
+
+		if (is_wp_error($is_valid)) {
+
+			$this->errors->merge_from($is_valid);
+
+			return false;
+
+		} // end if;
+
+		/*
+		 * Set the coupon
+		 */
+		$this->discount_code = $discount_code;
+
+		return true;
+
+	} // end set_discount_code;
+
+	/**
+	 * Returns the current errors.
+	 *
+	 * @since 2.0.0
+	 * @return \WP_Error
+	 */
+	public function get_errors() {
+
+		return $this->errors;
+
+	} // end get_errors;
 
 	/**
 	 * For an order to be valid, all the recurring products must have the same
@@ -238,6 +1110,16 @@ class Cart implements \JsonSerializable {
 	public function is_valid() {
 
 		$is_valid = true;
+
+		/*
+		 * If we got any errors during
+		 * the setup, bail.
+		 */
+		if ($this->errors->has_errors()) {
+
+			return false;
+
+		} // end if;
 
 		$interval = null;
 
@@ -274,6 +1156,8 @@ class Cart implements \JsonSerializable {
 
 			if ($line_item_interval !== $interval) {
 
+				$this->errors->add('wrong', sprintf(__('Interval %1$s and %2$s do not match.', 'wp-ultimo'), $line_item_interval, $interval));
+
 				return false;
 
 			} // end if;
@@ -299,6 +1183,33 @@ class Cart implements \JsonSerializable {
 		return empty($this->get_total());
 
 	} // end is_free;
+
+	/**
+	 * Checks if we need to collect a payment method.
+	 *
+	 * Will return false if the order is free or when
+	 * the order contains a trial and no payment method is required.
+	 *
+	 * @since 2.0.0
+	 * @return boolean
+	 */
+	public function should_collect_payment() {
+
+		$should_collect_payment = true;
+
+		if ($this->is_free()) {
+
+			$should_collect_payment = false;
+
+		} elseif ($this->has_trial()) {
+
+			$should_collect_payment = !wu_get_setting('allow_trial_without_payment_method', false);
+
+		} // end if;
+
+		return (bool) apply_filters('wu_cart_should_collect_payment', $should_collect_payment, $this);
+
+	} // end should_collect_payment;
 
 	/**
 	 * Checks if the cart has a plan.
@@ -394,6 +1305,12 @@ class Cart implements \JsonSerializable {
 	 */
 	public function add_line_item($line_item) {
 
+		if (!is_a($line_item, '\WP_Ultimo\Checkout\Line_Item')) {
+
+			return;
+
+		} // end if;
+
 		if ($line_item->is_discountable()) {
 
 			$line_item = $this->apply_discounts_to_item($line_item);
@@ -431,22 +1348,123 @@ class Cart implements \JsonSerializable {
 
 		} // end if;
 
+		// Here we check if the product is recurring and if so, get the correct variation
+		if ($product->is_recurring() && !empty($this->duration) && ($this->duration !== $product->get_duration() || $this->duration_unit !== $product->get_duration_unit())) {
+
+			$product = $product->get_as_variation($this->duration, $this->duration_unit);
+
+			if (!$product) {
+
+				return false;
+
+			} // end if;
+
+		} // end if;
+
 		if ($product->get_type() === 'plan') {
+			/*
+			 * If we already have a plan, we can't add
+			 * another one. Bail.
+			 */
+			if (!empty($this->plan_id)) {
 
-			$this->plan_id = $product->get_id();
+				return false;
 
-			$this->currency      = $product->get_currency();
+			} // end if;
+
+			$this->plan_id        = $product->get_id();
+			$this->billing_cycles = $product->get_billing_cycles();
+
+		} // end if;
+
+		/*
+		 * We only try to reset the duration and such if
+		 * they are not already set.
+		 *
+		 * We need to do this because we
+		 * want access this to fetch price variations.
+		 */
+		if (empty($this->duration) || $product->is_recurring() === false) {
+
 			$this->duration      = $product->get_duration();
 			$this->duration_unit = $product->get_duration_unit();
 
 		} // end if;
 
+		if (empty($this->currency)) {
+
+			$this->currency = $product->get_currency();
+
+		} // end if;
+
+		/*
+		 * Set product amount in here, because
+		 * that can change...
+		 */
+		$amount        = $product->get_amount();
+		$duration      = $product->get_duration();
+		$duration_unit = $product->get_duration_unit();
+
+		/*
+		 * Deal with price variations.
+		 *
+		 * Here's the general idea:
+		 *
+		 * If the cart duration or duration unit differs from
+		 * the product's, we try to fetch a price variation.
+		 *
+		 * If a price variation doesn't exist, we add an error to
+		 * the cart.
+		 */
+		if ($product->is_free() === false) {
+
+			if (absint($this->duration) !== $product->get_duration() || $this->duration_unit !== $product->get_duration_unit()) {
+
+				$price_variation = $product->get_price_variation($this->duration, $this->duration_unit);
+
+				if ($price_variation) {
+
+					$price_variation = (object) $price_variation;
+
+					$amount        = $price_variation->amount;
+					$duration      = $price_variation->duration;
+					$duration_unit = $price_variation->duration_unit;
+
+				} else {
+					/*
+					 * This product does not have a valid
+					 * price variation. We need to add an error.
+					 */
+					// translators: respectively, product name, duration, and duration unit.
+					$message = sprintf(__('%1$s does not have a valid price variation for that billing period (every %2$s %3$s(s)) and was not added to the cart.', 'wp-ultimo'), $product->get_name(), $this->duration, $this->duration_unit);
+
+					$this->errors->add('missing-price-variations', $message);
+
+					return false;
+
+				} // end if;
+
+			} // end if;
+
+		} // end if;
+
+		$line_item_data = apply_filters('wu_add_product_line_item', array(
+			'product'       => $product,
+			'quantity'      => $quantity,
+			'unit_price'    => $amount,
+			'duration'      => $duration,
+			'duration_unit' => $duration_unit,
+		), $product, $duration, $duration_unit, $this);
+
 		$this->products[] = $product;
 
-		$line_item = new Line_Item(array(
-			'product'  => $product,
-			'quantity' => $quantity,
-		));
+		if (empty($line_item_data)) {
+
+			return false;
+
+		} // end if;
+
+		$line_item = new Line_Item($line_item_data);
 
 		/*
 		 * Allows for product removal on the checkout summary,
@@ -493,7 +1511,7 @@ class Cart implements \JsonSerializable {
 			'type'        => 'fee',
 			'description' => '--',
 			'title'       => $description,
-			'taxable'     => true,
+			'taxable'     => $product->is_taxable(),
 			'recurring'   => false,
 			'unit_price'  => $product->get_setup_fee(),
 			'quantity'    => $quantity,
@@ -538,133 +1556,6 @@ class Cart implements \JsonSerializable {
 	} // end get_tax_breakthrough;
 
 	/**
-	 * Set registration type
-	 *
-	 * This is based on the following query strings:
-	 *
-	 *        - $_REQUEST['cart_type'] - Will either be "renewal" or "upgrade". If empty, we assume "new".
-	 *        - $_REQUEST['membership_id'] - This must be provided for renewals and upgrades so we know which membership
-	 *                                       to work with.
-	 *
-	 * @todo Not working at the moment. Needs implementation.
-	 *
-	 * @since 2.0.0
-	 * @param string $cart_type The cart type.
-	 * @return void
-	 */
-	public function set_cart_type($cart_type = '') {
-
-		if ($cart_type !== '') {
-
-			$this->cart_type = $cart_type;
-
-			return;
-
-		} // end if;
-
-		$cart_type = wu_request('cart-type', 'new');
-
-		$membership_hash = wu_request('membership');
-
-		if ($cart_type !== 'new' && $membership_hash) {
-
-			/**
-			* The `cart_type` query arg is set, it's NOT `new`, and we have a membership ID.
-			*/
-			$membership = wu_get_membership_by_hash($membership_hash);
-
-			if (!empty($membership) && $membership->get_user_id() == get_current_user_id()) {
-
-				$this->membership = $membership;
-
-				$this->cart_type = sanitize_text_field($cart_type);
-
-			} // end if;
-
-		} elseif (!wu_multiple_memberships_enabled() && $this->get_plan_id()) {
-
-			/**
-			* Multiple memberships not enabled, and we have a selected membership level ID on the form.
-			* We determine if it's a renewal or upgrade based on the user's current membership level and
-			* the one they've selected on the registration form.
-			*/
-			$customer = wu_get_current_customer();
-
-			$previous_membership = !empty($customer) ? rcp_get_customer_single_membership($customer->get_id()) : false;
-
-			if (!empty($previous_membership)) {
-
-				$this->membership = $previous_membership;
-
-				if ($this->membership->get_object_id() === $this->get_product_id()) {
-
-					$this->cart_type = 'renewal';
-
-				} else {
-
-					$this->cart_type = 'upgrade';
-
-				} // end if;
-
-			} // end if;
-
-		} // end if;
-
-		if ('upgrade' === $this->cart_type && is_object($this->membership) && $this->get_plan_id()) {
-
-			/**
-			* If we have the type listed as an "upgrade", we'll run a few extra checks to determine
-			* if we should change this to "downgrade".
-			*/
-			// Figure out if this is a downgrade instead .
-			$plan = wu_get_product($this->get_plan_id());
-
-			$previous_plan = wu_get_product($this->membership->get_plan_id());
-
-			// if the previous membership level is invalid (maybe it's been deleted), then treat this as a new registration.
-			if (empty($previous_plan)) {
-
-				wu_log(sprintf('Previous membership level (// %d) is invalid. Treating this as a new registration.', $this->membership->get_plan_id()));
-
-				$this->cart_type = 'new';
-
-				return;
-
-			} // end if;
-
-			$days_in_old_cycle = wu_get_days_in_cycle($previous_plan->get_duration_unit(), $previous_plan->get_duration());
-
-			$days_in_new_cycle = wu_get_days_in_cycle($plan->get_duration_unit(), $plan->get_duration());
-
-			$old_price_per_day = $days_in_old_cycle > 0 ? $previous_plan->get_amount() / $days_in_old_cycle : $previous_plan->get_amount();
-
-			$new_price_per_day = $days_in_new_cycle > 0 ? $this->get_recurring_total(true, false) / $days_in_new_cycle : $this->get_recurring_total(true, false);
-
-			wu_log(sprintf('Old price per day: %s (ID #%d); New price per day: %s (ID #%d)', $old_price_per_day, $previous_plan->get_id(), $new_price_per_day, $membership_level->get_id()));
-
-			if ($old_price_per_day > $new_price_per_day) {
-
-				$this->cart_type = 'downgrade';
-
-			} // end if;
-
-		}  // end if;
-
-	} // end set_cart_type;
-
-	/**
-	 * Get the registration type.
-	 *
-	 * @since 2.0.0
-	 * @return string
-	 */
-	public function get_cart_type() {
-
-		return $this->cart_type;
-
-	} // end get_cart_type;
-
-	/**
 	 * Determine whether or not the level being registered for has a trial that the current user is eligible
 	 * for. This will return false if there is a trial but the user is not eligible for it.
 	 *
@@ -703,33 +1594,6 @@ class Cart implements \JsonSerializable {
 		return !$customer->has_trialed();
 
 	} // end has_trial;
-
-	/**
-	 * Attempt to recover an existing pending / abandoned / failed payment.
-	 *
-	 * First we look in the request for `rcp_registration_payment_id`. If that doesn't exist then we try to recover
-	 * automatically. This will only work if the current membership (located via `set_cart_type()`)
-	 * has a pending payment ID. This will be the case if someone was attempting to sign up or manually renew,
-	 * didn't complete payment, then immediately reattempted.
-	 *
-	 * If a payment is located, then this payment is used for the registration instead of creating a new one.
-	 * This will also used the existing membership record associated with this payment.
-	 *
-	 * Requirements:
-	 *      - The payment status is `pending`, `abandoned`, or `failed`.
-	 *      - Transaction ID is empty.
-	 *      - There is an associated membership record (it's okay if it's disabled, it just needs to exist).
-	 *
-	 * @link  https://github.com/restrictcontentpro/restrict-content-pro/issues/2230
-	 *
-	 * @since 2.0.0
-	 * @return void
-	 */
-	protected function maybe_recover_payment() {
-
-		return;
-
-	} // end maybe_recover_payment;
 
 	/**
 	 * Get the recovered payment object.
@@ -1053,7 +1917,28 @@ class Cart implements \JsonSerializable {
 
 			} // end if;
 
-			$total += $line_item->get_total();
+			/*
+			 * Check for coupon codes
+			 */
+			if ($line_item->get_discount_total() > 0 && !$line_item->should_apply_discount_to_renewals()) {
+
+				$new_line_item = clone $line_item;
+
+				$new_line_item->attributes(array(
+					'discount_rate' => 0,
+				));
+
+				$new_line_item->recalculate_totals();
+
+				$amount = $new_line_item->get_total();
+
+			} else {
+
+				$amount = $line_item->get_total();
+
+			} // end if;
+
+			$total += $amount;
 
 		} // end foreach;
 
@@ -1119,9 +2004,16 @@ class Cart implements \JsonSerializable {
 	 * Returns the timestamp of the end of the trial period.
 	 *
 	 * @since 2.0.0
-	 * @return string|false
+	 * @return string|null
 	 */
 	public function get_billing_start_date() {
+
+		if ($this->is_free()) {
+
+			return null;
+
+		} // end if;
+
 		/*
 		 * Set extremely high value at first to prevent any change of errors.
 		 */
@@ -1139,11 +2031,15 @@ class Cart implements \JsonSerializable {
 
 			$duration_unit = $product->get_trial_duration_unit();
 
-			$trial_period = strtotime("+$duration $duration_unit");
+			if ($duration && $duration_unit) {
 
-			if ($trial_period < $smallest_trial) {
+				$trial_period = strtotime("+$duration $duration_unit");
 
-				$smallest_trial = $trial_period;
+				if ($trial_period < $smallest_trial) {
+
+					$smallest_trial = $trial_period;
+
+				} // end if;
 
 			} // end if;
 
@@ -1234,6 +2130,12 @@ class Cart implements \JsonSerializable {
 
 		} // end if;
 
+		if (is_wp_error($this->discount_code->is_valid($line_item->get_product_id()))) {
+
+			return $line_item;
+
+		} // end if;
+
 		/**
 		 * Should apply to fees?
 		 */
@@ -1246,15 +2148,19 @@ class Cart implements \JsonSerializable {
 			} // end if;
 
 			$line_item->attributes(array(
-				'discount_rate' => $this->discount_code->get_setup_fee_value(),
-				'discount_type' => $this->discount_code->get_setup_fee_type(),
+				'discount_rate'              => $this->discount_code->get_setup_fee_value(),
+				'discount_type'              => $this->discount_code->get_setup_fee_type(),
+				'apply_discount_to_renewals' => false,
+				'discount_label'             => strtoupper($this->discount_code->get_code()),
 			));
 
 		} else {
 
 			$line_item->attributes(array(
-				'discount_rate' => $this->discount_code->get_value(),
-				'discount_type' => $this->discount_code->get_type(),
+				'discount_rate'              => $this->discount_code->get_value(),
+				'discount_type'              => $this->discount_code->get_type(),
+				'apply_discount_to_renewals' => $this->discount_code->should_apply_to_renewals(),
+				'discount_label'             => strtoupper($this->discount_code->get_code()),
 			));
 
 		} // end if;
@@ -1276,6 +2182,15 @@ class Cart implements \JsonSerializable {
 	public function apply_taxes_to_item($line_item) {
 
 		/**
+		 * Tax collection is not enabled
+		 */
+		if (!wu_should_collect_taxes()) {
+
+			return $line_item;
+
+		} // end if;
+
+		/**
 		 * Product is not taxable, bail.
 		 */
 		if (!$line_item->is_taxable()) {
@@ -1295,7 +2210,7 @@ class Cart implements \JsonSerializable {
 
 		} // end if;
 
-		$tax_rates = wu_get_applicable_tax_rates($this->country, $tax_category);
+		$tax_rates = apply_filters('wu_cart_applicable_tax_rates', wu_get_applicable_tax_rates($this->country, $tax_category, $this->state, $this->city), $this->country, $tax_category, $this);
 
 		if (empty($tax_rates)) {
 
@@ -1314,9 +2229,11 @@ class Cart implements \JsonSerializable {
 		} // end foreach;
 
 		$line_item->attributes(array(
-			'tax_rate'  => $tax_rate,
-			'tax_type'  => $tax_type,
-			'tax_label' => $tax_label,
+			'tax_rate'      => $tax_rate,
+			'tax_type'      => $tax_type,
+			'tax_label'     => $tax_label,
+			'tax_inclusive' => wu_get_setting('inclusive_tax', false),
+			'tax_exempt'    => $this->is_tax_exempt(),
 		));
 
 		$line_item->recalculate_totals();
@@ -1341,7 +2258,6 @@ class Cart implements \JsonSerializable {
 			'subtotal'        => $this->get_subtotal(),
 			'total_taxes'     => $this->get_total_taxes(),
 			'total_fees'      => $this->get_total_fees(),
-			// 'proration_credits' => $this->get_proration_credits(),
 			'total_discounts' => $this->get_total_discounts(),
 			'total'           => $this->get_total(),
 		);
@@ -1361,6 +2277,26 @@ class Cart implements \JsonSerializable {
 	} // end jsonSerialize;
 
 	/**
+	 * Get the list of extra parameters.
+	 *
+	 * @since 2.0.0
+	 * @return array
+	 */
+	public function get_extra_params() {
+
+		$extra_params = array();
+
+		foreach ($this->extra as $key) {
+
+			$extra_params[$key] = $this->get_param($key);
+
+		} // end foreach;
+
+		return apply_filters('wu_cart_get_extra_params', $extra_params, $this);
+
+	} // end get_extra_params;
+
+	/**
 	 * Implements our on json_decode version of this object. Useful for use in vue.js.
 	 *
 	 * @since 2.0.0
@@ -1370,22 +2306,46 @@ class Cart implements \JsonSerializable {
 
 		$totals = $this->calculate_totals();
 
+		$errors = array();
+
+		if ($this->errors->has_errors()) {
+
+			foreach ($this->errors as $code => $messages) {
+
+				foreach ($messages as $message) {
+
+					$errors[] = array(
+						'code'    => $code,
+						'message' => $message,
+					);
+
+				} // end foreach;
+
+			} // end foreach;
+
+		} // end if;
+
 		return (object) array(
 
-			'type'          => $this->get_cart_type(),
-			'valid'         => $this->is_valid(),
-			'is_free'       => $this->is_free(),
+			'errors'                 => $errors,
+			'url'                    => $this->get_cart_url(),
+			'type'                   => $this->get_cart_type(),
+			'valid'                  => $this->is_valid(),
+			'is_free'                => $this->is_free(),
+			'should_collect_payment' => $this->should_collect_payment(),
 
-			'has_plan'      => $this->has_plan(),
-			'has_recurring' => $this->has_recurring(),
-			'has_discount'  => $this->has_discount(),
-			'has_trial'     => $this->has_trial(),
+			'has_plan'               => $this->has_plan(),
+			'has_recurring'          => $this->has_recurring(),
+			'has_discount'           => $this->has_discount(),
+			'has_trial'              => $this->has_trial(),
 
-			'line_items'    => $this->get_line_items(),
-			'discount_code' => $this->get_discount_code(),
-			'totals'        => $this->calculate_totals(),
+			'line_items'             => $this->get_line_items(),
+			'discount_code'          => $this->get_discount_code(),
+			'totals'                 => $this->calculate_totals(),
 
-			'dates'         => (object) array(
+			'extra'                  => $this->get_extra_params(),
+
+			'dates'                  => (object) array(
 				'date_trial_end'   => $this->get_billing_start_date(),
 				'date_next_charge' => $this->get_billing_next_charge_date(),
 			),
@@ -1474,19 +2434,6 @@ class Cart implements \JsonSerializable {
 	} // end get_discount_code;
 
 	/**
-	 * Set the value of discount_code
-	 *
-	 * @since 2.0.0
-	 * @param \WP_Ultimo\Model\Discount_Code $discount_code The discount code object.
-	 * @return void
-	 */
-	public function set_discount_code($discount_code) {
-
-		$this->discount_code = $discount_code;
-
-	} // end set_discount_code;
-
-	/**
 	 * Get the value of plan_id
 	 *
 	 * @since 2.0.0
@@ -1499,19 +2446,6 @@ class Cart implements \JsonSerializable {
 	} // end get_plan_id;
 
 	/**
-	 * Set the value of plan_id.
-	 *
-	 * @since 2.0.0
-	 * @param mixed $plan_id The plan id.
-	 * @return void
-	 */
-	public function set_plan_id($plan_id) {
-
-		$this->plan_id = $plan_id;
-
-	} // end set_plan_id;
-
-	/**
 	 * Get the currency code.
 	 *
 	 * @since 2.0.0
@@ -1519,8 +2453,7 @@ class Cart implements \JsonSerializable {
 	 */
 	public function get_currency() {
 
-		// return $this->currency; For now, multi-currency is not yet supported.
-		return wu_get_setting('currency_symbol', 'USD');
+		return $this->currency;
 
 	} // end get_currency;
 
@@ -1536,5 +2469,179 @@ class Cart implements \JsonSerializable {
 		$this->currency = $currency;
 
 	} // end set_currency;
+
+	/**
+	 * Get the cart membership.
+	 *
+	 * @since 2.0.0
+	 * @return null|\WP_Ultimo\Models\Membership
+	 */
+	public function get_membership() {
+
+		return $this->membership;
+
+	} // end get_membership;
+
+	/**
+	 * Get the cart payment.
+	 *
+	 * @since 2.0.0
+	 * @return null|\WP_Ultimo\Models\Payment
+	 */
+	public function get_payment() {
+
+		return $this->payment;
+
+	} // end get_payment;
+
+	/**
+	 * Get the cart customer.
+	 *
+	 * @since 2.0.0
+	 * @return null|\WP_Ultimo\Models\Customer
+	 */
+	public function get_customer() {
+
+		return $this->customer;
+
+	} // end get_customer;
+
+	/**
+	 * Set the cart membership.
+	 *
+	 * @since 2.0.0
+	 * @param \WP_Ultimo\Models\Membership $membership A valid membership object.
+	 * @return void
+	 */
+	public function set_membership($membership) {
+
+		$this->membership = $membership;
+
+	} // end set_membership;
+
+	/**
+	 * Set the cart customer.
+	 *
+	 * @since 2.0.0
+	 * @param \WP_Ultimo\Models\Customer $customer A valid customer object.
+	 * @return void
+	 */
+	public function set_customer($customer) {
+
+		$this->customer = $customer;
+
+	} // end set_customer;
+
+	/**
+	 * Set the cart payment.
+	 *
+	 * @since 2.0.0
+	 * @param \WP_Ultimo\Models\Payment $payment A valid payment object.
+	 * @return void
+	 */
+	public function set_payment($payment) {
+
+		$this->payment = $payment;
+
+	} // end set_payment;
+
+	/**
+	 * Get the value of auto_renew.
+	 *
+	 * @since 2.0.0
+	 * @return mixed
+	 */
+	public function should_auto_renew() {
+
+		return $this->auto_renew === 'yes' || $this->auto_renew === true;
+
+	} // end should_auto_renew;
+
+	/**
+	 * Get the cart type.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_cart_type() {
+
+		return $this->cart_type;
+
+	} // end get_cart_type;
+
+	/**
+	 * Get the country of the customer.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_country() {
+
+		return $this->country;
+
+	} // end get_country;
+
+	/**
+	 * Set the country of the customer.
+	 *
+	 * @since 2.0.0
+	 * @param string $country The country of the customer.
+	 * @return void
+	 */
+	public function set_country($country) {
+
+		$this->country = $country;
+
+	} // end set_country;
+
+	/**
+	 * Builds a cart URL that we can use with the browser history APIs.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_cart_url() {
+
+		$base_url = '';
+
+		$plan = wu_get_product($this->plan_id);
+
+		if ($plan) {
+
+			$base_url .= $plan->get_slug();
+
+		} // end if;
+
+		if ($this->duration && absint($this->duration) !== 1) {
+
+			$base_url .= "/{$this->duration}";
+
+		} // end if;
+
+		if ($this->duration_unit && $this->duration_unit !== 'month') {
+
+			$base_url .= "/{$this->duration_unit}";
+
+		} // end if;
+
+		$all_products = $this->products;
+
+		$products_list = array();
+
+		foreach ($all_products as $product) {
+
+			if ($product->get_id() !== $this->plan_id) {
+
+				$products_list[] = $product->get_slug();
+
+			} // end if;
+
+		} // end foreach;
+
+		return add_query_arg(array(
+			'products' => $products_list,
+		), $base_url);
+
+	} // end get_cart_url;
 
 } // end class Cart;

@@ -17,7 +17,7 @@ class Populator
      * @param \Faker\Generator $generator
      * @param Mandango $mandango
      */
-    public function __construct(\Faker\Generator $generator, \WP_Ultimo\Dependencies\Mandango\Mandango $mandango)
+    public function __construct(\Faker\Generator $generator, Mandango $mandango)
     {
         $this->generator = $generator;
         $this->mandango = $mandango;

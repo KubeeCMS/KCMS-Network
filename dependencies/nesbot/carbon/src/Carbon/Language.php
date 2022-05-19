@@ -11,7 +11,8 @@
 namespace WP_Ultimo\Dependencies\Carbon;
 
 use JsonSerializable;
-class Language implements \JsonSerializable
+use WP_Ultimo\Dependencies\ReturnTypeWillChange;
+class Language implements JsonSerializable
 {
     /**
      * @var array
@@ -282,6 +283,7 @@ class Language implements \JsonSerializable
      *
      * @return string
      */
+    #[ReturnTypeWillChange]
     public function jsonSerialize()
     {
         return $this->getIsoDescription();

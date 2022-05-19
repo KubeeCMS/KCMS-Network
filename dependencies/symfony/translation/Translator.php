@@ -27,7 +27,7 @@ use WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface;
 /**
  * @author Fabien Potencier <fabien@symfony.com>
  */
-class Translator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface, \Symfony\Component\Translation\TranslatorBagInterface, \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\LocaleAwareInterface
+class Translator implements TranslatorInterface, \Symfony\Component\Translation\TranslatorBagInterface, LocaleAwareInterface
 {
     /**
      * @var MessageCatalogueInterface[]
@@ -38,7 +38,7 @@ class Translator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translatio
      */
     private $locale;
     /**
-     * @var array
+     * @var string[]
      */
     private $fallbackLocales = [];
     /**
@@ -74,19 +74,19 @@ class Translator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translatio
     /**
      * @throws InvalidArgumentException If a locale contains invalid characters
      */
-    public function __construct(string $locale, \Symfony\Component\Translation\Formatter\MessageFormatterInterface $formatter = null, string $cacheDir = null, bool $debug = \false, array $cacheVary = [])
+    public function __construct(string $locale, MessageFormatterInterface $formatter = null, string $cacheDir = null, bool $debug = \false, array $cacheVary = [])
     {
         $this->setLocale($locale);
         if (null === $formatter) {
-            $formatter = new \Symfony\Component\Translation\Formatter\MessageFormatter();
+            $formatter = new MessageFormatter();
         }
         $this->formatter = $formatter;
         $this->cacheDir = $cacheDir;
         $this->debug = $debug;
         $this->cacheVary = $cacheVary;
-        $this->hasIntlFormatter = $formatter instanceof \Symfony\Component\Translation\Formatter\IntlFormatterInterface;
+        $this->hasIntlFormatter = $formatter instanceof IntlFormatterInterface;
     }
-    public function setConfigCacheFactory(\WP_Ultimo\Dependencies\Symfony\Component\Config\ConfigCacheFactoryInterface $configCacheFactory)
+    public function setConfigCacheFactory(ConfigCacheFactoryInterface $configCacheFactory)
     {
         $this->configCacheFactory = $configCacheFactory;
     }
@@ -95,7 +95,7 @@ class Translator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translatio
      *
      * @param string $format The name of the loader (@see addResource())
      */
-    public function addLoader(string $format, \Symfony\Component\Translation\Loader\LoaderInterface $loader)
+    public function addLoader(string $format, LoaderInterface $loader)
     {
         $this->loaders[$format] = $loader;
     }
@@ -113,6 +113,7 @@ class Translator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translatio
             $domain = 'messages';
         }
         $this->assertValidLocale($locale);
+        $locale ?: ($locale = \class_exists(\Locale::class) ? \Locale::getDefault() : 'en');
         $this->resources[$locale][] = [$format, $resource, $domain];
         if (\in_array($locale, $this->fallbackLocales)) {
             $this->catalogues = [];
@@ -126,19 +127,19 @@ class Translator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translatio
     public function setLocale(string $locale)
     {
         $this->assertValidLocale($locale);
-        $this->locale = $locale ?? (\class_exists(\Locale::class) ? \Locale::getDefault() : 'en');
+        $this->locale = $locale;
     }
     /**
      * {@inheritdoc}
      */
     public function getLocale()
     {
-        return $this->locale;
+        return $this->locale ?: (\class_exists(\Locale::class) ? \Locale::getDefault() : 'en');
     }
     /**
      * Sets the fallback locales.
      *
-     * @param array $locales The fallback locales
+     * @param string[] $locales
      *
      * @throws InvalidArgumentException If a locale contains invalid characters
      */
@@ -192,7 +193,7 @@ class Translator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translatio
      */
     public function getCatalogue(string $locale = null)
     {
-        if (null === $locale) {
+        if (!$locale) {
             $locale = $this->getLocale();
         } else {
             $this->assertValidLocale($locale);
@@ -203,9 +204,16 @@ class Translator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translatio
         return $this->catalogues[$locale];
     }
     /**
+     * {@inheritdoc}
+     */
+    public function getCatalogues() : array
+    {
+        return \array_values($this->catalogues);
+    }
+    /**
      * Gets the loaders.
      *
-     * @return array LoaderInterface[]
+     * @return LoaderInterface[]
      */
     protected function getLoaders()
     {
@@ -224,7 +232,7 @@ class Translator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translatio
         $this->assertValidLocale($locale);
         try {
             $this->doLoadCatalogue($locale);
-        } catch (\Symfony\Component\Translation\Exception\NotFoundResourceException $e) {
+        } catch (NotFoundResourceException $e) {
             if (!$this->computeFallbackLocales($locale)) {
                 throw $e;
             }
@@ -238,7 +246,7 @@ class Translator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translatio
             return;
         }
         $this->assertValidLocale($locale);
-        $cache = $this->getConfigCacheFactory()->cache($this->getCatalogueCachePath($locale), function (\WP_Ultimo\Dependencies\Symfony\Component\Config\ConfigCacheInterface $cache) use($locale) {
+        $cache = $this->getConfigCacheFactory()->cache($this->getCatalogueCachePath($locale), function (ConfigCacheInterface $cache) use($locale) {
             $this->dumpCatalogue($locale, $cache);
         });
         if (isset($this->catalogues[$locale])) {
@@ -248,7 +256,7 @@ class Translator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translatio
         /* Read catalogue from cache. */
         $this->catalogues[$locale] = (include $cache->getPath());
     }
-    private function dumpCatalogue(string $locale, \WP_Ultimo\Dependencies\Symfony\Component\Config\ConfigCacheInterface $cache) : void
+    private function dumpCatalogue(string $locale, ConfigCacheInterface $cache) : void
     {
         $this->initializeCatalogue($locale);
         $fallbackContent = $this->getFallbackContent($this->catalogues[$locale]);
@@ -301,9 +309,9 @@ EOF
             foreach ($this->resources[$locale] as $resource) {
                 if (!isset($this->loaders[$resource[0]])) {
                     if (\is_string($resource[1])) {
-                        throw new \Symfony\Component\Translation\Exception\RuntimeException(\sprintf('No loader is registered for the "%s" format when loading the "%s" resource.', $resource[0], $resource[1]));
+                        throw new RuntimeException(\sprintf('No loader is registered for the "%s" format when loading the "%s" resource.', $resource[0], $resource[1]));
                     }
-                    throw new \Symfony\Component\Translation\Exception\RuntimeException(\sprintf('No loader is registered for the "%s" format.', $resource[0]));
+                    throw new RuntimeException(\sprintf('No loader is registered for the "%s" format.', $resource[0]));
                 }
                 $this->catalogues[$locale]->addCatalogue($this->loaders[$resource[0]]->load($resource[1], $locale, $resource[2]));
             }
@@ -329,13 +337,8 @@ EOF
         if (null === $this->parentLocales) {
             $this->parentLocales = \json_decode(\file_get_contents(__DIR__ . '/Resources/data/parents.json'), \true);
         }
+        $originLocale = $locale;
         $locales = [];
-        foreach ($this->fallbackLocales as $fallback) {
-            if ($fallback === $locale) {
-                continue;
-            }
-            $locales[] = $fallback;
-        }
         while ($locale) {
             $parent = $this->parentLocales[$locale] ?? null;
             if ($parent) {
@@ -353,8 +356,14 @@ EOF
                 $locale = null;
             }
             if (null !== $locale) {
-                \array_unshift($locales, $locale);
+                $locales[] = $locale;
             }
+        }
+        foreach ($this->fallbackLocales as $fallback) {
+            if ($fallback === $originLocale) {
+                continue;
+            }
+            $locales[] = $fallback;
         }
         return \array_unique($locales);
     }
@@ -365,18 +374,18 @@ EOF
      */
     protected function assertValidLocale(string $locale)
     {
-        if (1 !== \preg_match('/^[a-z0-9@_\\.\\-]*$/i', $locale)) {
-            throw new \Symfony\Component\Translation\Exception\InvalidArgumentException(\sprintf('Invalid "%s" locale.', $locale));
+        if (!\preg_match('/^[a-z0-9@_\\.\\-]*$/i', $locale)) {
+            throw new InvalidArgumentException(\sprintf('Invalid "%s" locale.', $locale));
         }
     }
     /**
      * Provides the ConfigCache factory implementation, falling back to a
      * default implementation if necessary.
      */
-    private function getConfigCacheFactory() : \WP_Ultimo\Dependencies\Symfony\Component\Config\ConfigCacheFactoryInterface
+    private function getConfigCacheFactory() : ConfigCacheFactoryInterface
     {
         if (!$this->configCacheFactory) {
-            $this->configCacheFactory = new \WP_Ultimo\Dependencies\Symfony\Component\Config\ConfigCacheFactory($this->debug);
+            $this->configCacheFactory = new ConfigCacheFactory($this->debug);
         }
         return $this->configCacheFactory;
     }

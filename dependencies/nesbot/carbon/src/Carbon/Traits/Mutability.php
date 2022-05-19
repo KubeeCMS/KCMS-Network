@@ -46,7 +46,7 @@ trait Mutability
     public function toMutable()
     {
         /** @var Carbon $date */
-        $date = $this->cast(\WP_Ultimo\Dependencies\Carbon\Carbon::class);
+        $date = $this->cast(Carbon::class);
         return $date;
     }
     /**
@@ -57,7 +57,7 @@ trait Mutability
     public function toImmutable()
     {
         /** @var CarbonImmutable $date */
-        $date = $this->cast(\WP_Ultimo\Dependencies\Carbon\CarbonImmutable::class);
+        $date = $this->cast(CarbonImmutable::class);
         return $date;
     }
 }

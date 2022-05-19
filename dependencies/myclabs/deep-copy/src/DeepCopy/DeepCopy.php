@@ -54,9 +54,9 @@ class DeepCopy
     public function __construct($useCloneMethod = \false)
     {
         $this->useCloneMethod = $useCloneMethod;
-        $this->addTypeFilter(new \WP_Ultimo\Dependencies\DeepCopy\TypeFilter\Spl\ArrayObjectFilter($this), new \WP_Ultimo\Dependencies\DeepCopy\TypeMatcher\TypeMatcher(\ArrayObject::class));
-        $this->addTypeFilter(new \WP_Ultimo\Dependencies\DeepCopy\TypeFilter\Date\DateIntervalFilter(), new \WP_Ultimo\Dependencies\DeepCopy\TypeMatcher\TypeMatcher(\DateInterval::class));
-        $this->addTypeFilter(new \WP_Ultimo\Dependencies\DeepCopy\TypeFilter\Spl\SplDoublyLinkedListFilter($this), new \WP_Ultimo\Dependencies\DeepCopy\TypeMatcher\TypeMatcher(\SplDoublyLinkedList::class));
+        $this->addTypeFilter(new ArrayObjectFilter($this), new TypeMatcher(ArrayObject::class));
+        $this->addTypeFilter(new DateIntervalFilter(), new TypeMatcher(DateInterval::class));
+        $this->addTypeFilter(new SplDoublyLinkedListFilter($this), new TypeMatcher(SplDoublyLinkedList::class));
     }
     /**
      * If enabled, will not throw an exception when coming across an uncloneable property.
@@ -82,15 +82,15 @@ class DeepCopy
         $this->hashMap = [];
         return $this->recursiveCopy($object);
     }
-    public function addFilter(\WP_Ultimo\Dependencies\DeepCopy\Filter\Filter $filter, \WP_Ultimo\Dependencies\DeepCopy\Matcher\Matcher $matcher)
+    public function addFilter(Filter $filter, Matcher $matcher)
     {
         $this->filters[] = ['matcher' => $matcher, 'filter' => $filter];
     }
-    public function prependFilter(\WP_Ultimo\Dependencies\DeepCopy\Filter\Filter $filter, \WP_Ultimo\Dependencies\DeepCopy\Matcher\Matcher $matcher)
+    public function prependFilter(Filter $filter, Matcher $matcher)
     {
         \array_unshift($this->filters, ['matcher' => $matcher, 'filter' => $filter]);
     }
-    public function addTypeFilter(\WP_Ultimo\Dependencies\DeepCopy\TypeFilter\TypeFilter $filter, \WP_Ultimo\Dependencies\DeepCopy\TypeMatcher\TypeMatcher $matcher)
+    public function addTypeFilter(TypeFilter $filter, TypeMatcher $matcher)
     {
         $this->typeFilters[] = ['matcher' => $matcher, 'filter' => $filter];
     }
@@ -110,6 +110,10 @@ class DeepCopy
         }
         // Scalar
         if (!\is_object($var)) {
+            return $var;
+        }
+        // Enum
+        if (\PHP_VERSION_ID >= 80100 && enum_exists(\get_class($var))) {
             return $var;
         }
         // Object
@@ -142,29 +146,29 @@ class DeepCopy
         if (isset($this->hashMap[$objectHash])) {
             return $this->hashMap[$objectHash];
         }
-        $reflectedObject = new \ReflectionObject($object);
+        $reflectedObject = new ReflectionObject($object);
         $isCloneable = $reflectedObject->isCloneable();
         if (\false === $isCloneable) {
             if ($this->skipUncloneable) {
                 $this->hashMap[$objectHash] = $object;
                 return $object;
             }
-            throw new \WP_Ultimo\Dependencies\DeepCopy\Exception\CloneException(\sprintf('The class "%s" is not cloneable.', $reflectedObject->getName()));
+            throw new CloneException(\sprintf('The class "%s" is not cloneable.', $reflectedObject->getName()));
         }
         $newObject = clone $object;
         $this->hashMap[$objectHash] = $newObject;
         if ($this->useCloneMethod && $reflectedObject->hasMethod('__clone')) {
             return $newObject;
         }
-        if ($newObject instanceof \DateTimeInterface || $newObject instanceof \DateTimeZone) {
+        if ($newObject instanceof DateTimeInterface || $newObject instanceof DateTimeZone) {
             return $newObject;
         }
-        foreach (\WP_Ultimo\Dependencies\DeepCopy\Reflection\ReflectionHelper::getProperties($reflectedObject) as $property) {
+        foreach (ReflectionHelper::getProperties($reflectedObject) as $property) {
             $this->copyObjectProperty($newObject, $property);
         }
         return $newObject;
     }
-    private function copyObjectProperty($object, \ReflectionProperty $property)
+    private function copyObjectProperty($object, ReflectionProperty $property)
     {
         // Ignore static properties
         if ($property->isStatic()) {

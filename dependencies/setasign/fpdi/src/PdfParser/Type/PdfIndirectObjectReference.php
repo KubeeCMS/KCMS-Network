@@ -7,12 +7,13 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\PdfParser\Type;
 
 /**
  * Class representing an indirect object reference
  */
-class PdfIndirectObjectReference extends \setasign\Fpdi\PdfParser\Type\PdfType
+class PdfIndirectObjectReference extends PdfType
 {
     /**
      * Helper method to create an instance.
@@ -26,8 +27,10 @@ class PdfIndirectObjectReference extends \setasign\Fpdi\PdfParser\Type\PdfType
         $v = new self();
         $v->value = (int) $objectNumber;
         $v->generationNumber = (int) $generationNumber;
+
         return $v;
     }
+
     /**
      * Ensures that the passed value is a PdfIndirectObject instance.
      *
@@ -37,8 +40,9 @@ class PdfIndirectObjectReference extends \setasign\Fpdi\PdfParser\Type\PdfType
      */
     public static function ensure($value)
     {
-        return \setasign\Fpdi\PdfParser\Type\PdfType::ensureType(self::class, $value, 'Indirect reference value expected.');
+        return PdfType::ensureType(self::class, $value, 'Indirect reference value expected.');
     }
+
     /**
      * The generation number.
      *

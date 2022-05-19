@@ -1,8 +1,8 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\EventLoop\Timer;
+namespace React\EventLoop\Timer;
 
-use WP_Ultimo\Dependencies\React\EventLoop\TimerInterface;
+use React\EventLoop\TimerInterface;
 /**
  * The actual connection implementation for TimerInterface
  *
@@ -11,7 +11,7 @@ use WP_Ultimo\Dependencies\React\EventLoop\TimerInterface;
  * @see TimerInterface
  * @internal
  */
-final class Timer implements \WP_Ultimo\Dependencies\React\EventLoop\TimerInterface
+final class Timer implements TimerInterface
 {
     const MIN_INTERVAL = 1.0E-6;
     private $interval;

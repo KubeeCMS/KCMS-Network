@@ -7,12 +7,13 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\PdfParser\Filter;
 
 /**
  * Class for handling ASCII hexadecimal encoded data
  */
-class AsciiHex implements \setasign\Fpdi\PdfParser\Filter\FilterInterface
+class AsciiHex implements FilterInterface
 {
     /**
      * Converts an ASCII hexadecimal encoded string into its binary representation.
@@ -23,11 +24,13 @@ class AsciiHex implements \setasign\Fpdi\PdfParser\Filter\FilterInterface
     public function decode($data)
     {
         $data = \preg_replace('/[^0-9A-Fa-f]/', '', \rtrim($data, '>'));
-        if (\strlen($data) % 2 === 1) {
+        if ((\strlen($data) % 2) === 1) {
             $data .= '0';
         }
+
         return \pack('H*', $data);
     }
+
     /**
      * Converts a string into ASCII hexadecimal representation.
      *
@@ -35,9 +38,10 @@ class AsciiHex implements \setasign\Fpdi\PdfParser\Filter\FilterInterface
      * @param boolean $leaveEOD
      * @return string
      */
-    public function encode($data, $leaveEOD = \false)
+    public function encode($data, $leaveEOD = false)
     {
         $t = \unpack('H*', $data);
-        return \current($t) . ($leaveEOD ? '' : '>');
+        return \current($t)
+            . ($leaveEOD ? '' : '>');
     }
 }

@@ -31,20 +31,20 @@ namespace WP_Ultimo\Dependencies\ParagonIE\ConstantTime;
  *
  * @package ParagonIE\ConstantTime
  */
-abstract class Base64 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\EncoderInterface
+abstract class Base64 implements EncoderInterface
 {
     /**
      * Encode into Base64
      *
      * Base64 character set "[A-Z][a-z][0-9]+/"
      *
-     * @param string $src
+     * @param string $binString
      * @return string
      * @throws \TypeError
      */
-    public static function encode(string $src) : string
+    public static function encode(string $binString) : string
     {
-        return static::doEncode($src, \true);
+        return static::doEncode($binString, \true);
     }
     /**
      * Encode into Base64, no = padding
@@ -68,11 +68,11 @@ abstract class Base64 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\
     protected static function doEncode(string $src, bool $pad = \true) : string
     {
         $dest = '';
-        $srcLen = \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeStrlen($src);
+        $srcLen = Binary::safeStrlen($src);
         // Main loop (no padding):
         for ($i = 0; $i + 3 <= $srcLen; $i += 3) {
             /** @var array<int, int> $chunk */
-            $chunk = \unpack('C*', \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeSubstr($src, $i, 3));
+            $chunk = \unpack('C*', Binary::safeSubstr($src, $i, 3));
             $b0 = $chunk[1];
             $b1 = $chunk[2];
             $b2 = $chunk[3];
@@ -81,7 +81,7 @@ abstract class Base64 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\
         // The last chunk, which may have padding:
         if ($i < $srcLen) {
             /** @var array<int, int> $chunk */
-            $chunk = \unpack('C*', \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeSubstr($src, $i, $srcLen - $i));
+            $chunk = \unpack('C*', Binary::safeSubstr($src, $i, $srcLen - $i));
             $b0 = $chunk[1];
             if ($i + 1 < $srcLen) {
                 $b1 = $chunk[2];
@@ -113,7 +113,7 @@ abstract class Base64 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\
     public static function decode(string $encodedString, bool $strictPadding = \false) : string
     {
         // Remove padding
-        $srcLen = \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeStrlen($encodedString);
+        $srcLen = Binary::safeStrlen($encodedString);
         if ($srcLen === 0) {
             return '';
         }
@@ -134,14 +134,14 @@ abstract class Base64 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\
             }
         } else {
             $encodedString = \rtrim($encodedString, '=');
-            $srcLen = \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeStrlen($encodedString);
+            $srcLen = Binary::safeStrlen($encodedString);
         }
         $err = 0;
         $dest = '';
         // Main loop (no padding):
         for ($i = 0; $i + 4 <= $srcLen; $i += 4) {
             /** @var array<int, int> $chunk */
-            $chunk = \unpack('C*', \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeSubstr($encodedString, $i, 4));
+            $chunk = \unpack('C*', Binary::safeSubstr($encodedString, $i, 4));
             $c0 = static::decode6Bits($chunk[1]);
             $c1 = static::decode6Bits($chunk[2]);
             $c2 = static::decode6Bits($chunk[3]);
@@ -152,7 +152,7 @@ abstract class Base64 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\
         // The last chunk, which may have padding:
         if ($i < $srcLen) {
             /** @var array<int, int> $chunk */
-            $chunk = \unpack('C*', \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Binary::safeSubstr($encodedString, $i, $srcLen - $i));
+            $chunk = \unpack('C*', Binary::safeSubstr($encodedString, $i, $srcLen - $i));
             $c0 = static::decode6Bits($chunk[1]);
             if ($i + 2 < $srcLen) {
                 $c1 = static::decode6Bits($chunk[2]);
@@ -163,11 +163,10 @@ abstract class Base64 implements \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\
                 $c1 = static::decode6Bits($chunk[2]);
                 $dest .= \pack('C', ($c0 << 2 | $c1 >> 4) & 0xff);
                 $err |= ($c0 | $c1) >> 8;
-            } elseif ($i < $srcLen && $strictPadding) {
+            } elseif ($strictPadding) {
                 $err |= 1;
             }
         }
-        /** @var bool $check */
         $check = $err === 0;
         if (!$check) {
             throw new \RangeException('Base64::decode() only expects characters in the correct base64 alphabet');

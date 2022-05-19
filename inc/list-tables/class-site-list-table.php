@@ -77,6 +77,7 @@ class Site_List_Table extends Base_List_Table {
 			'number' => $per_page,
 			'offset' => ($page_number - 1) * $per_page,
 			'count'  => $count,
+			'search' => wu_request('s'),
 		);
 
 		if ($type && $type !== 'all') {
@@ -95,6 +96,25 @@ class Site_List_Table extends Base_List_Table {
 		return wu_get_sites($query);
 
 	} // end get_items;
+
+	/**
+	 * Render the bulk edit checkbox.
+	 *
+	 * @param WP_Ultimo\Models\Site $item Site object.
+	 *
+	 * @return string
+	 */
+	public function column_cb($item) {
+
+		if ($item->get_type() === 'pending') {
+
+			return sprintf('<input type="checkbox" name="bulk-delete[]" value="%s" />', $item->get_membership_id());
+
+		} // end if;
+
+		return sprintf('<input type="checkbox" name="bulk-delete[]" value="%s" />', $item->get_id());
+
+	} // end column_cb;
 
 	/**
 	 * Displays the content of the name column.
@@ -140,6 +160,37 @@ class Site_List_Table extends Base_List_Table {
 			),
 		);
 
+		if ($item->get_type() === 'pending') {
+
+			$actions = array(
+				'duplicate' => sprintf(
+					'<a title="%s" class="wubox" href="%s">%s</a>',
+					__('Publish Site', 'wp-ultimo'),
+					wu_get_form_url(
+						'publish_pending_site', array('membership_id' => $item->get_membership_id())
+					),
+					__('Publish', 'wp-ultimo')
+				),
+				'delete'    => sprintf(
+					'<a title="%s" class="wubox" href="%s">%s</a>',
+					__('Delete', 'wp-ultimo'),
+					wu_get_form_url(
+						'delete_modal',
+						array(
+							'id'          => $item->get_membership_id(),
+							'model'       => 'membership_meta_pending_site',
+							'redirect_to' => urlencode(wu_network_admin_url('wp-ultimo-sites', array(
+								'type' => 'pending',
+								'page' => wu_request('page', 1),
+							))),
+						)
+					),
+					__('Delete', 'wp-ultimo')
+				),
+			);
+
+		} // end if;
+
 		return $title . sprintf('<span class="wu-block">%s</span>', make_clickable($item->get_active_site_url())) . $this->row_actions($actions);
 
 	} // end column_path;
@@ -170,7 +221,7 @@ class Site_List_Table extends Base_List_Table {
 	 */
 	public function column_blog_id($item) {
 
-		return $item->get_blog_id();
+		return $item->get_type() === \WP_Ultimo\Database\Sites\Site_Type::PENDING ? '--' : $item->get_blog_id();
 
 	} // end column_blog_id;
 
@@ -188,7 +239,7 @@ class Site_List_Table extends Base_List_Table {
 
 		$class = $item->get_type_class();
 
-		return "<span class='wu-bg-gray-200 wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono $class'>{$label}</span>";
+		return "<span class='wu-bg-gray-200 wu-py-1 wu-px-2 wu-leading-none wu-rounded-sm wu-text-xs wu-font-mono $class'>{$label}</span>";
 
 	} // end column_type;
 
@@ -335,10 +386,13 @@ class Site_List_Table extends Base_List_Table {
 	 */
 	public function get_bulk_actions() {
 
-		return array(
+		$actions = array(
 			'screenshot' => __('Take Screenshot', 'wp-ultimo'),
-			'delete'     => __('Delete', 'wp-ultimo'),
 		);
+
+		$actions[wu_request('type', 'all') === 'pending' ? 'delete-pending' : 'delete'] = __('Delete', 'wp-ultimo');
+
+		return $actions;
 
 	} // end get_bulk_actions;
 
@@ -348,29 +402,11 @@ class Site_List_Table extends Base_List_Table {
 	 * @since 2.0.0
 	 * @return void
 	 */
-	public function process_bulk_action() {
+	public function process_single_action() {
 
 		$action = $this->current_action();
 
-		if ($action === 'screenshot') {
-
-			$item_ids = wu_request('bulk-delete', array());
-
-			if ($item_ids) {
-
-				$item_ids = array_filter($item_ids);
-
-				foreach ($item_ids as $item_id) {
-
-					wu_enqueue_async_action('wu_async_take_screenshot', array(
-						'site_id' => $item_id,
-					), 'site');
-
-				} // end foreach;
-
-			} // end if;
-
-		} elseif ($action === 'duplicate') {
+		if ($action === 'duplicate') {
 
 			$site_id = wu_request('id');
 
@@ -398,7 +434,7 @@ class Site_List_Table extends Base_List_Table {
 
 			$new_site->set_path($new_path);
 
-			$new_site->get_date_created(current_time('mysql'));
+			$new_site->site_date_registered(wu_get_current_time('mysql', true));
 
 			$result = $new_site->save();
 
@@ -421,6 +457,6 @@ class Site_List_Table extends Base_List_Table {
 
 		} // end if;
 
-	} // end process_bulk_action;
+	} // end process_single_action;
 
 } // end class Site_List_Table;

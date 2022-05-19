@@ -41,10 +41,10 @@ abstract class FileDumper implements \Symfony\Component\Translation\Dumper\Dumpe
     /**
      * {@inheritdoc}
      */
-    public function dump(\Symfony\Component\Translation\MessageCatalogue $messages, array $options = [])
+    public function dump(MessageCatalogue $messages, array $options = [])
     {
         if (!\array_key_exists('path', $options)) {
-            throw new \Symfony\Component\Translation\Exception\InvalidArgumentException('The file dumper needs a path option.');
+            throw new InvalidArgumentException('The file dumper needs a path option.');
         }
         // save a file for each domain
         foreach ($messages->getDomains() as $domain) {
@@ -52,10 +52,10 @@ abstract class FileDumper implements \Symfony\Component\Translation\Dumper\Dumpe
             if (!\file_exists($fullpath)) {
                 $directory = \dirname($fullpath);
                 if (!\file_exists($directory) && !@\mkdir($directory, 0777, \true)) {
-                    throw new \Symfony\Component\Translation\Exception\RuntimeException(\sprintf('Unable to create directory "%s".', $directory));
+                    throw new RuntimeException(\sprintf('Unable to create directory "%s".', $directory));
                 }
             }
-            $intlDomain = $domain . \Symfony\Component\Translation\MessageCatalogue::INTL_DOMAIN_SUFFIX;
+            $intlDomain = $domain . MessageCatalogue::INTL_DOMAIN_SUFFIX;
             $intlMessages = $messages->all($intlDomain);
             if ($intlMessages) {
                 $intlPath = $options['path'] . '/' . $this->getRelativePath($intlDomain, $messages->getLocale());
@@ -76,13 +76,13 @@ abstract class FileDumper implements \Symfony\Component\Translation\Dumper\Dumpe
     /**
      * Transforms a domain of a message catalogue to its string representation.
      *
-     * @return string representation
+     * @return string
      */
-    public abstract function formatCatalogue(\Symfony\Component\Translation\MessageCatalogue $messages, string $domain, array $options = []);
+    public abstract function formatCatalogue(MessageCatalogue $messages, string $domain, array $options = []);
     /**
      * Gets the file extension of the dumper.
      *
-     * @return string file extension
+     * @return string
      */
     protected abstract function getExtension();
     /**

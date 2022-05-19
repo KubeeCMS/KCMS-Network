@@ -5,21 +5,21 @@
  * @since 2.0.0
  */
 ?>
-<li class="<?php echo esc_attr($field->wrapper_classes); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
+<li class="<?php echo esc_attr(trim($field->wrapper_classes)); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
   <div class="wu-block">
 
-    <h3 class="wu-my-1 wu-text-2xs wu-uppercase">
+    <?php
 
-      <?php echo $field->title; ?>
+    /**
+     * Adds the partial title template.
+     * @since 2.0.0
+     */
+    wu_get_template('admin-pages/fields/partials/field-title', array(
+      'field' => $field,
+    ));
 
-      <?php if ($field->tooltip) : ?>
-
-        <?php echo wu_tooltip($field->tooltip); ?>
-
-      <?php endif; ?>
-
-    </h3>
+    ?>
 
     <?php if ($field->type === 'date' || $field->date === true) : ?>
 
@@ -29,13 +29,13 @@
 
           $date = $field->value;
 
-          $time = strtotime($date, current_time('timestamp')); // phpcs:ignore
+          $time = strtotime(get_date_from_gmt($date));
 
           $formatted_value = date_i18n(get_option('date_format'), $time);
 
-          $placeholder = current_time('timestamp') > $time ? __('%s ago', 'wp-ultimo') : __('In %s', 'wp-ultimo'); // phpcs:ignore
+          $placeholder = wu_get_current_time('timestamp') > $time ? __('%s ago', 'wp-ultimo') : __('In %s', 'wp-ultimo'); // phpcs:ignore
 
-          echo $formatted_value.sprintf('<br><small>%s</small>', sprintf($placeholder, human_time_diff($time)));
+          echo sprintf('<time datetime="%3$s">%1$s</time><br><small>%2$s</small>', $formatted_value, sprintf($placeholder, human_time_diff($time, wu_get_current_time('timestamp'))), get_date_from_gmt($date));
 
         } else {
 
@@ -49,15 +49,11 @@
 
       <span class="wu-my-1 wu-inline-block">
 
-        <span id="<?php echo $field->id; ?>_value">
-
-          <?php echo $field->display_value; ?>
-
-        </span>
+        <span id="<?php echo $field->id; ?>_value"><?php echo $field->display_value; ?></span>
 
         <?php if ($field->copy) : ?>
 
-          <a <?php echo wu_tooltip_text(__('Copy', 'wp-ultimo')); ?> class="wu-no-underline wp-ui-text-highlight wu-copy" href="#" data-clipboard-action="copy" data-clipboard-target="#<?php echo $field->id; ?>_value">
+          <a <?php echo wu_tooltip_text(__('Copy', 'wp-ultimo')); ?> class="wu-no-underline wp-ui-text-highlight wu-copy"  data-clipboard-action="copy" data-clipboard-target="#<?php echo $field->id; ?>_value">
 
             <span class="dashicons-wu-copy wu-align-middle"></span>
 
@@ -68,6 +64,18 @@
       </span>
 
     <?php endif; ?>
+
+    <?php
+
+    /**
+     * Adds the partial title template.
+     * @since 2.0.0
+     */
+    wu_get_template('admin-pages/fields/partials/field-description', array(
+      'field' => $field,
+    ));
+
+    ?>
 
   </div>
 

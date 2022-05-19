@@ -98,13 +98,13 @@ class View_Logs_Admin_Page extends Edit_Admin_Page {
 
 		wp_localize_script('wu-view-log', 'wu_view_logs', array(
 			'i18n' => array(
-				'copied'        => __('Copied!', 'wp-ultimo'),
+				'copied' => __('Copied!', 'wp-ultimo'),
 			),
 		));
 
 		wp_enqueue_script('wu-view-log');
 
-		wp_enqueue_script('wu-clipboard');
+		wp_enqueue_script('clipboard');
 
 	} // end register_scripts;
 
@@ -141,7 +141,9 @@ class View_Logs_Admin_Page extends Edit_Admin_Page {
 	 */
 	public function handle_view_logs() {
 
-		$logs_list = glob(Logger::get_logs_folder() . '*.log');
+		$logs_list = list_files(Logger::get_logs_folder(), 2, array(
+			'index.html',
+		));
 
 		$logs_list = array_combine(array_values($logs_list), array_map(function($file) {
 

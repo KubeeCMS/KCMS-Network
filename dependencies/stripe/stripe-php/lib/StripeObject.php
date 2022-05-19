@@ -29,7 +29,7 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
     {
         static $permanentAttributes = null;
         if (null === $permanentAttributes) {
-            $permanentAttributes = new \WP_Ultimo\Dependencies\Stripe\Util\Set(['id']);
+            $permanentAttributes = new Util\Set(['id']);
         }
         return $permanentAttributes;
     }
@@ -94,18 +94,18 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
             //
             // It's possible that not every object has `metadata`, but having this
             // option set when there is no `metadata` field is not harmful.
-            $additiveParams = new \WP_Ultimo\Dependencies\Stripe\Util\Set(['metadata']);
+            $additiveParams = new Util\Set(['metadata']);
         }
         return $additiveParams;
     }
     public function __construct($id = null, $opts = null)
     {
-        list($id, $this->_retrieveOptions) = \WP_Ultimo\Dependencies\Stripe\Util\Util::normalizeId($id);
-        $this->_opts = \WP_Ultimo\Dependencies\Stripe\Util\RequestOptions::parse($opts);
+        list($id, $this->_retrieveOptions) = Util\Util::normalizeId($id);
+        $this->_opts = Util\RequestOptions::parse($opts);
         $this->_originalValues = [];
         $this->_values = [];
-        $this->_unsavedValues = new \WP_Ultimo\Dependencies\Stripe\Util\Set();
-        $this->_transientValues = new \WP_Ultimo\Dependencies\Stripe\Util\Set();
+        $this->_unsavedValues = new Util\Set();
+        $this->_transientValues = new Util\Set();
         if (null !== $id) {
             $this->_values['id'] = $id;
         }
@@ -114,12 +114,12 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
     public function __set($k, $v)
     {
         if (static::getPermanentAttributes()->includes($k)) {
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException("Cannot set {$k} on this object. HINT: you can't set: " . \implode(', ', static::getPermanentAttributes()->toArray()));
+            throw new Exception\InvalidArgumentException("Cannot set {$k} on this object. HINT: you can't set: " . \implode(', ', static::getPermanentAttributes()->toArray()));
         }
         if ('' === $v) {
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException('You cannot set \'' . $k . '\'to an empty string. ' . 'We interpret empty strings as NULL in requests. ' . 'You may set obj->' . $k . ' = NULL to delete the property');
+            throw new Exception\InvalidArgumentException('You cannot set \'' . $k . '\'to an empty string. ' . 'We interpret empty strings as NULL in requests. ' . 'You may set obj->' . $k . ' = NULL to delete the property');
         }
-        $this->_values[$k] = \WP_Ultimo\Dependencies\Stripe\Util\Util::convertToStripeObject($v, $this->_opts);
+        $this->_values[$k] = Util\Util::convertToStripeObject($v, $this->_opts);
         $this->dirtyValue($this->_values[$k]);
         $this->_unsavedValues->add($k);
     }
@@ -144,11 +144,11 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
             $class = static::class;
             $attrs = \implode(', ', \array_keys($this->_values));
             $message = "Stripe Notice: Undefined property of {$class} instance: {$k}. " . "HINT: The {$k} attribute was set in the past, however. " . 'It was then wiped when refreshing the object ' . "with the result returned by Stripe's API, " . 'probably as a result of a save(). The attributes currently ' . "available on this object are: {$attrs}";
-            \WP_Ultimo\Dependencies\Stripe\Stripe::getLogger()->error($message);
+            Stripe::getLogger()->error($message);
             return $nullval;
         }
         $class = static::class;
-        \WP_Ultimo\Dependencies\Stripe\Stripe::getLogger()->error("Stripe Notice: Undefined property of {$class} instance: {$k}");
+        Stripe::getLogger()->error("Stripe Notice: Undefined property of {$class} instance: {$k}");
         return $nullval;
     }
     // Magic method for var_dump output. Only works with PHP >= 5.6
@@ -157,23 +157,30 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
         return $this->_values;
     }
     // ArrayAccess methods
+    #[\ReturnTypeWillChange]
     public function offsetSet($k, $v)
     {
         $this->{$k} = $v;
     }
+    #[\ReturnTypeWillChange]
     public function offsetExists($k)
     {
         return \array_key_exists($k, $this->_values);
     }
+    #[\ReturnTypeWillChange]
     public function offsetUnset($k)
     {
         unset($this->{$k});
     }
+    #[\ReturnTypeWillChange]
     public function offsetGet($k)
     {
         return \array_key_exists($k, $this->_values) ? $this->_values[$k] : null;
     }
-    // Countable method
+    /**
+     * @return int
+     */
+    #[\ReturnTypeWillChange]
     public function count()
     {
         return \count($this->_values);
@@ -209,18 +216,18 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
      */
     public function refreshFrom($values, $opts, $partial = \false)
     {
-        $this->_opts = \WP_Ultimo\Dependencies\Stripe\Util\RequestOptions::parse($opts);
+        $this->_opts = Util\RequestOptions::parse($opts);
         $this->_originalValues = self::deepCopy($values);
-        if ($values instanceof \WP_Ultimo\Dependencies\Stripe\StripeObject) {
+        if ($values instanceof StripeObject) {
             $values = $values->toArray();
         }
         // Wipe old state before setting new.  This is useful for e.g. updating a
         // customer, where there is no persistent card parameter.  Mark those values
         // which don't persist as transient
         if ($partial) {
-            $removed = new \WP_Ultimo\Dependencies\Stripe\Util\Set();
+            $removed = new Util\Set();
         } else {
-            $removed = new \WP_Ultimo\Dependencies\Stripe\Util\Set(\array_diff(\array_keys($this->_values), \array_keys($values)));
+            $removed = new Util\Set(\array_diff(\array_keys($this->_values), \array_keys($values)));
         }
         foreach ($removed->toArray() as $k) {
             unset($this->{$k});
@@ -246,9 +253,9 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
             // not differentiate between lists and hashes, and we consider
             // empty arrays to be lists.
             if ('metadata' === $k && \is_array($v)) {
-                $this->_values[$k] = \WP_Ultimo\Dependencies\Stripe\StripeObject::constructFrom($v, $opts);
+                $this->_values[$k] = StripeObject::constructFrom($v, $opts);
             } else {
-                $this->_values[$k] = \WP_Ultimo\Dependencies\Stripe\Util\Util::convertToStripeObject($v, $opts);
+                $this->_values[$k] = Util\Util::convertToStripeObject($v, $opts);
             }
             if ($dirty) {
                 $this->dirtyValue($this->_values[$k]);
@@ -276,7 +283,7 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
             //
             $original = \array_key_exists($k, $this->_originalValues) ? $this->_originalValues[$k] : null;
             $unsaved = $this->_unsavedValues->includes($k);
-            if ($force || $unsaved || $v instanceof \WP_Ultimo\Dependencies\Stripe\StripeObject) {
+            if ($force || $unsaved || $v instanceof StripeObject) {
                 $updateParams[$k] = $this->serializeParamsValue($this->_values[$k], $original, $unsaved, $force, $k);
             }
         }
@@ -313,21 +320,21 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
         if (null === $value) {
             return '';
         }
-        if ($value instanceof \WP_Ultimo\Dependencies\Stripe\ApiResource && !$value->saveWithParent) {
+        if ($value instanceof ApiResource && !$value->saveWithParent) {
             if (!$unsaved) {
                 return null;
             }
             if (isset($value->id)) {
                 return $value;
             }
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException("Cannot save property `{$key}` containing an API resource of type " . \get_class($value) . ". It doesn't appear to be persisted and is " . 'not marked as `saveWithParent`.');
+            throw new Exception\InvalidArgumentException("Cannot save property `{$key}` containing an API resource of type " . \get_class($value) . ". It doesn't appear to be persisted and is " . 'not marked as `saveWithParent`.');
         }
         if (\is_array($value)) {
-            if (\WP_Ultimo\Dependencies\Stripe\Util\Util::isList($value)) {
+            if (Util\Util::isList($value)) {
                 // Sequential array, i.e. a list
                 $update = [];
                 foreach ($value as $v) {
-                    \array_push($update, $this->serializeParamsValue($v, null, \true, $force));
+                    $update[] = $this->serializeParamsValue($v, null, \true, $force);
                 }
                 // This prevents an array that's unchanged from being resent.
                 if ($update !== $this->serializeParamsValue($original, null, \true, $force, $key)) {
@@ -335,9 +342,9 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
                 }
             } else {
                 // Associative array, i.e. a map
-                return \WP_Ultimo\Dependencies\Stripe\Util\Util::convertToStripeObject($value, $this->_opts)->serializeParameters();
+                return Util\Util::convertToStripeObject($value, $this->_opts)->serializeParameters();
             }
-        } elseif ($value instanceof \WP_Ultimo\Dependencies\Stripe\StripeObject) {
+        } elseif ($value instanceof StripeObject) {
             $update = $value->serializeParameters($force);
             if ($original && $unsaved && $key && static::getAdditiveParams()->includes($key)) {
                 $update = \array_merge(self::emptyValues($original), $update);
@@ -347,6 +354,10 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
             return $value;
         }
     }
+    /**
+     * @return mixed
+     */
+    #[\ReturnTypeWillChange]
     public function jsonSerialize()
     {
         return $this->toArray();
@@ -370,7 +381,7 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
                 return $acc;
             }
             $v = $this->_values[$k];
-            if (\WP_Ultimo\Dependencies\Stripe\Util\Util::isList($v)) {
+            if (Util\Util::isList($v)) {
                 $acc[$k] = \array_map($maybeToArray, $v);
             } else {
                 $acc[$k] = $maybeToArray($v);
@@ -400,7 +411,7 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
      */
     public function dirty()
     {
-        $this->_unsavedValues = new \WP_Ultimo\Dependencies\Stripe\Util\Set(\array_keys($this->_values));
+        $this->_unsavedValues = new Util\Set(\array_keys($this->_values));
         foreach ($this->_values as $k => $v) {
             $this->dirtyValue($v);
         }
@@ -411,7 +422,7 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
             foreach ($value as $v) {
                 $this->dirtyValue($v);
             }
-        } elseif ($value instanceof \WP_Ultimo\Dependencies\Stripe\StripeObject) {
+        } elseif ($value instanceof StripeObject) {
             $value->dirty();
         }
     }
@@ -430,7 +441,7 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
             }
             return $copy;
         }
-        if ($obj instanceof \WP_Ultimo\Dependencies\Stripe\StripeObject) {
+        if ($obj instanceof StripeObject) {
             return $obj::constructFrom(self::deepCopy($obj->_values), clone $obj->_opts);
         }
         return $obj;
@@ -445,10 +456,10 @@ class StripeObject implements \ArrayAccess, \Countable, \JsonSerializable
     {
         if (\is_array($obj)) {
             $values = $obj;
-        } elseif ($obj instanceof \WP_Ultimo\Dependencies\Stripe\StripeObject) {
+        } elseif ($obj instanceof StripeObject) {
             $values = $obj->_values;
         } else {
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException('empty_values got unexpected object type: ' . \get_class($obj));
+            throw new Exception\InvalidArgumentException('empty_values got unexpected object type: ' . \get_class($obj));
         }
         return \array_fill_keys(\array_keys($values), '');
     }

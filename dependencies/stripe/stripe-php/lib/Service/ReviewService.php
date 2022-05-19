@@ -15,7 +15,7 @@ class ReviewService extends \WP_Ultimo\Dependencies\Stripe\Service\AbstractServi
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\Review>
      */
     public function all($params = null, $opts = null)
     {

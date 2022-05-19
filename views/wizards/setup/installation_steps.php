@@ -19,7 +19,10 @@
     <tbody>
       <?php foreach ($steps as $slug => $default) : ?>
 
-        <tr <?php echo !$default['done'] ? 'data-content="'.esc_attr($slug).'"' : ''; ?>>
+        <tr 
+          <?php echo !$default['done'] ? 'data-content="'.esc_attr($slug).'"' : ''; ?>
+          <?php echo wu_array_to_html_attrs(wu_get_isset($default, 'html_attr', array())); ?>
+        >
 
           <?php if ($checks) : ?>
             <td>
@@ -48,10 +51,10 @@
             <td class="status">
               <span><?php echo $default['pending']; ?></span>
               <div class="spinner"></div>
-              <a style="display: none;" class="wu-no-underline wu-block help" href="<?php echo $default['help']; ?>" title="<?php esc_attr_e('Help', 'wp-ultimo'); ?>">
+              <!-- <a style="display: none;" class="wu-no-underline wu-block help" href="<?php echo $default['help']; ?>" title="<?php esc_attr_e('Help', 'wp-ultimo'); ?>">
                   <?php _e('Read More', 'wp-ultimo'); ?>
                   <span class="dashicons-wu-help-with-circle"></span>
-              </a>
+              </a> -->
             </td>
           <?php endif; ?>
 

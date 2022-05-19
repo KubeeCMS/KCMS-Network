@@ -14,7 +14,7 @@ use WP_Ultimo\Dependencies\Hashids\Math\Bc;
 use WP_Ultimo\Dependencies\Hashids\Math\Gmp;
 use WP_Ultimo\Dependencies\Hashids\Math\MathInterface;
 use RuntimeException;
-class Hashids implements \WP_Ultimo\Dependencies\Hashids\HashidsInterface
+class Hashids implements HashidsInterface
 {
     /**
      * The seps divider.
@@ -87,10 +87,10 @@ class Hashids implements \WP_Ultimo\Dependencies\Hashids\HashidsInterface
         $this->alphabet = \implode('', \array_unique($this->multiByteSplit($alphabet)));
         $this->math = $this->getMathExtension();
         if (\mb_strlen($this->alphabet) < 16) {
-            throw new \WP_Ultimo\Dependencies\Hashids\HashidsException('Alphabet must contain at least 16 unique characters.');
+            throw new HashidsException('Alphabet must contain at least 16 unique characters.');
         }
         if (\false !== \mb_strpos($this->alphabet, ' ')) {
-            throw new \WP_Ultimo\Dependencies\Hashids\HashidsException('Alphabet can\'t contain spaces.');
+            throw new HashidsException('Alphabet can\'t contain spaces.');
         }
         $alphabetArray = $this->multiByteSplit($this->alphabet);
         $sepsArray = $this->multiByteSplit($this->seps);
@@ -329,15 +329,15 @@ class Hashids implements \WP_Ultimo\Dependencies\Hashids\HashidsInterface
      *
      * @return \Hashids\Math\MathInterface
      */
-    protected function getMathExtension() : \WP_Ultimo\Dependencies\Hashids\Math\MathInterface
+    protected function getMathExtension() : MathInterface
     {
         if (\extension_loaded('gmp')) {
-            return new \WP_Ultimo\Dependencies\Hashids\Math\Gmp();
+            return new Gmp();
         }
         if (\function_exists('bcadd')) {
-            return new \WP_Ultimo\Dependencies\Hashids\Math\Bc();
+            return new Bc();
         }
-        throw new \RuntimeException('Missing BC Math or GMP extension.');
+        throw new RuntimeException('Missing BC Math or GMP extension.');
     }
     /**
      * Replace simple use of $this->multiByteSplit with multi byte string.

@@ -105,11 +105,12 @@ class Line_Item_List_Table extends Payment_List_Table {
 
 		$actions = array(
 			'edit'   => sprintf('<a title="%s" class="wubox" href="%s">%s</a>', __('Edit Item', 'wp-ultimo'), wu_get_form_url('edit_line_item', $url_atts), __('Edit', 'wp-ultimo')),
-			'refund' => sprintf('<a title="%s" class="wubox" href="%s">%s</a>', __('Refund Item', 'wp-ultimo'), wu_get_form_url('refund_line_item', $url_atts), __('Refund', 'wp-ultimo')),
 			'delete' => sprintf('<a title="%s" class="wubox" href="%s">%s</a>', __('Delete Item', 'wp-ultimo'), wu_get_form_url('delete_line_item', $url_atts), __('Delete', 'wp-ultimo')),
 		);
 
 		$html = sprintf('<span class="wu-block wu-text-gray-700">%s</span>', $item->get_title());
+
+		$html .= sprintf('<span class="wu-block wu-text-gray-600 wu-text-xs">%s</span>', $item->get_description());
 
 		return $html . $this->row_actions($actions);
 

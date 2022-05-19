@@ -8,10 +8,10 @@ namespace WP_Ultimo\Dependencies;
 require_once __DIR__ . '/../src/Mexitek/PHPColors/Color.php';
 use WP_Ultimo\Dependencies\Mexitek\PHPColors\Color;
 // Use different colors to test
-$myBlue = new \WP_Ultimo\Dependencies\Mexitek\PHPColors\Color("#336699");
-$myBlack = new \WP_Ultimo\Dependencies\Mexitek\PHPColors\Color("#333");
-$myPurple = new \WP_Ultimo\Dependencies\Mexitek\PHPColors\Color("#913399");
-$myVintage = new \WP_Ultimo\Dependencies\Mexitek\PHPColors\Color("#bada55");
+$myBlue = new Color("#336699");
+$myBlack = new Color("#333");
+$myPurple = new Color("#913399");
+$myVintage = new Color("#bada55");
 // ************** No Need to Change Below **********************
 ?>
     <style>

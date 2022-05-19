@@ -21,6 +21,8 @@ defined('ABSPATH') || exit;
  */
 class Thank_You_Element extends Base_Element {
 
+	use \WP_Ultimo\Traits\Singleton;
+
 	/**
 	 * The id of the element.
 	 *
@@ -67,6 +69,75 @@ class Thank_You_Element extends Base_Element {
 		parent::init();
 
 	} // end init;
+
+	/**
+	 * Replace the register page title with the Thank you title.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $title_parts The title parts.
+	 * @return array
+	 */
+	public function replace_page_title($title_parts) {
+
+		$title_parts['title'] = $this->get_title();
+
+		return $title_parts;
+
+	} // end replace_page_title;
+
+	/**
+	 * Maybe clear the title at the content level.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $title The page title.
+	 * @param int    $id The post/page id.
+	 * @return string
+	 */
+	public function maybe_replace_page_title($title, $id) {
+
+		global $post;
+
+		if ($post && $post->ID === $id) {
+
+			return '';
+
+		} // end if;
+
+		return $title;
+
+	} // end maybe_replace_page_title;
+
+	/**
+	 * Register additional scripts for the thank you page.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function register_scripts() {
+
+		$has_pending_site = $this->membership ? (bool) $this->membership->get_pending_site() : false;
+		$is_publishing    = $has_pending_site ? $this->membership->get_pending_site()->is_publishing() : false;
+
+		wp_register_script('wu-thank-you', wu_get_asset('thank-you.js', 'js'), array('jquery'), wu_get_version());
+
+		wp_localize_script('wu-thank-you', 'wu_thank_you', array(
+			'creating'                        => $is_publishing,
+			'has_pending_site'                => $has_pending_site,
+			'next_queue'                      => wu_get_next_queue_run(),
+			'ajaxurl'                         => admin_url('admin-ajax.php'),
+			'resend_verification_email_nonce' => wp_create_nonce('wu_resend_verification_email_nonce'),
+			'membership_hash'                 => $this->membership ? $this->membership->get_hash() : false,
+			'i18n'                            => array(
+				'resending_verification_email' => __('Resending verification email...', 'wp-ultimo'),
+				'email_sent'                   => __('Verification email sent!', 'wp-ultimo'),
+			),
+		));
+
+		wp_enqueue_script('wu-thank-you');
+
+	} // end register_scripts;
 
 	/**
 	 * The title of the UI element.
@@ -253,6 +324,10 @@ class Thank_You_Element extends Base_Element {
 
 		$this->customer = $this->membership->get_customer();
 
+		add_filter('document_title_parts', array($this, 'replace_page_title'));
+
+		add_filter('the_title', array($this, 'maybe_replace_page_title'), 10, 2);
+
 	} // end setup;
 
 	/**
@@ -291,6 +366,48 @@ class Thank_You_Element extends Base_Element {
 		$atts['membership'] = $this->membership;
 
 		$atts['customer'] = $this->customer;
+
+		$atts = wp_parse_args($atts, $this->defaults());
+
+		/*
+		 * Deal with conversion tracking
+		 */
+		$conversion_snippets = $atts['checkout_form']->get_conversion_snippets();
+
+		if (!empty($conversion_snippets)) {
+
+			$product_ids = array_map( function($line_item) {
+
+				return (string) $line_item->get_id();
+
+			}, $this->payment->get_line_items());
+
+			$conversion_placeholders = apply_filters( 'wu_conversion_placeholders', array(
+				'MEMBERSHIP_DURATION' => $this->membership->get_recurring_description(),
+				'MEMBERSHIP_PLAN'     => $this->membership->get_plan_id(),
+				'ORDER_CURRENCY'      => $this->payment->get_currency(),
+				'ORDER_PRODUCTS'      => $product_ids,
+				'ORDER_AMOUNT'        => $this->payment->get_total(),
+			));
+
+			foreach ($conversion_placeholders as $placeholder => $value) {
+
+				$conversion_snippets = preg_replace('/\%\%\s?' . $placeholder . '\s?\%\%/', json_encode($value), $conversion_snippets);
+
+			} // end foreach;
+
+			add_action('wp_print_footer_scripts', function() use ($conversion_snippets) {
+
+				echo $conversion_snippets;
+
+			});
+
+		} // end if;
+
+		/*
+		 * Account for the 'className' Gutenberg attribute.
+		 */
+		$atts['className'] = trim('wu-' . $this->id . ' ' . wu_get_isset($atts, 'className', ''));
 
 		return wu_get_template_contents('dashboard-widgets/thank-you', $atts);
 

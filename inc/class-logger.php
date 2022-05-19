@@ -11,6 +11,11 @@
 
 namespace WP_Ultimo;
 
+use \WP_Ultimo\Dependencies\Analog\Analog;
+use \WP_Ultimo\Dependencies\Analog\Handler\Multi;
+use \WP_Ultimo\Dependencies\Analog\Handler\File;
+use \WP_Ultimo\Dependencies\Analog\Handler\PDO;
+
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
@@ -22,34 +27,30 @@ defined('ABSPATH') || exit;
 class Logger {
 
 	/**
-	 * Stores open file _handles.
+	 * Logger implementation.
 	 *
-	 * @var array
-	 * @access private
+	 * @since 2.0.11
+	 * @var \Psr\Log\LoggerInterface
 	 */
-	static $_handles;
+	public static $psr3_logger;
 
 	/**
-	 * Constructor for the logger.
+	 * Builds a logger instance.
+	 *
+	 * @since 2.0.11
+	 * @return \Psr\Log\LoggerInterface
 	 */
-	public function __construct() {
+	public static function build() {
 
-		self::$_handles = array();
+		if (self::$psr3_logger === null) {
 
-	} // end __construct;
+			self::$psr3_logger = new self();
 
-	/**
-	 * Destructor.
-	 */
-	public function __destruct() {
+		} // end if;
 
-		foreach (self::$_handles as $handle) {
+		return self::$psr3_logger;
 
-			@fclose($handle); // phpcs:ignore
-
-		} // end foreach;
-
-	} // end __destruct;
+	} // end build;
 
 	/**
 	 * Returns the logs folder
@@ -58,89 +59,42 @@ class Logger {
 	 */
 	public static function get_logs_folder() {
 
-		return WP_Ultimo()->helper->maybe_create_folder('wu-logs');
+		return wu_maybe_create_folder('wu-logs');
 
 	} // end get_logs_folder;
 
 	/**
-	 * Get the log contents
-	 *
-	 * @since  1.6.0
-	 *
-	 * @param  string  $handle File name to read.
-	 * @param  integer $lines Number of lines to retrieve, defaults to 10.
-	 * @return array
-	 */
-	public static function read_lines($handle, $lines = 10) {
-
-		$results = array();
-
-		// Open the file for reading
-		if (self::open($handle, 'r') && is_resource(self::$_handles[$handle])) {
-
-			while (!feof(self::$_handles[$handle])) {
-
-				$line = fgets(self::$_handles[$handle], 4096);
-
-				array_push($results, $line);
-
-				if (count($results) > $lines + 1) {
-
-					array_shift($results);
-
-				} // end if;
-
-			} // end while;
-
-			if (@fclose(self::$_handles[$handle]) === false) { // phpcs:ignore
-
-				return false;
-
-			} // end if;
-
-		} // end if;
-
-		// Close the file handle; when you are done using a
-		// resource you should always close it immediately
-		return array_filter($results);
-
-	} // end read_lines;
-
-	/**
-	 * Open log file for writing.
-	 *
-	 * @since  1.2.0 Checks if the directory exists.
-	 * @since  0.0.1
-	 *
-	 * @access private
-	 * @param string $handle Name of the log file to open.
-	 * @param string $permission Permission to open the file with.
-	 * @return bool success
-	 */
-	private static function open($handle, $permission = 'a') {
-
-		// Get the path for our logs
-		$path = self::get_logs_folder();
-
-		if (self::$_handles[$handle] = @fopen($path . $handle . '.log', $permission)) { // phpcs:ignore
-
-			return true;
-
-		} // end if;
-
-		return false;
-
-	} // end open;
-
-	/**
 	 * Add a log entry to chosen file.
 	 *
-	 * @param string $handle Name of the log file to write to.
-	 * @param string $message Log message to write.
+	 * @param string           $handle Name of the log file to write to.
+	 * @param string|\WP_Error $message Log message to write.
 	 */
 	public static function add($handle, $message) {
 
+		return '';
+
 		if (self::open($handle) && is_resource(self::$_handles[$handle])) {
+
+			if (is_wp_error($message)) {
+
+				$error   = $message;
+				$message = $error->get_error_message();
+				$code    = $error->get_error_code();
+				$data    = $error->get_error_data();
+
+				if (!empty($code)) {
+
+					$message .= sprintf(' (%s)', $code);
+
+				} // end if;
+
+				if (!empty($data)) {
+
+					$message .= sprintf(" - data:\n%s", json_encode($data, JSON_PRETTY_PRINT));
+
+				} // end if;
+
+			} // end if;
 
 			$time = date_i18n('m-d-Y @ H:i:s -');
 
@@ -155,20 +109,36 @@ class Logger {
 	} // end add;
 
 	/**
+	 * Get the log contents
+	 *
+	 * @since  1.6.0
+	 *
+	 * @param  string  $handle File name to read.
+	 * @param  integer $lines Number of lines to retrieve, defaults to 10.
+	 * @return array
+	 */
+	public static function read_lines($handle, $lines = 10) {
+
+		return array();
+
+	} // end read_lines;
+
+	/**
 	 * Clear entries from chosen file.
 	 *
 	 * @param mixed $handle Name of the log file to clear.
 	 */
 	public static function clear($handle) {
 
-		if (self::open($handle) && is_resource(self::$_handles[$handle])) {
+		return;
 
-			@ftruncate(self::$_handles[$handle], 0); // phpcs:ignore
+		// if (self::open($handle) && is_resource(self::$_handles[$handle])) {
 
-		} // end if;
+		// @ftruncate(self::$_handles[$handle], 0); // phpcs:ignore
 
-		do_action('wu_log_clear', $handle);
+		// } // end if;
 
+		// do_action('wu_log_clear', $handle);
 	} // end clear;
 
 	/**

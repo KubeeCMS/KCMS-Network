@@ -114,13 +114,14 @@ class Webhook extends Base_Model {
 	public function validation_rules() {
 
 		return array(
-			'name'        => 'required|min:2',
-			'webhook_url' => 'required|url:http,https',
-			'event'       => 'required',
-			'event_count' => 'default:0',
-			'active'      => 'default:1',
-			'hidden'      => 'default:0',
-			'integration' => 'required|min:2',
+			'name'            => 'required|min:2',
+			'webhook_url'     => 'required|url:http,https',
+			'event'           => 'required',
+			'event_count'     => 'default:0',
+			'active'          => 'default:1',
+			'hidden'          => 'default:0',
+			'integration'     => 'required|min:2',
+			'date_last_fail' => 'default:'
 		);
 
 	} // end validation_rules;
@@ -139,7 +140,7 @@ class Webhook extends Base_Model {
 	/**
 	 * Set the value of name.
 	 *
-	 * @param string $name The name of the Webhook.
+	 * @param string $name Webhook name, which is used as product title as well.
 	 */
 	public function set_name($name) {
 
@@ -161,7 +162,7 @@ class Webhook extends Base_Model {
 	/**
 	 * Set the value of webhook_url.
 	 *
-	 * @param string $webhook_url The new URL for the webhook call.
+	 * @param string $webhook_url The URL used for the webhook call.
 	 */
 	public function set_webhook_url($webhook_url) {
 
@@ -183,7 +184,7 @@ class Webhook extends Base_Model {
 	/**
 	 * Set the value of event.
 	 *
-	 * @param string $event Event of the webhook.
+	 * @param string $event The event that needs to be fired for this webhook to be sent.
 	 */
 	public function set_event($event) {
 
@@ -205,7 +206,7 @@ class Webhook extends Base_Model {
 	/**
 	 * Set the value of event_count.
 	 *
-	 * @param int $event_count The new event_count.
+	 * @param int $event_count How many times this webhook was sent.
 	 */
 	public function set_event_count($event_count) {
 
@@ -230,7 +231,7 @@ class Webhook extends Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param boolean $active Wether or not this domain is active.
+	 * @param boolean $active Set this webhook as active (true), which means available will fire when the event occur, or inactive (false).
 	 * @return void
 	 */
 	public function set_active($active) {
@@ -312,7 +313,7 @@ class Webhook extends Base_Model {
 	/**
 	 * Set integration name.
 	 *
-	 * @param string $integration Integration name.
+	 * @param string $integration The integration that created this webhook.
 	 */
 	public function set_integration($integration) {
 
@@ -335,7 +336,7 @@ class Webhook extends Base_Model {
 	/**
 	 * Set the last fail date.
 	 *
-	 * @param string $date_last_fail Last fail date.
+	 * @param string $date_last_fail  The date when this webhook last fail.
 	 */
 	public function set_date_last_fail($date_last_fail) {
 

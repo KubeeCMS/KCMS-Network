@@ -6,7 +6,7 @@ namespace WP_Ultimo\Dependencies\Stripe\Util;
  * A very basic implementation of LoggerInterface that has just enough
  * functionality that it can be the default for this library.
  */
-class DefaultLogger implements \WP_Ultimo\Dependencies\Stripe\Util\LoggerInterface
+class DefaultLogger implements LoggerInterface
 {
     /** @var int */
     public $messageType = 0;

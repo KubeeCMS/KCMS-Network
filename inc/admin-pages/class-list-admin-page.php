@@ -77,7 +77,7 @@ abstract class List_Admin_Page extends Base_Admin_Page {
 		/**
 		 * Adds the process for process actions
 		 */
-		$this->process_bulk_action();
+		$this->process_single_action();
 
 	} // end page_loaded;
 
@@ -99,23 +99,23 @@ abstract class List_Admin_Page extends Base_Admin_Page {
 	} // end init;
 
 	/**
-	 * Process bulk actions of the tables
+	 * Process lins actions of the tables
 	 *
 	 * @since 1.8.2
 	 * @return void
 	 */
-	public function process_bulk_action() {
+	public function process_single_action() {
 
 		if ($this->table) {
 
-			$this->table->process_bulk_action();
+			$this->table->process_single_action();
 
 		} // end if;
 
-	} // end process_bulk_action;
+	} // end process_single_action;
 
 	/**
-	 * Returns an array with the labels for the edit page
+	 * Returns an array with the labels for the edit page.
 	 *
 	 * @since 1.8.2
 	 * @return array
@@ -128,6 +128,26 @@ abstract class List_Admin_Page extends Base_Admin_Page {
 		);
 
 	} // end get_labels;
+
+	/**
+	 * Allow child classes to register scripts and styles that can be loaded on the output function, for example.
+	 *
+	 * @since 1.8.2
+	 * @return void
+	 */
+	public function register_scripts() {
+
+		parent::register_scripts();
+
+		wp_enqueue_script('wu-vue-apps');
+
+		wp_enqueue_script('wu-fields');
+
+		wp_enqueue_style('wp-color-picker');
+
+		wp_enqueue_script('wu-selectizer');
+
+	} // end register_scripts;
 
 	/**
 	 * Sets the default list template

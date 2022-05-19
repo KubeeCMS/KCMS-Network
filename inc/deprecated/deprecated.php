@@ -10,8 +10,6 @@
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
-use \WP_Ultimo\Helpers\Sender;
-
 /*
  * Classes
  */
@@ -125,6 +123,20 @@ class WU_Settings {
 		return wu_get_network_logo($size);
 
 	} // end get_logo;
+
+	/**
+	 * Deprecated: Return the countries list.
+	 *
+	 * @since 1.5.4
+	 * @return array
+	 */
+	public static function get_countries() {
+
+		_deprecated_function(__METHOD__, '2.0.0', 'wu_get_countries()');
+
+		return wu_get_countries();
+
+	} // end get_countries;
 
 } // end class WU_Settings;
 
@@ -950,22 +962,6 @@ class WU_Coupon extends \WP_Ultimo\Models\Discount_Code {
 
 	} // end after_set;
 
-	/**
-	 * Add uses to this coupon.
-	 *
-	 * @deprecated 2.0.0
-	 * @param integer $uses Number of uses to add.
-	 */
-	public function add_use($uses = 1) {
-
-		$use_count = (int) $this->get_uses();
-
-		$this->set_uses($use_count + (int) $uses);
-
-		$this->save();
-
-	} // end add_use;
-
 } // end class WU_Coupon;
 
 /**
@@ -1037,7 +1033,7 @@ class WU_Plan extends \WP_Ultimo\Models\Product {
 
 		} // end if;
 
-		return false;
+		return $this->get_meta('wpu_' . $key, false);
 
 	} // end __get;
 
@@ -1155,7 +1151,7 @@ class WU_Signup extends \WP_Ultimo\Checkout\Legacy_Checkout {
  *
  * @since 2.0.0
  */
-class WU_Gateway extends \WP_Ultimo\Gateways\Base_Gateway {
+abstract class WU_Gateway {
 
 } // end class WU_Gateway;
 
@@ -1200,7 +1196,9 @@ class WU_Site_Hooks {
 	 *
 	 * @return integer Site ID of the new site.
 	 */
-	public static function duplicate_site($site_to_duplicate = 2, $title, $domain, $email, $site_domain = false, $copy_files = '') {
+	public static function duplicate_site($site_to_duplicate, $title, $domain, $email, $site_domain = false, $copy_files = '') {
+
+		global $current_site;
 
 		_deprecated_function(__CLASS__, '2.0.0', '\WP_Ultimo\Helpers\Site_Duplicator::duplicate_site()');
 
@@ -1211,7 +1209,7 @@ class WU_Site_Hooks {
 			'domain'     => $site_domain ? $site_domain : $current_site->domain,
 		);
 
-		return \WP_Ultimo\Helpers\Site_Duplicator::duplicate_site($site_to_duplicate, $title, $args);
+		return \WP_Ultimo\Helpers\Site_Duplicator::duplicate_site($site_to_duplicate, $title, $arguments);
 
 	} // end duplicate_site;
 
@@ -1349,12 +1347,12 @@ function wu_get_plan_by_slug($plan_slug) {
  * Deprecated: Returns a subscription object based on the user.
  *
  * This method is returning the first result of a global search for
- * memberships with this user_id. This needs to be changed on your code as soon as posible,
+ * memberships with this user_id. This needs to be changed on your code as soon as possible,
  * to make use of the current methods to search memberships based on the customer.
  *
  * @deprecated 2.0.0
  *
- * @param  interger $user_id User id to get subscription from.
+ * @param  int $user_id User id to get subscription from.
  * @return \WP_Ultimo\Models\Membership|false
  */
 function wu_get_subscription($user_id) {
@@ -1377,7 +1375,7 @@ function wu_get_subscription_by_integration_key($integration_key) {
 
 	_deprecated_function(__FUNCTION__, '2.0.0', 'wu_get_membership_by()');
 
-	return wu_get_membership_by('gateway_subscription_id', $user_id);
+	return wu_get_membership_by('gateway_subscription_id', $integration_key);
 
 } // end wu_get_subscription_by_integration_key;
 
@@ -1443,9 +1441,22 @@ function wu_has_plan($user_id, $plan_id) {
 
 	_deprecated_function(__FUNCTION__, '2.0.0');
 
-	$membership = wu_get_membership_by('user_id', get_current_user_id());
+	/*
+	 * This function is frequently used by custom snippets
+	 * developed by Ultimo users, and as such, they might
+	 * get loaded and run before Ultimo is set up and the APIs
+	 * are loaded. In that case, we just return false,
+	 * to prevent a fatal error.
+	 */
+	if (function_exists('wu_get_membership_by') === false) {
 
-	return $membership && abs($membership->get_plan_id()) === abs($plan_id);
+		return false;
+
+	} // end if;
+
+	$membership = wu_get_membership_by('user_id', $user_id);
+
+	return $membership && absint($membership->get_plan_id()) === absint($plan_id);
 
 } // end wu_has_plan;
 

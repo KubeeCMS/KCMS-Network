@@ -17,7 +17,7 @@
 
           <a title="<?php echo $target['display_name']; ?>" href='<?php echo $target['link'] ?>' class='<?php echo $modal_class; ?> wu-table-card wu-text-gray-700 wu-p-2 wu-flex wu-flex-grow wu-rounded wu-items-center wu-border wu-border-solid wu-border-gray-300 wu-no-underline'>
 
-            <div class="wu-flex wu-relative wu-h-8 wu-w-8 wu-rounded-full wu-ring-2 wu-ring-white wu-bg-gray-300 wu-items-center wu-justify-center">
+            <div class="wu-flex wu-relative wu-h-6 wu-w-6 wu-rounded-full wu-ring-2 wu-mx-4 wu-my-2 wu-box-border wu-ring-white wu-bg-gray-300 wu-items-center wu-justify-center">
 
               <?php echo $target['avatar']; ?>
 

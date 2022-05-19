@@ -5,8 +5,6 @@
  *
  * PHP version 5
  *
- * @category  Common
- * @package   Functions\Strings
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2016 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -19,7 +17,6 @@ use phpseclib3\Math\Common\FiniteField;
 /**
  * Common String Functions
  *
- * @package Functions\Strings
  * @author  Jim Wigginton <terrafrost@php.net>
  */
 abstract class Strings
@@ -31,7 +28,6 @@ abstract class Strings
      *
      * @param string $string
      * @param int $index
-     * @access public
      * @return string
      */
     public static function shift(&$string, $index = 1)
@@ -47,7 +43,6 @@ abstract class Strings
      *
      * @param string $string
      * @param int $index
-     * @access public
      * @return string
      */
     public static function pop(&$string, $index = 1)
@@ -66,6 +61,7 @@ abstract class Strings
      * C = byte
      * b = boolean (true/false)
      * N = uint32
+     * Q = uint64
      * s = string
      * i = mpint
      * L = name-list
@@ -96,6 +92,11 @@ abstract class Strings
                         throw new \LengthException('At least four byte needs to be present for successful N / i / s / L decodes');
                     }
                     break;
+                case 'Q':
+                    if (\strlen($data) < 8) {
+                        throw new \LengthException('At least eight byte needs to be present for successful N / i / s / L decodes');
+                    }
+                    break;
                 default:
                     throw new \InvalidArgumentException('$format contains an invalid character');
             }
@@ -110,6 +111,19 @@ abstract class Strings
                     list(, $temp) = \unpack('N', self::shift($data, 4));
                     $result[] = $temp;
                     continue 2;
+                case 'Q':
+                    // pack() added support for Q in PHP 5.6.3 and PHP 5.6 is phpseclib 3's minimum version
+                    // so in theory we could support this BUT, "64-bit format codes are not available for
+                    // 32-bit versions" and phpseclib works on 32-bit installs. on 32-bit installs
+                    // 64-bit floats can be used to get larger numbers then 32-bit signed ints would allow
+                    // for. sure, you're not gonna get the full precision of 64-bit numbers but just because
+                    // you need > 32-bit precision doesn't mean you need the full 64-bit precision
+                    \extract(\unpack('Nupper/Nlower', self::shift($data, 8)));
+                    $temp = $upper ? 4294967296 * $upper : 0;
+                    $temp += $lower < 0 ? ($lower & 0x7ffffffff) + 0x80000000 : $lower;
+                    // $temp = hexdec(bin2hex(self::shift($data, 8)));
+                    $result[] = $temp;
+                    continue 2;
             }
             list(, $length) = \unpack('N', self::shift($data, 4));
             if (\strlen($data) < $length) {
@@ -118,7 +132,7 @@ abstract class Strings
             $temp = self::shift($data, $length);
             switch ($format[$i]) {
                 case 'i':
-                    $result[] = new \phpseclib3\Math\BigInteger($temp, -256);
+                    $result[] = new BigInteger($temp, -256);
                     break;
                 case 's':
                     $result[] = $temp;
@@ -132,14 +146,13 @@ abstract class Strings
     /**
      * Create SSH2-style string
      *
-     * @param string[] ...$elements
-     * @access public
-     * @return mixed
+     * @param string $format
+     * @param string|int|float|array|bool ...$elements
+     * @return string
      */
-    public static function packSSH2(...$elements)
+    public static function packSSH2($format, ...$elements)
     {
-        $format = self::formatPack($elements[0]);
-        \array_shift($elements);
+        $format = self::formatPack($format);
         if (\strlen($format) != \count($elements)) {
             throw new \InvalidArgumentException('There must be as many arguments as there are characters in the $format string');
         }
@@ -159,6 +172,13 @@ abstract class Strings
                     }
                     $result .= $element ? "\1" : "\0";
                     break;
+                case 'Q':
+                    if (!\is_int($element) && !\is_float($element)) {
+                        throw new \InvalidArgumentException('An integer was expected.');
+                    }
+                    // 4294967296 == 1 << 32
+                    $result .= \pack('NN', $element / 4294967296, $element);
+                    break;
                 case 'N':
                     if (\is_float($element)) {
                         $element = (int) $element;
@@ -175,7 +195,7 @@ abstract class Strings
                     $result .= \pack('Na*', \strlen($element), $element);
                     break;
                 case 'i':
-                    if (!$element instanceof \phpseclib3\Math\BigInteger && !$element instanceof \phpseclib3\Math\Common\FiniteField\Integer) {
+                    if (!$element instanceof BigInteger && !$element instanceof FiniteField\Integer) {
                         throw new \InvalidArgumentException('A phpseclib3\\Math\\BigInteger or phpseclib3\\Math\\Common\\FiniteField\\Integer object was expected.');
                     }
                     $element = $element->toBytes(\true);
@@ -199,7 +219,6 @@ abstract class Strings
      *
      * Converts C5 to CCCCC, for example.
      *
-     * @access private
      * @param string $format
      * @return string
      */
@@ -221,7 +240,6 @@ abstract class Strings
      * of this function, bin refers to base-256 encoded data whilst bits refers
      * to base-2 encoded data
      *
-     * @access public
      * @param string $x
      * @return string
      */
@@ -260,11 +278,10 @@ abstract class Strings
     /**
      * Convert bits to binary data
      *
-     * @access public
      * @param string $x
      * @return string
      */
-    public static function bin2bits($x)
+    public static function bin2bits($x, $trim = \true)
     {
         /*
         // the pure-PHP approach is slower than the GMP approach BUT
@@ -290,24 +307,30 @@ abstract class Strings
                 $bits .= \sprintf('%064b', $digit);
             }
         }
-        return \ltrim($bits, '0');
+        return $trim ? \ltrim($bits, '0') : $bits;
     }
     /**
      * Switch Endianness Bit Order
      *
-     * @access public
      * @param string $x
      * @return string
      */
     public static function switchEndianness($x)
     {
         $r = '';
-        // from http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith32Bits
         for ($i = \strlen($x) - 1; $i >= 0; $i--) {
             $b = \ord($x[$i]);
-            $p1 = $b * 0x802 & 0x22110;
-            $p2 = $b * 0x8020 & 0x88440;
-            $r .= \chr(($p1 | $p2) * 0x10101 >> 16);
+            if (\PHP_INT_SIZE === 8) {
+                // 3 operations
+                // from http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64BitsDiv
+                $r .= \chr(($b * 0x202020202 & 0x10884422010) % 1023);
+            } else {
+                // 7 operations
+                // from http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith32Bits
+                $p1 = $b * 0x802 & 0x22110;
+                $p2 = $b * 0x8020 & 0x88440;
+                $r .= \chr(($p1 | $p2) * 0x10101 >> 16);
+            }
         }
         return $r;
     }
@@ -316,10 +339,15 @@ abstract class Strings
      *
      * @param string $var
      * @return string
-     * @access public
      */
     public static function increment_str(&$var)
     {
+        if (\function_exists('sodium_increment')) {
+            $var = \strrev($var);
+            \sodium_increment($var);
+            $var = \strrev($var);
+            return $var;
+        }
         for ($i = 4; $i <= \strlen($var); $i += 4) {
             $temp = \substr($var, -$i, 4);
             switch ($temp) {
@@ -347,9 +375,9 @@ abstract class Strings
     /**
      * Find whether the type of a variable is string (or could be converted to one)
      *
-     * @param string|object $var
-     * @return boolean
-     * @access public
+     * @param mixed $var
+     * @return bool
+     * @psalm-assert-if-true string|\Stringable $var
      */
     public static function is_stringable($var)
     {

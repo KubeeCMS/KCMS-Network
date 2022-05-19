@@ -5,8 +5,6 @@
  *
  * PHP version 5
  *
- * @category  Crypt
- * @package   Salsa20
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2019 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -14,18 +12,16 @@
  */
 namespace phpseclib3\Crypt;
 
-use phpseclib3\Crypt\Common\StreamCipher;
-use phpseclib3\Exception\InsufficientSetupException;
-use phpseclib3\Exception\BadDecryptionException;
 use phpseclib3\Common\Functions\Strings;
+use phpseclib3\Crypt\Common\StreamCipher;
+use phpseclib3\Exception\BadDecryptionException;
+use phpseclib3\Exception\InsufficientSetupException;
 /**
  * Pure-PHP implementation of Salsa20.
  *
- * @package Salsa20
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-class Salsa20 extends \phpseclib3\Crypt\Common\StreamCipher
+class Salsa20 extends StreamCipher
 {
     /**
      * Part 1 of the state
@@ -47,12 +43,10 @@ class Salsa20 extends \phpseclib3\Crypt\Common\StreamCipher
     protected $key_length = 32;
     // = 256 bits
     /**
-     * @access private
      * @see \phpseclib3\Crypt\Salsa20::crypt()
      */
     const ENCRYPT = 0;
     /**
-     * @access private
      * @see \phpseclib3\Crypt\Salsa20::crypt()
      */
     const DECRYPT = 1;
@@ -138,10 +132,10 @@ class Salsa20 extends \phpseclib3\Crypt\Common\StreamCipher
     protected function createPoly1305Key()
     {
         if ($this->nonce === \false) {
-            throw new \phpseclib3\Exception\InsufficientSetupException('No nonce has been defined');
+            throw new InsufficientSetupException('No nonce has been defined');
         }
         if ($this->key === \false) {
-            throw new \phpseclib3\Exception\InsufficientSetupException('No key has been defined');
+            throw new InsufficientSetupException('No key has been defined');
         }
         $c = clone $this;
         $c->setCounter(0);
@@ -178,10 +172,10 @@ class Salsa20 extends \phpseclib3\Crypt\Common\StreamCipher
         $this->enbuffer = $this->debuffer = ['ciphertext' => '', 'counter' => $this->counter];
         $this->changed = $this->nonIVChanged = \false;
         if ($this->nonce === \false) {
-            throw new \phpseclib3\Exception\InsufficientSetupException('No nonce has been defined');
+            throw new InsufficientSetupException('No nonce has been defined');
         }
         if ($this->key === \false) {
-            throw new \phpseclib3\Exception\InsufficientSetupException('No key has been defined');
+            throw new InsufficientSetupException('No key has been defined');
         }
         if ($this->usePoly1305 && !isset($this->poly1305Key)) {
             $this->usingGeneratedPoly1305Key = \true;
@@ -235,12 +229,12 @@ class Salsa20 extends \phpseclib3\Crypt\Common\StreamCipher
     {
         if (isset($this->poly1305Key)) {
             if ($this->oldtag === \false) {
-                throw new \phpseclib3\Exception\InsufficientSetupException('Authentication Tag has not been set');
+                throw new InsufficientSetupException('Authentication Tag has not been set');
             }
             $newtag = $this->poly1305($ciphertext);
             if ($this->oldtag != \substr($newtag, 0, \strlen($this->oldtag))) {
                 $this->oldtag = \false;
-                throw new \phpseclib3\Exception\BadDecryptionException('Derived authentication tag and supplied authentication tag do not match');
+                throw new BadDecryptionException('Derived authentication tag and supplied authentication tag do not match');
             }
             $this->oldtag = \false;
         }
@@ -293,8 +287,10 @@ class Salsa20 extends \phpseclib3\Crypt\Common\StreamCipher
         } else {
             $buffer =& $this->debuffer;
         }
-        if (\strlen($buffer['ciphertext'])) {
-            $ciphertext = $text ^ \phpseclib3\Common\Functions\Strings::shift($buffer['ciphertext'], \strlen($text));
+        if (!\strlen($buffer['ciphertext'])) {
+            $ciphertext = '';
+        } else {
+            $ciphertext = $text ^ Strings::shift($buffer['ciphertext'], \strlen($text));
             $text = \substr($text, \strlen($ciphertext));
             if (!\strlen($text)) {
                 return $ciphertext;
@@ -303,14 +299,14 @@ class Salsa20 extends \phpseclib3\Crypt\Common\StreamCipher
         $overflow = \strlen($text) % 64;
         // & 0x3F
         if ($overflow) {
-            $text2 = \phpseclib3\Common\Functions\Strings::pop($text, $overflow);
+            $text2 = Strings::pop($text, $overflow);
             if ($this->engine == self::ENGINE_OPENSSL) {
                 $iv = \pack('V', $buffer['counter']) . $this->p2;
                 // at this point $text should be a multiple of 64
                 $buffer['counter'] += (\strlen($text) >> 6) + 1;
                 // ie. divide by 64
                 $encrypted = \openssl_encrypt($text . \str_repeat("\0", 64), $this->cipher_name_openssl, $this->key, \OPENSSL_RAW_DATA, $iv);
-                $temp = \phpseclib3\Common\Functions\Strings::pop($encrypted, 64);
+                $temp = Strings::pop($encrypted, 64);
             } else {
                 $blocks = \str_split($text, 64);
                 if (\strlen($text)) {
@@ -414,7 +410,7 @@ class Salsa20 extends \phpseclib3\Crypt\Common\StreamCipher
     {
         $z = $x = \unpack('V*', $x);
         for ($i = 0; $i < 10; $i++) {
-            static::doubleRound(...$z);
+            static::doubleRound($z[1], $z[2], $z[3], $z[4], $z[5], $z[6], $z[7], $z[8], $z[9], $z[10], $z[11], $z[12], $z[13], $z[14], $z[15], $z[16]);
         }
         for ($i = 1; $i <= 16; $i++) {
             $x[$i] += $z[$i];
@@ -426,7 +422,6 @@ class Salsa20 extends \phpseclib3\Crypt\Common\StreamCipher
      *
      * @see self::decrypt()
      * @see self::encrypt()
-     * @access private
      * @param string $ciphertext
      * @return string
      */

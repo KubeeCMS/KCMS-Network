@@ -71,9 +71,23 @@ class Signup_Field_Color extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('Color Description', 'wp-ultimo');
+		return __('Adds a color picker field.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Adds a color picker field.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -85,7 +99,7 @@ class Signup_Field_Color extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-wu-palette';
+		return 'dashicons-wu-droplet';
 
 	} // end get_icon;
 
@@ -118,7 +132,6 @@ class Signup_Field_Color extends Base_Signup_Field {
 			'id',
 			'name',
 			'placeholder',
-			// 'default_value',
 			'tooltip',
 			'required',
 			'save_as',
@@ -148,8 +161,10 @@ class Signup_Field_Color extends Base_Signup_Field {
 
 		return array(
 			'default_value' => array(
-				'type'  => 'color',
-				'title' => 'lol'
+				'type'  => 'color-picker',
+				'order' => 12,
+				'title' => __('Default Color', 'wp-ultimo'),
+				'desc'  => __('Set the default value for this color field.', 'wp-ultimo'),
 			),
 		);
 
@@ -167,15 +182,17 @@ class Signup_Field_Color extends Base_Signup_Field {
 
 		return array(
 			$attributes['id'] => array(
-				'type'        => 'color',
-				'id'          => $attributes['id'],
-				'name'        => $attributes['name'],
-				'placeholder' => $attributes['placeholder'],
-				'tooltip'     => $attributes['tooltip'],
-				'default'     => $attributes['default_value'],
-				'required'    => $attributes['required'],
-				'classes'     => 'wu-rounded',
-				'html_attr'   => array(
+				'type'            => 'color',
+				'id'              => $attributes['id'],
+				'name'            => $attributes['name'],
+				'placeholder'     => $attributes['placeholder'],
+				'tooltip'         => $attributes['tooltip'],
+				'default'         => $attributes['default_value'],
+				'required'        => $attributes['required'],
+				'wrapper_classes' => $attributes['element_classes'],
+				'classes'         => 'wu-rounded',
+				'value'           => $this->get_value(),
+				'html_attr'       => array(
 					'style' => 'width: 50px !important',
 				),
 			),

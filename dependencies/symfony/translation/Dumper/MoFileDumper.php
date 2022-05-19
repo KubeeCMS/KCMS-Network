@@ -22,7 +22,7 @@ class MoFileDumper extends \Symfony\Component\Translation\Dumper\FileDumper
     /**
      * {@inheritdoc}
      */
-    public function formatCatalogue(\Symfony\Component\Translation\MessageCatalogue $messages, string $domain, array $options = [])
+    public function formatCatalogue(MessageCatalogue $messages, string $domain, array $options = [])
     {
         $sources = $targets = $sourceOffsets = $targetOffsets = '';
         $offsets = [];
@@ -33,7 +33,7 @@ class MoFileDumper extends \Symfony\Component\Translation\Dumper\FileDumper
             $targets .= "\0" . $target;
             ++$size;
         }
-        $header = ['magicNumber' => \Symfony\Component\Translation\Loader\MoFileLoader::MO_LITTLE_ENDIAN_MAGIC, 'formatRevision' => 0, 'count' => $size, 'offsetId' => \Symfony\Component\Translation\Loader\MoFileLoader::MO_HEADER_SIZE, 'offsetTranslated' => \Symfony\Component\Translation\Loader\MoFileLoader::MO_HEADER_SIZE + 8 * $size, 'sizeHashes' => 0, 'offsetHashes' => \Symfony\Component\Translation\Loader\MoFileLoader::MO_HEADER_SIZE + 16 * $size];
+        $header = ['magicNumber' => MoFileLoader::MO_LITTLE_ENDIAN_MAGIC, 'formatRevision' => 0, 'count' => $size, 'offsetId' => MoFileLoader::MO_HEADER_SIZE, 'offsetTranslated' => MoFileLoader::MO_HEADER_SIZE + 8 * $size, 'sizeHashes' => 0, 'offsetHashes' => MoFileLoader::MO_HEADER_SIZE + 16 * $size];
         $sourcesSize = \strlen($sources);
         $sourcesStart = $header['offsetHashes'] + 1;
         foreach ($offsets as $offset) {

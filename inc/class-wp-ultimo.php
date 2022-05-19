@@ -37,7 +37,7 @@ final class WP_Ultimo {
 	 *
 	 * @var string
 	 */
-	public $version = '2.0.0-beta.2';
+	public $version = '2.0.13';
 
 	/**
 	 * Holds an instance of the helper functions layer.
@@ -46,6 +46,14 @@ final class WP_Ultimo {
 	 * @var WP_Ultimo\Helper
 	 */
 	public $helper;
+
+	/**
+	 * Holds an instance of the notices functions layer.
+	 *
+	 * @since 2.0.0
+	 * @var WP_Ultimo\Admin_Notices
+	 */
+	public $notices;
 
 	/**
 	 * Holds an instance of the settings layer.
@@ -63,58 +71,41 @@ final class WP_Ultimo {
 	 */
 	public function init() {
 		/*
+		 * Core Helper Functions
+		 */
+		require_once __DIR__ . '/functions/helper.php';
+
+		/*
 		 * Loads the WP_Ultimo\Helper class.
+		 * @deprecated
 		 */
 		$this->helper = WP_Ultimo\Helper::get_instance();
 
 		/*
-		 * Helper Functions
+		 * Deprecated Classes, functions and more.
 		 */
-		require_once $this->helper->path('inc/functions/helper.php');
+		require_once wu_path('inc/deprecated/deprecated.php');
+
+		/**
+		 * Runs a number of checks and instructs users coming from the previous
+		 * version about what steps they need to take to finish the upgrade to version 2.
+		 *
+		 * - Links to the installer, if version 2 was not properly activated;
+		 * - Unloads incompatible add-ons, offering explanations when available;
+		 * - Re-adds the updater for add-ons that have new versions available.
+		 *
+		 * @since 2.0.5
+		 */
+		\WP_Ultimo\Unsupported::init();
 
 		/*
-		 * Scheduler Functions
+		 * The only core components we need to load
+		 * before every other public api are the options
+		 * and settings.
 		 */
-		require_once $this->helper->path('inc/functions/scheduler.php');
-
-		/*
-		 * Date Functions
-		 */
-		require_once $this->helper->path('inc/functions/date.php');
-
-		/*
-		 * Render Functions
-		 */
-		require_once $this->helper->path('inc/functions/template.php');
-
-		/*
-		 * Loads the currency helper functions.
-		 */
-		require_once $this->helper->path('inc/functions/currency.php');
-
-		/*
-		 * Country Functions
-		 */
-		require_once $this->helper->path('inc/functions/countries.php');
-
-		/*
-		 * Settings Functions
-		 */
-		require_once $this->helper->path('inc/functions/settings.php');
-
-		/*
-		 * Invoice Functions
-		 */
-		require_once $this->helper->path('inc/functions/invoice.php');
-
-		/*
-		 * Admin helper functions
-		 */
-		if (is_admin()) {
-
-			require_once $this->helper->path('inc/functions/admin.php');
-
-		} // end if;
+		require_once wu_path('inc/functions/fs.php');
+		require_once wu_path('inc/functions/sort.php');
+		require_once wu_path('inc/functions/settings.php');
 
 		/*
 		 * Set up the text-domain for translations
@@ -130,6 +121,11 @@ final class WP_Ultimo {
 		 * Loads the WP Ultimo settings helper class.
 		 */
 		$this->settings = WP_Ultimo\Settings::get_instance();
+
+		/*
+		 * Rollbacks Support
+		 */
+		\WP_Ultimo\Rollback\Rollback::get_instance();
 
 		/*
 		 * Check if the WP Ultimo requirements are present.
@@ -251,108 +247,167 @@ final class WP_Ultimo {
 	 * @since 2.0.0
 	 * @return void
 	 */
-	protected function load_public_apis() {
-		/*
-		 * Gateway Functions
+	public function load_public_apis() {
+
+		/**
+		 * Primitive Helpers
+		 *
+		 * Loads helper functions to deal with
+		 * PHP and WordPress primitives, such as arrays,
+		 * string, and numbers.
+		 *
+		 * Markup helpers - functions that help
+		 * in generating HTML markup that we can
+		 * print on screen is loaded laster.
+		 *
+		 * @see wu_to_float()
+		 * @see wu_replace_dashes()
+		 * @see wu_get_initials()
 		 */
-		require_once $this->helper->path('inc/functions/checkout.php');
-		require_once $this->helper->path('inc/functions/legacy.php');
-		require_once $this->helper->path('inc/functions/gateway.php');
+		require_once wu_path('inc/functions/array-helpers.php');
+		require_once wu_path('inc/functions/string-helpers.php');
+		require_once wu_path('inc/functions/number-helpers.php');
+
+		/**
+		 * General Helpers
+		 *
+		 * Loads general helpers that take care of a number
+		 * of different tasks, from interacting with the license,
+		 * to enabling context switching in sub-sites.
+		 *
+		 * @see wu_switch_blog_and_run()
+		 */
+		require_once wu_path('inc/functions/sunrise.php');
+		require_once wu_path('inc/functions/legacy.php');
+		require_once wu_path('inc/functions/site-context.php');
+		require_once wu_path('inc/functions/sort.php');
+		require_once wu_path('inc/functions/debug.php');
+		require_once wu_path('inc/functions/reflection.php');
+		require_once wu_path('inc/functions/licensing.php');
+		require_once wu_path('inc/functions/scheduler.php');
+		require_once wu_path('inc/functions/session.php');
+		require_once wu_path('inc/functions/documentation.php');
+
+		/**
+		 * I/O and HTTP Helpers
+		 *
+		 * Loads helper functions that allows for interaction
+		 * with PHP input, request and response headers, etc.
+		 *
+		 * @see wu_get_input()
+		 * @see wu_no_cache()
+		 * @see wu_x_header()
+		 */
+		require_once wu_path('inc/functions/http.php');
+		require_once wu_path('inc/functions/rest.php');
+
+		/**
+		 * Localization APIs.
+		 *
+		 * Loads functions that help us localize content,
+		 * prices, dates, and language.
+		 *
+		 * @see wu_validate_date()
+		 * @see wu_get_countries()
+		 */
+		require_once wu_path('inc/functions/date.php');
+		require_once wu_path('inc/functions/currency.php');
+		require_once wu_path('inc/functions/countries.php');
+		require_once wu_path('inc/functions/geolocation.php');
+		require_once wu_path('inc/functions/translation.php');
+
+		/**
+		 * Model public APIs.
+		 */
+		require_once wu_path('inc/functions/mock.php');
+		require_once wu_path('inc/functions/model.php');
+		require_once wu_path('inc/functions/broadcast.php');
+		require_once wu_path('inc/functions/email.php');
+		require_once wu_path('inc/functions/checkout-form.php');
+		require_once wu_path('inc/functions/customer.php');
+		require_once wu_path('inc/functions/discount-code.php');
+		require_once wu_path('inc/functions/domain.php');
+		require_once wu_path('inc/functions/event.php');
+		require_once wu_path('inc/functions/membership.php');
+		require_once wu_path('inc/functions/payment.php');
+		require_once wu_path('inc/functions/product.php');
+		require_once wu_path('inc/functions/site.php');
+		require_once wu_path('inc/functions/user.php');
+		require_once wu_path('inc/functions/webhook.php');
+
+		/**
+		 * URL and Asset Helpers
+		 *
+		 * Functions to easily return the url to plugin assets
+		 * and generate urls for the plugin UI in general.
+		 *
+		 * @see wu_get_current_url()
+		 * @see wu_get_asset()
+		 */
+		require_once wu_path('inc/functions/url.php');
+		require_once wu_path('inc/functions/assets.php');
+
+		/**
+		 * Checkout and Registration.
+		 *
+		 * Loads functions that interact with the checkout
+		 * and the registration elements of WP Ultimo.
+		 *
+		 * @see wu_is_registration_page()
+		 */
+		require_once wu_path('inc/functions/pages.php');
+		require_once wu_path('inc/functions/checkout.php');
+		require_once wu_path('inc/functions/gateway.php');
+		require_once wu_path('inc/functions/financial.php');
+		require_once wu_path('inc/functions/invoice.php');
+		require_once wu_path('inc/functions/tax.php');
+
+		/**
+		 * Access Control.
+		 *
+		 * Functions related to limitation checking,
+		 * membership validation, and more. Here are the
+		 * functions that you might want to use if you are
+		 * planning to lock portions of your app based on
+		 * membership status and products.
+		 *
+		 * @see wu_is_membership_active()
+		 */
+		require_once wu_path('inc/functions/limitations.php');
+
+		/**
+		 * Content Helpers.
+		 *
+		 * Functions that deal with content output, view/template
+		 * loading and more.
+		 *
+		 * @see wu_get_template()
+		 */
+		require_once wu_path('inc/functions/template.php');
+		require_once wu_path('inc/functions/env.php');
+		require_once wu_path('inc/functions/form.php');
+		require_once wu_path('inc/functions/markup-helpers.php');
+		require_once wu_path('inc/functions/element.php');
+
+		/**
+		 * Other Tools.
+		 *
+		 * Other tools that are used less-often, but are still important.
+		 *
+		 * @todo maybe only load when necessary?
+		 */
+		require_once wu_path('inc/functions/generator.php');
+		require_once wu_path('inc/functions/color.php');
+		require_once wu_path('inc/functions/danger.php');
 
 		/*
-		 * Site Functions
+		 * Admin helper functions
 		 */
-		require_once $this->helper->path('inc/functions/site.php');
+		if (is_admin()) {
 
-		/*
-		 * Domain Functions
-		 */
-		require_once $this->helper->path('inc/functions/domain.php');
+			require_once wu_path('inc/functions/admin.php');
 
-		/*
-		 * Customer Functions
-		 */
-		require_once $this->helper->path('inc/functions/customer.php');
-
-		/*
-		 * Support Agent Functions
-		 */
-		require_once $this->helper->path('inc/functions/support-agent.php');
-
-		/*
-		 * Discount Code Functions
-		 */
-		require_once $this->helper->path('inc/functions/discount-code.php');
-
-		/*
-		 * Product Functions
-		 */
-		require_once $this->helper->path('inc/functions/product.php');
-
-		/*
-		 * Checkout Forms Functions
-		 */
-		require_once $this->helper->path('inc/functions/checkout-form.php');
-
-		/*
-		 * Membership Functions
-		 */
-		require_once $this->helper->path('inc/functions/membership.php');
-
-		/*
-		 * Payments Functions
-		 */
-		require_once $this->helper->path('inc/functions/payment.php');
-
-		/*
-		 * Taxes Functions
-		 */
-		require_once $this->helper->path('inc/functions/tax.php');
-
-		/*
-		 * Webhooks Functions
-		 */
-		require_once $this->helper->path('inc/functions/webhook.php');
-
-		/*
-		 * Loads deprecated functions.
-		 */
-		require_once $this->helper->path('inc/deprecated/deprecated.php');
-
-		/*
-		 * Loads the events public apis.
-		 */
-		require_once $this->helper->path('inc/functions/event.php');
-
-		/*
-		 * Loads the form public apis.
-		 */
-		require_once $this->helper->path('inc/functions/form.php');
-
-		/*
-		 * Loads the broadcast public apis.
-		 */
-		require_once $this->helper->path('inc/functions/broadcast.php');
-
-		/*
-		 * Loads the webhook public apis.
-		 */
-		require_once $this->helper->path('inc/functions/webhook.php');
-
-		/*
-		 * Financial Functions
-		 */
-		require_once $this->helper->path('inc/functions/financial.php');
-
-		/*
-		 * Mock Functions
-		 */
-		require_once $this->helper->path('inc/functions/mock.php');
-
-		/*
-		 * Color Functions
-		 */
-		require_once $this->helper->path('inc/functions/color.php');
+		} // end if;
 
 	} // end load_public_apis;
 
@@ -363,6 +418,11 @@ final class WP_Ultimo {
 	 * @return void
 	 */
 	protected function load_extra_components() {
+		/*
+		 * SSO Functionality
+		 */
+		WP_Ultimo\SSO\SSO::get_instance();
+
 		/*
 		 * Loads the debugger tools
 		 */
@@ -398,16 +458,11 @@ final class WP_Ultimo {
 		 * @todo: move to add-on
 		 */
 		\WP_Ultimo\Builders\Block_Editor\Block_Editor_Widget_Manager::get_instance();
-		// \WP_Ultimo\Builders\Elementor\Elementor_Widget_Manager::get_instance();
-		// \WP_Ultimo\Builders\Beaver_Builder\Beaver_Builder_Widget_Manager::get_instance();
 
 		/*
 		 * Loads the Checkout Block
 		 * @todo remove those
 		 */
-		// WP_Ultimo\UI\Payment_Methods_Element::get_instance();
-		// WP_Ultimo\UI\Invoices_Element::get_instance();
-
 		WP_Ultimo\UI\Thank_You_Element::get_instance();
 		WP_Ultimo\UI\Checkout_Element::get_instance();
 		WP_Ultimo\UI\Login_Form_Element::get_instance();
@@ -427,6 +482,7 @@ final class WP_Ultimo {
 		\WP_Ultimo\UI\Limits_Element::get_instance();
 		\WP_Ultimo\UI\Domain_Mapping_Element::get_instance();
 		\WP_Ultimo\UI\Site_Maintenance_Element::get_instance();
+		\WP_Ultimo\UI\Template_Switching_Element::get_instance();
 
 		/*
 		 * Loads our Light Ajax implementation
@@ -439,6 +495,11 @@ final class WP_Ultimo {
 		\WP_Ultimo\Tax\Tax::get_instance();
 
 		/*
+		 * Loads the template placeholders
+		 */
+		\WP_Ultimo\Site_Templates\Template_Placeholders::get_instance();
+
+		/*
 		 * Loads our general Ajax endpoints.
 		 */
 		\WP_Ultimo\Ajax::get_instance();
@@ -447,6 +508,11 @@ final class WP_Ultimo {
 		 * Loads API auth code.
 		 */
 		\WP_Ultimo\API::get_instance();
+
+		/*
+		 * Loads API registration endpoint.
+		 */
+		\WP_Ultimo\API\Register_Endpoint::get_instance();
 
 		/*
 		 * Loads Documentation
@@ -459,14 +525,26 @@ final class WP_Ultimo {
 		\WP_Ultimo\Limits\Post_Type_Limits::get_instance();
 
 		/*
+		 * Loads our user role limitations.
+		 */
+		\WP_Ultimo\Limits\Customer_User_Role_Limits::get_instance();
+
+		/*
 		 * Loads the disk space limitations
 		 */
 		\WP_Ultimo\Limits\Disk_Space_Limits::get_instance();
 
 		/*
+		 * Loads the site templates limitation modules
+		 */
+		\WP_Ultimo\Limits\Site_Template_Limits::get_instance();
+
+		/*
 		 * Loads Checkout
 		 */
 		\WP_Ultimo\Checkout\Checkout::get_instance();
+
+		\WP_Ultimo\Checkout\Checkout_Pages::get_instance();
 
 		\WP_Ultimo\Checkout\Legacy_Checkout::get_instance();
 
@@ -474,11 +552,6 @@ final class WP_Ultimo {
 		 * Dashboard Statistics
 		 */
 		\WP_Ultimo\Dashboard_Statistics::get_instance();
-
-		/*
-		 * Loads Permission Control
-		 */
-		\WP_Ultimo\Permission_Control::get_instance();
 
 		/*
 		 * Loads User Switching
@@ -511,6 +584,11 @@ final class WP_Ultimo {
 		\WP_Ultimo\Compat\Elementor_Compat::get_instance();
 
 		/*
+		 * General compatibility fixes.
+		 */
+		\WP_Ultimo\Compat\General_Compat::get_instance();
+
+		/*
 		 * Loads Basic White-labeling
 		 */
 		\WP_Ultimo\Whitelabel::get_instance();
@@ -529,14 +607,14 @@ final class WP_Ultimo {
 		\WP_Ultimo\Dashboard_Widgets::get_instance();
 
 		/*
-		 * Support code
-		 */
-		\WP_Ultimo\Support::get_instance();
-
-		/**
 		 *  Admin Themes Compatibility for WP Ultimo
 		 */
 		\WP_Ultimo\Admin_Themes_Compatibility::get_instance();
+
+		/*
+		 * Cron Schedules
+		 */
+		\WP_Ultimo\Cron::get_instance();
 
 	} // end load_extra_components;
 
@@ -551,6 +629,11 @@ final class WP_Ultimo {
 		 * Loads the Dashboard admin page.
 		 */
 		new WP_Ultimo\Admin_Pages\Dashboard_Admin_Page();
+
+		/*
+		 * The top admin navigation bar.
+		 */
+		new WP_Ultimo\Admin_Pages\Top_Admin_Nav_Menu();
 
 		/*
 		 * The about admin page.
@@ -591,13 +674,6 @@ final class WP_Ultimo {
 		new WP_Ultimo\Admin_Pages\Customer_List_Admin_Page();
 
 		new WP_Ultimo\Admin_Pages\Customer_Edit_Admin_Page();
-
-		/*
-		 * Loads the Support Agents Pages
-		 */
-		new WP_Ultimo\Admin_Pages\Support_Agent_List_Admin_Page();
-
-		new WP_Ultimo\Admin_Pages\Support_Agent_Edit_Admin_Page();
 
 		/*
 		 * Loads the Site Pages
@@ -686,15 +762,9 @@ final class WP_Ultimo {
 		 */
 		new WP_Ultimo\Admin_Pages\Customer_Panel\Account_Admin_Page();
 		new WP_Ultimo\Admin_Pages\Customer_Panel\My_Sites_Admin_Page();
-
-		// TODO: Remove all those
-		new WP_Ultimo\Admin_Pages\Customer_Panel\Sites_Admin_Page();
-		new WP_Ultimo\Admin_Pages\Customer_Panel\Shop_Admin_Page();
-		// new WP_Ultimo\Admin_Pages\Customer_Panel\Checkout_Admin_Page();
-		// new WP_Ultimo\Admin_Pages\Customer_Panel\My_Account_Admin_Page();
-		new WP_Ultimo\Admin_Pages\Customer_Panel\My_Info_Admin_Page();
-		new WP_Ultimo\Admin_Pages\Customer_Panel\Memberships_Admin_Page();
-		new WP_Ultimo\Admin_Pages\Customer_Panel\Billing_Admin_Page();
+		new WP_Ultimo\Admin_Pages\Customer_Panel\Add_New_Site_Admin_Page();
+		new WP_Ultimo\Admin_Pages\Customer_Panel\Checkout_Admin_Page();
+		new WP_Ultimo\Admin_Pages\Customer_Panel\Template_Switching_Admin_Page();
 
 		/*
 		 * Loads the Tax Pages
@@ -753,11 +823,6 @@ final class WP_Ultimo {
 		WP_Ultimo\Managers\Customer_Manager::get_instance();
 
 		/*
-		 * Loads the support Agent manager.
-		 */
-		WP_Ultimo\Managers\Support_Agent_Manager::get_instance();
-
-		/*
 		 * Loads the Site manager.
 		 */
 		WP_Ultimo\Managers\Site_Manager::get_instance();
@@ -766,6 +831,11 @@ final class WP_Ultimo {
 		 * Loads the Checkout Form manager.
 		 */
 		WP_Ultimo\Managers\Checkout_Form_Manager::get_instance();
+
+		/*
+		 * Loads the field templates manager.
+		 */
+		WP_Ultimo\Managers\Field_Templates_Manager::get_instance();
 
 		/*
 		 * Loads the Webhook manager.
@@ -806,6 +876,11 @@ final class WP_Ultimo {
 		 * Loads the Notification manager.
 		 */
 		WP_Ultimo\Managers\Notification_Manager::get_instance();
+
+		/*
+		 * Loads the Notes manager.
+		 */
+		WP_Ultimo\Managers\Notes_Manager::get_instance();
 
 		/*
 		 * License handler

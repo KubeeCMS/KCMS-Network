@@ -5,27 +5,27 @@
  * @since 2.0.0
  */
 ?>
-<li class="<?php echo esc_attr($field->wrapper_classes); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
+<li class="<?php echo esc_attr(trim($field->wrapper_classes)); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
-	<span class="wu-block wu-w-full">
+	<div class="wu-block wu-w-full">
 
 		<label for="<?php echo esc_attr($field->id); ?>">
 
-			<h3 class="wu-my-1 wu-text-2xs wu-uppercase">
+			<?php
 
-				<?php echo $field->title; ?>
+			/**
+			 * Adds the partial title template.
+			 * @since 2.0.0
+			 */
+			wu_get_template('admin-pages/fields/partials/field-title', array(
+				'field' => $field,
+			));
 
-				<?php if ($field->tooltip) : ?>
-
-				<?php echo wu_tooltip($field->tooltip); ?>
-
-				<?php endif; ?>
-
-			</h3>
+			?>
 
 		</label>
 
-		<div>
+		<div class="wu-my-1">
 
 			<wp-editor 
 				name="<?php echo esc_attr($field->id); ?>"
@@ -38,15 +38,20 @@
 
 		<div>
 
-			<p class="description wu-block wu-mt-1" id="<?php echo $field->id; ?>-desc">
+			<?php
 
-				<?php echo $field->desc; ?>
+			/**
+			 * Adds the partial title template.
+			 * @since 2.0.0
+			 */
+			wu_get_template('admin-pages/fields/partials/field-description', array(
+				'field' => $field,
+			));
 
-			</p>
+			?>
 
 		</div>
 
-	</span>
+	</div>
 
 </li>
-

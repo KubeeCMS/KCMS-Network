@@ -15,7 +15,8 @@ namespace WP_Ultimo\Dependencies;
  * - Glavić
  * - Milos Sakovic
  */
-return \array_replace_recursive(require __DIR__ . '/sr.php', ['month' => ':count mjesec|:count mjeseca|:count mjeseci', 'week' => ':count nedjelja|:count nedjelje|:count nedjelja', 'second' => ':count sekund|:count sekunde|:count sekundi', 'ago' => 'prije :time', 'from_now' => 'za :time', 'after' => ':time nakon', 'before' => ':time prije', 'week_from_now' => ':count nedjelju|:count nedjelje|:count nedjelja', 'week_ago' => ':count nedjelju|:count nedjelje|:count nedjelja', 'diff_tomorrow' => 'sjutra', 'calendar' => ['nextDay' => '[sjutra u] LT', 'nextWeek' => function (\WP_Ultimo\Dependencies\Carbon\CarbonInterface $date) {
+use WP_Ultimo\Dependencies\Carbon\CarbonInterface;
+return \array_replace_recursive(require __DIR__ . '/sr.php', ['month' => ':count mjesec|:count mjeseca|:count mjeseci', 'week' => ':count nedjelja|:count nedjelje|:count nedjelja', 'second' => ':count sekund|:count sekunde|:count sekundi', 'ago' => 'prije :time', 'from_now' => 'za :time', 'after' => ':time nakon', 'before' => ':time prije', 'week_from_now' => ':count nedjelju|:count nedjelje|:count nedjelja', 'week_ago' => ':count nedjelju|:count nedjelje|:count nedjelja', 'diff_tomorrow' => 'sjutra', 'calendar' => ['nextDay' => '[sjutra u] LT', 'nextWeek' => function (CarbonInterface $date) {
     switch ($date->dayOfWeek) {
         case 0:
             return '[u nedjelju u] LT';
@@ -26,7 +27,7 @@ return \array_replace_recursive(require __DIR__ . '/sr.php', ['month' => ':count
         default:
             return '[u] dddd [u] LT';
     }
-}, 'lastWeek' => function (\WP_Ultimo\Dependencies\Carbon\CarbonInterface $date) {
+}, 'lastWeek' => function (CarbonInterface $date) {
     switch ($date->dayOfWeek) {
         case 0:
             return '[prošle nedjelje u] LT';

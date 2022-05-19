@@ -41,6 +41,20 @@ trait Request
     /**
      * @param string $method HTTP method ('get', 'post', etc.)
      * @param string $url URL for the request
+     * @param callable $readBodyChunk function that will receive chunks of data from a successful request body
+     * @param array $params list of parameters for the request
+     * @param null|array|string $options
+     *
+     * @throws \Stripe\Exception\ApiErrorException if the request fails
+     */
+    protected function _requestStream($method, $url, $readBodyChunk, $params = [], $options = null)
+    {
+        $opts = $this->_opts->merge($options);
+        static::_staticStreamingRequest($method, $url, $readBodyChunk, $params, $opts);
+    }
+    /**
+     * @param string $method HTTP method ('get', 'post', etc.)
+     * @param string $url URL for the request
      * @param array $params list of parameters for the request
      * @param null|array|string $options
      *
@@ -56,5 +70,21 @@ trait Request
         list($response, $opts->apiKey) = $requestor->request($method, $url, $params, $opts->headers);
         $opts->discardNonPersistentHeaders();
         return [$response, $opts];
+    }
+    /**
+     * @param string $method HTTP method ('get', 'post', etc.)
+     * @param string $url URL for the request
+     * @param callable $readBodyChunk function that will receive chunks of data from a successful request body
+     * @param array $params list of parameters for the request
+     * @param null|array|string $options
+     *
+     * @throws \Stripe\Exception\ApiErrorException if the request fails
+     */
+    protected static function _staticStreamingRequest($method, $url, $readBodyChunk, $params, $options)
+    {
+        $opts = \WP_Ultimo\Dependencies\Stripe\Util\RequestOptions::parse($options);
+        $baseUrl = isset($opts->apiBase) ? $opts->apiBase : static::baseUrl();
+        $requestor = new \WP_Ultimo\Dependencies\Stripe\ApiRequestor($opts->apiKey, $baseUrl);
+        $requestor->requestStream($method, $url, $readBodyChunk, $params, $opts->headers);
     }
 }

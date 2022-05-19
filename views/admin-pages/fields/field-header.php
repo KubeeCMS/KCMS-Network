@@ -5,9 +5,9 @@
  * @since 2.0.0
  */
 ?>
-<li class="wu-bg-gray-100 wu-py-4 <?php echo esc_attr($field->wrapper_classes); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
+<li class="wu-bg-gray-100 wu-py-4 <?php echo esc_attr(trim($field->wrapper_classes)); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
-  <span class="wu-block wu-w-full">
+  <div class="wu-block wu-w-full">
 
     <h3 class="wu-my-1 wu-text-base wu-text-gray-800">
 
@@ -31,6 +31,6 @@
 
     <?php endif; ?>
 
-  </span>
+  </div>
 
 </li>

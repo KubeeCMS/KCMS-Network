@@ -28,7 +28,7 @@ abstract class Rule
      * @param \Rakit\Validation\Validation $validation
      * @return void
      */
-    public function setValidation(\WP_Ultimo\Dependencies\Rakit\Validation\Validation $validation)
+    public function setValidation(Validation $validation)
     {
         $this->validation = $validation;
     }
@@ -57,7 +57,7 @@ abstract class Rule
      * @param \Rakit\Validation\Attribute $attribute
      * @return void
      */
-    public function setAttribute(\WP_Ultimo\Dependencies\Rakit\Validation\Attribute $attribute)
+    public function setAttribute(Attribute $attribute)
     {
         $this->attribute = $attribute;
     }
@@ -85,7 +85,7 @@ abstract class Rule
      * @param array $params
      * @return \Rakit\Validation\Rule
      */
-    public function setParameters(array $params) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function setParameters(array $params) : Rule
     {
         $this->params = \array_merge($this->params, $params);
         return $this;
@@ -97,7 +97,7 @@ abstract class Rule
      * @param mixed $value
      * @return \Rakit\Validation\Rule
      */
-    public function setParameter(string $key, $value) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function setParameter(string $key, $value) : Rule
     {
         $this->params[$key] = $value;
         return $this;
@@ -108,7 +108,7 @@ abstract class Rule
      * @param array $params
      * @return \Rakit\Validation\Rule
      */
-    public function fillParameters(array $params) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function fillParameters(array $params) : Rule
     {
         foreach ($this->fillableParams as $key) {
             if (empty($params)) {
@@ -163,7 +163,7 @@ abstract class Rule
      * @param string $message
      * @return \Rakit\Validation\Rule
      */
-    public function message(string $message) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function message(string $message) : Rule
     {
         return $this->setMessage($message);
     }
@@ -173,7 +173,7 @@ abstract class Rule
      * @param string $message
      * @return \Rakit\Validation\Rule
      */
-    public function setMessage(string $message) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function setMessage(string $message) : Rule
     {
         $this->message = $message;
         return $this;
@@ -199,7 +199,7 @@ abstract class Rule
         foreach ($params as $param) {
             if (!isset($this->params[$param])) {
                 $rule = $this->getKey();
-                throw new \WP_Ultimo\Dependencies\Rakit\Validation\MissingRequiredParameterException("Missing required parameter '{$param}' on rule '{$rule}'");
+                throw new MissingRequiredParameterException("Missing required parameter '{$param}' on rule '{$rule}'");
             }
         }
     }

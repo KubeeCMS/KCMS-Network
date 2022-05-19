@@ -5,8 +5,6 @@
  *
  * PHP version 5
  *
- * @category  File
- * @package   ASN1
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2016 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -18,18 +16,16 @@ use phpseclib3\File\ASN1;
 /**
  * CountryName
  *
- * @package ASN1
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
 abstract class CountryName
 {
     const MAP = [
-        'type' => \phpseclib3\File\ASN1::TYPE_CHOICE,
+        'type' => ASN1::TYPE_CHOICE,
         // if class isn't present it's assumed to be \phpseclib3\File\ASN1::CLASS_UNIVERSAL or
         // (if constant is present) \phpseclib3\File\ASN1::CLASS_CONTEXT_SPECIFIC
-        'class' => \phpseclib3\File\ASN1::CLASS_APPLICATION,
+        'class' => ASN1::CLASS_APPLICATION,
         'cast' => 1,
-        'children' => ['x121-dcc-code' => ['type' => \phpseclib3\File\ASN1::TYPE_NUMERIC_STRING], 'iso-3166-alpha2-code' => ['type' => \phpseclib3\File\ASN1::TYPE_PRINTABLE_STRING]],
+        'children' => ['x121-dcc-code' => ['type' => ASN1::TYPE_NUMERIC_STRING], 'iso-3166-alpha2-code' => ['type' => ASN1::TYPE_PRINTABLE_STRING]],
     ];
 }

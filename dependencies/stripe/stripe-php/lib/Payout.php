@@ -36,7 +36,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property string $status Current status of the payout: <code>paid</code>, <code>pending</code>, <code>in_transit</code>, <code>canceled</code> or <code>failed</code>. A payout is <code>pending</code> until it is submitted to the bank, when it becomes <code>in_transit</code>. The status then changes to <code>paid</code> if the transaction goes through, or to <code>failed</code> or <code>canceled</code> (within 5 business days). Some failed payouts may initially show as <code>paid</code> but then change to <code>failed</code>.
  * @property string $type Can be <code>bank_account</code> or <code>card</code>.
  */
-class Payout extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class Payout extends ApiResource
 {
     const OBJECT_NAME = 'payout';
     use ApiOperations\All;
@@ -71,7 +71,7 @@ class Payout extends \WP_Ultimo\Dependencies\Stripe\ApiResource
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return Payout the canceled payout
+     * @return \Stripe\Payout the canceled payout
      */
     public function cancel($params = null, $opts = null)
     {
@@ -86,7 +86,7 @@ class Payout extends \WP_Ultimo\Dependencies\Stripe\ApiResource
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return Payout the reversed payout
+     * @return \Stripe\Payout the reversed payout
      */
     public function reverse($params = null, $opts = null)
     {

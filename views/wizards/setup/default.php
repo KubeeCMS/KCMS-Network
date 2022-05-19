@@ -38,7 +38,7 @@
 
     <?php if ($skip) : ?>
 
-      <a href="<?php echo esc_attr($page->get_next_section_link()); ?>" class="button button-large">
+      <a href="<?php echo esc_attr($page->get_next_section_link()); ?>" class="wu-skip-button button button-large">
         <?php echo $skip_label; ?>
       </a>
 
@@ -46,7 +46,7 @@
 
     <?php if ($next) : ?>
 
-      <button name="next" value="1" class="button button-primary button-large wu-ml-2">
+      <button name="next" value="1" class="wu-next-button button button-primary button-large wu-ml-2">
         <?php echo $next_label; ?>
       </button>
 

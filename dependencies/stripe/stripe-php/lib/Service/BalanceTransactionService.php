@@ -18,7 +18,7 @@ class BalanceTransactionService extends \WP_Ultimo\Dependencies\Stripe\Service\A
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\BalanceTransaction>
      */
     public function all($params = null, $opts = null)
     {

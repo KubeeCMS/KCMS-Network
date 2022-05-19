@@ -15,7 +15,7 @@ class InvoiceService extends \WP_Ultimo\Dependencies\Stripe\Service\AbstractServ
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\Invoice>
      */
     public function all($params = null, $opts = null)
     {
@@ -33,7 +33,7 @@ class InvoiceService extends \WP_Ultimo\Dependencies\Stripe\Service\AbstractServ
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\LineItem>
      */
     public function allLines($parentId, $params = null, $opts = null)
     {
@@ -144,6 +144,25 @@ class InvoiceService extends \WP_Ultimo\Dependencies\Stripe\Service\AbstractServ
         return $this->request('get', $this->buildPath('/v1/invoices/%s', $id), $params, $opts);
     }
     /**
+     * Search for invoices you’ve previously created using Stripe’s <a
+     * href="/docs/search#search-query-language">Search Query Language</a>. Don’t use
+     * search in read-after-write flows where strict consistency is necessary. Under
+     * normal operating conditions, data is searchable in less than a minute.
+     * Occasionally, propagation of new or updated data can be up to an hour behind
+     * during outages. Search functionality is not available to merchants in India.
+     *
+     * @param null|array $params
+     * @param null|array|\Stripe\Util\RequestOptions $opts
+     *
+     * @throws \Stripe\Exception\ApiErrorException if the request fails
+     *
+     * @return \Stripe\SearchResult<\Stripe\Invoice>
+     */
+    public function search($params = null, $opts = null)
+    {
+        return $this->requestSearchResult('get', '/v1/invoices/search', $params, $opts);
+    }
+    /**
      * Stripe will automatically send invoices to customers according to your <a
      * href="https://dashboard.stripe.com/account/billing/automatic">subscriptions
      * settings</a>. However, if you’d like to manually send an invoice to your
@@ -210,11 +229,11 @@ class InvoiceService extends \WP_Ultimo\Dependencies\Stripe\Service\AbstractServ
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Invoice
+     * @return \Stripe\Collection<\Stripe\Invoice>
      */
     public function upcomingLines($params = null, $opts = null)
     {
-        return $this->request('get', '/v1/invoices/upcoming/lines', $params, $opts);
+        return $this->requestCollection('get', '/v1/invoices/upcoming/lines', $params, $opts);
     }
     /**
      * Draft invoices are fully editable. Once an invoice is <a

@@ -18,11 +18,11 @@ class ColumnTypeGuesser
      * @param ColumnMap $column
      * @return \Closure|null
      */
-    public function guessFormat(\WP_Ultimo\Dependencies\Propel\Runtime\Map\ColumnMap $column)
+    public function guessFormat(ColumnMap $column)
     {
         $generator = $this->generator;
         if ($column->isTemporal()) {
-            if ($column->getType() == \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::BU_DATE || $column->getType() == \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::BU_TIMESTAMP) {
+            if ($column->getType() == PropelTypes::BU_DATE || $column->getType() == PropelTypes::BU_TIMESTAMP) {
                 return function () use($generator) {
                     return $generator->dateTime;
                 };
@@ -33,65 +33,65 @@ class ColumnTypeGuesser
         }
         $type = $column->getType();
         switch ($type) {
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::BOOLEAN:
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::BOOLEAN_EMU:
+            case PropelTypes::BOOLEAN:
+            case PropelTypes::BOOLEAN_EMU:
                 return function () use($generator) {
                     return $generator->boolean;
                 };
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::NUMERIC:
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::DECIMAL:
+            case PropelTypes::NUMERIC:
+            case PropelTypes::DECIMAL:
                 $size = $column->getSize();
                 return function () use($generator, $size) {
                     return $generator->randomNumber($size + 2) / 100;
                 };
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::TINYINT:
+            case PropelTypes::TINYINT:
                 return function () {
                     return \mt_rand(0, 127);
                 };
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::SMALLINT:
+            case PropelTypes::SMALLINT:
                 return function () {
                     return \mt_rand(0, 32767);
                 };
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::INTEGER:
+            case PropelTypes::INTEGER:
                 return function () {
                     return \mt_rand(0, \intval('2147483647'));
                 };
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::BIGINT:
+            case PropelTypes::BIGINT:
                 return function () {
                     return \mt_rand(0, \intval('9223372036854775807'));
                 };
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::FLOAT:
+            case PropelTypes::FLOAT:
                 return function () {
                     return \mt_rand(0, \intval('2147483647')) / \mt_rand(1, \intval('2147483647'));
                 };
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::DOUBLE:
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::REAL:
+            case PropelTypes::DOUBLE:
+            case PropelTypes::REAL:
                 return function () {
                     return \mt_rand(0, \intval('9223372036854775807')) / \mt_rand(1, \intval('9223372036854775807'));
                 };
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::CHAR:
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::VARCHAR:
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::BINARY:
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::VARBINARY:
+            case PropelTypes::CHAR:
+            case PropelTypes::VARCHAR:
+            case PropelTypes::BINARY:
+            case PropelTypes::VARBINARY:
                 $size = $column->getSize();
                 return function () use($generator, $size) {
                     return $generator->text($size);
                 };
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::LONGVARCHAR:
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::LONGVARBINARY:
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::CLOB:
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::CLOB_EMU:
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::BLOB:
+            case PropelTypes::LONGVARCHAR:
+            case PropelTypes::LONGVARBINARY:
+            case PropelTypes::CLOB:
+            case PropelTypes::CLOB_EMU:
+            case PropelTypes::BLOB:
                 return function () use($generator) {
                     return $generator->text;
                 };
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::ENUM:
+            case PropelTypes::ENUM:
                 $valueSet = $column->getValueSet();
                 return function () use($generator, $valueSet) {
                     return $generator->randomElement($valueSet);
                 };
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::OBJECT:
-            case \WP_Ultimo\Dependencies\Propel\Generator\Model\PropelTypes::PHP_ARRAY:
+            case PropelTypes::OBJECT:
+            case PropelTypes::PHP_ARRAY:
             default:
                 // no smart way to guess what the user expects here
                 return null;

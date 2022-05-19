@@ -22,6 +22,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property null|string|\Stripe\Account $account The ID of the account that the bank account is associated with.
  * @property null|string $account_holder_name The name of the person or business that owns the bank account.
  * @property null|string $account_holder_type The type of entity that holds the account. This can be either <code>individual</code> or <code>company</code>.
+ * @property null|string $account_type The bank account type. This can only be <code>checking</code> or <code>savings</code> in most countries. In Japan, this can only be <code>futsu</code> or <code>toza</code>.
  * @property null|string[] $available_payout_methods A set of available payout methods for this bank account. Only values from this set should be passed as the <code>method</code> when creating a payout.
  * @property null|string $bank_name Name of the bank associated with the routing number (e.g., <code>WELLS FARGO</code>).
  * @property string $country Two-letter ISO code representing the country the bank account is located in.
@@ -34,7 +35,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property null|string $routing_number The routing transit number for the bank account.
  * @property string $status <p>For bank accounts, possible values are <code>new</code>, <code>validated</code>, <code>verified</code>, <code>verification_failed</code>, or <code>errored</code>. A bank account that hasn't had any activity or validation performed is <code>new</code>. If Stripe can determine that the bank account exists, its status will be <code>validated</code>. Note that there often isn’t enough information to know (e.g., for smaller credit unions), and the validation is not always run. If customer bank account verification has succeeded, the bank account status will be <code>verified</code>. If the verification failed for any reason, such as microdeposit failure, the status will be <code>verification_failed</code>. If a transfer sent to this bank account fails, we'll set the status to <code>errored</code> and will not continue to send transfers until the bank details are updated.</p><p>For external accounts, possible values are <code>new</code> and <code>errored</code>. Validations aren't run against external accounts because they're only used for payouts. This means the other statuses don't apply. If a transfer fails, the status is set to <code>errored</code> and transfers are stopped until account details are updated.</p>
  */
-class BankAccount extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class BankAccount extends ApiResource
 {
     const OBJECT_NAME = 'bank_account';
     use ApiOperations\Delete;
@@ -56,19 +57,19 @@ class BankAccount extends \WP_Ultimo\Dependencies\Stripe\ApiResource
     public function instanceUrl()
     {
         if ($this['customer']) {
-            $base = \WP_Ultimo\Dependencies\Stripe\Customer::classUrl();
+            $base = Customer::classUrl();
             $parent = $this['customer'];
             $path = 'sources';
         } elseif ($this['account']) {
-            $base = \WP_Ultimo\Dependencies\Stripe\Account::classUrl();
+            $base = Account::classUrl();
             $parent = $this['account'];
             $path = 'external_accounts';
         } else {
             $msg = 'Bank accounts cannot be accessed without a customer ID or account ID.';
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException($msg, null);
+            throw new Exception\UnexpectedValueException($msg, null);
         }
-        $parentExtn = \urlencode(\WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($parent));
-        $extn = \urlencode(\WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($this['id']));
+        $parentExtn = \urlencode(Util\Util::utf8($parent));
+        $extn = \urlencode(Util\Util::utf8($this['id']));
         return "{$base}/{$parentExtn}/{$path}/{$extn}";
     }
     /**
@@ -80,7 +81,7 @@ class BankAccount extends \WP_Ultimo\Dependencies\Stripe\ApiResource
     public static function retrieve($_id, $_opts = null)
     {
         $msg = 'Bank accounts cannot be retrieved without a customer ID or ' . 'an account ID. Retrieve a bank account using ' . "`Customer::retrieveSource('customer_id', " . "'bank_account_id')` or `Account::retrieveExternalAccount(" . "'account_id', 'bank_account_id')`.";
-        throw new \WP_Ultimo\Dependencies\Stripe\Exception\BadMethodCallException($msg);
+        throw new Exception\BadMethodCallException($msg);
     }
     /**
      * @param string $_id
@@ -92,7 +93,7 @@ class BankAccount extends \WP_Ultimo\Dependencies\Stripe\ApiResource
     public static function update($_id, $_params = null, $_options = null)
     {
         $msg = 'Bank accounts cannot be updated without a customer ID or an ' . 'account ID. Update a bank account using ' . "`Customer::updateSource('customer_id', 'bank_account_id', " . '$updateParams)` or `Account::updateExternalAccount(' . "'account_id', 'bank_account_id', \$updateParams)`.";
-        throw new \WP_Ultimo\Dependencies\Stripe\Exception\BadMethodCallException($msg);
+        throw new Exception\BadMethodCallException($msg);
     }
     /**
      * @param null|array $params

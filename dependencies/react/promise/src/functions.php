@@ -1,7 +1,10 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Promise;
+namespace React\Promise;
 
+use React\Promise\Exception\CompositeException;
+use React\Promise\Internal\FulfilledPromise;
+use React\Promise\Internal\RejectedPromise;
 /**
  * Creates a promise for the supplied `$promiseOrValue`.
  *
@@ -16,48 +19,41 @@ namespace WP_Ultimo\Dependencies\React\Promise;
  * @param mixed $promiseOrValue
  * @return PromiseInterface
  */
-function resolve($promiseOrValue = null)
+function resolve($promiseOrValue) : \React\Promise\PromiseInterface
 {
-    if ($promiseOrValue instanceof \WP_Ultimo\Dependencies\React\Promise\ExtendedPromiseInterface) {
+    if ($promiseOrValue instanceof \React\Promise\PromiseInterface) {
         return $promiseOrValue;
     }
-    // Check is_object() first to avoid method_exists() triggering
-    // class autoloaders if $promiseOrValue is a string.
     if (\is_object($promiseOrValue) && \method_exists($promiseOrValue, 'then')) {
         $canceller = null;
         if (\method_exists($promiseOrValue, 'cancel')) {
             $canceller = [$promiseOrValue, 'cancel'];
         }
-        return new \WP_Ultimo\Dependencies\React\Promise\Promise(function ($resolve, $reject, $notify) use($promiseOrValue) {
-            $promiseOrValue->then($resolve, $reject, $notify);
+        return new \React\Promise\Promise(function ($resolve, $reject) use($promiseOrValue) : void {
+            $promiseOrValue->then($resolve, $reject);
         }, $canceller);
     }
-    return new \WP_Ultimo\Dependencies\React\Promise\FulfilledPromise($promiseOrValue);
+    return new FulfilledPromise($promiseOrValue);
 }
 /**
- * Creates a rejected promise for the supplied `$promiseOrValue`.
+ * Creates a rejected promise for the supplied `$reason`.
  *
- * If `$promiseOrValue` is a value, it will be the rejection value of the
+ * If `$reason` is a value, it will be the rejection value of the
  * returned promise.
  *
- * If `$promiseOrValue` is a promise, its completion value will be the rejected
+ * If `$reason` is a promise, its completion value will be the rejected
  * value of the returned promise.
  *
  * This can be useful in situations where you need to reject a promise without
  * throwing an exception. For example, it allows you to propagate a rejection with
  * the value of another promise.
  *
- * @param mixed $promiseOrValue
+ * @param \Throwable $reason
  * @return PromiseInterface
  */
-function reject($promiseOrValue = null)
+function reject(\Throwable $reason) : \React\Promise\PromiseInterface
 {
-    if ($promiseOrValue instanceof \WP_Ultimo\Dependencies\React\Promise\PromiseInterface) {
-        return resolve($promiseOrValue)->then(function ($value) {
-            return new \WP_Ultimo\Dependencies\React\Promise\RejectedPromise($value);
-        });
-    }
-    return new \WP_Ultimo\Dependencies\React\Promise\RejectedPromise($promiseOrValue);
+    return new RejectedPromise($reason);
 }
 /**
  * Returns a promise that will resolve only once all the items in
@@ -68,7 +64,7 @@ function reject($promiseOrValue = null)
  * @param array $promisesOrValues
  * @return PromiseInterface
  */
-function all($promisesOrValues)
+function all(array $promisesOrValues) : \React\Promise\PromiseInterface
 {
     return map($promisesOrValues, function ($val) {
         return $val;
@@ -84,21 +80,18 @@ function all($promisesOrValues)
  * @param array $promisesOrValues
  * @return PromiseInterface
  */
-function race($promisesOrValues)
+function race(array $promisesOrValues) : \React\Promise\PromiseInterface
 {
-    $cancellationQueue = new \WP_Ultimo\Dependencies\React\Promise\CancellationQueue();
-    $cancellationQueue->enqueue($promisesOrValues);
-    return new \WP_Ultimo\Dependencies\React\Promise\Promise(function ($resolve, $reject, $notify) use($promisesOrValues, $cancellationQueue) {
-        resolve($promisesOrValues)->done(function ($array) use($cancellationQueue, $resolve, $reject, $notify) {
-            if (!\is_array($array) || !$array) {
-                $resolve();
-                return;
-            }
-            foreach ($array as $promiseOrValue) {
-                $cancellationQueue->enqueue($promiseOrValue);
-                resolve($promiseOrValue)->done($resolve, $reject, $notify);
-            }
-        }, $reject, $notify);
+    if (!$promisesOrValues) {
+        return new \React\Promise\Promise(function () : void {
+        });
+    }
+    $cancellationQueue = new \React\Promise\Internal\CancellationQueue();
+    return new \React\Promise\Promise(function ($resolve, $reject) use($promisesOrValues, $cancellationQueue) : void {
+        foreach ($promisesOrValues as $promiseOrValue) {
+            $cancellationQueue->enqueue($promiseOrValue);
+            resolve($promiseOrValue)->done($resolve, $reject);
+        }
     }, $cancellationQueue);
 }
 /**
@@ -115,7 +108,7 @@ function race($promisesOrValues)
  * @param array $promisesOrValues
  * @return PromiseInterface
  */
-function any($promisesOrValues)
+function any(array $promisesOrValues) : \React\Promise\PromiseInterface
 {
     return some($promisesOrValues, 1)->then(function ($val) {
         return \array_shift($val);
@@ -139,47 +132,43 @@ function any($promisesOrValues)
  * @param int $howMany
  * @return PromiseInterface
  */
-function some($promisesOrValues, $howMany)
+function some(array $promisesOrValues, int $howMany) : \React\Promise\PromiseInterface
 {
-    $cancellationQueue = new \WP_Ultimo\Dependencies\React\Promise\CancellationQueue();
-    $cancellationQueue->enqueue($promisesOrValues);
-    return new \WP_Ultimo\Dependencies\React\Promise\Promise(function ($resolve, $reject, $notify) use($promisesOrValues, $howMany, $cancellationQueue) {
-        resolve($promisesOrValues)->done(function ($array) use($howMany, $cancellationQueue, $resolve, $reject, $notify) {
-            if (!\is_array($array) || $howMany < 1) {
-                $resolve([]);
-                return;
-            }
-            $len = \count($array);
-            if ($len < $howMany) {
-                throw new \WP_Ultimo\Dependencies\React\Promise\Exception\LengthException(\sprintf('Input array must contain at least %d item%s but contains only %s item%s.', $howMany, 1 === $howMany ? '' : 's', $len, 1 === $len ? '' : 's'));
-            }
-            $toResolve = $howMany;
-            $toReject = $len - $toResolve + 1;
-            $values = [];
-            $reasons = [];
-            foreach ($array as $i => $promiseOrValue) {
-                $fulfiller = function ($val) use($i, &$values, &$toResolve, $toReject, $resolve) {
-                    if ($toResolve < 1 || $toReject < 1) {
-                        return;
-                    }
-                    $values[$i] = $val;
-                    if (0 === --$toResolve) {
-                        $resolve($values);
-                    }
-                };
-                $rejecter = function ($reason) use($i, &$reasons, &$toReject, $toResolve, $reject) {
-                    if ($toResolve < 1 || $toReject < 1) {
-                        return;
-                    }
-                    $reasons[$i] = $reason;
-                    if (0 === --$toReject) {
-                        $reject($reasons);
-                    }
-                };
-                $cancellationQueue->enqueue($promiseOrValue);
-                resolve($promiseOrValue)->done($fulfiller, $rejecter, $notify);
-            }
-        }, $reject, $notify);
+    if ($howMany < 1) {
+        return resolve([]);
+    }
+    $len = \count($promisesOrValues);
+    if ($len < $howMany) {
+        return reject(new \React\Promise\Exception\LengthException(\sprintf('Input array must contain at least %d item%s but contains only %s item%s.', $howMany, 1 === $howMany ? '' : 's', $len, 1 === $len ? '' : 's')));
+    }
+    $cancellationQueue = new \React\Promise\Internal\CancellationQueue();
+    return new \React\Promise\Promise(function ($resolve, $reject) use($len, $promisesOrValues, $howMany, $cancellationQueue) : void {
+        $toResolve = $howMany;
+        $toReject = $len - $toResolve + 1;
+        $values = [];
+        $reasons = [];
+        foreach ($promisesOrValues as $i => $promiseOrValue) {
+            $fulfiller = function ($val) use($i, &$values, &$toResolve, $toReject, $resolve) : void {
+                if ($toResolve < 1 || $toReject < 1) {
+                    return;
+                }
+                $values[$i] = $val;
+                if (0 === --$toResolve) {
+                    $resolve($values);
+                }
+            };
+            $rejecter = function (\Throwable $reason) use($i, &$reasons, &$toReject, $toResolve, $reject) : void {
+                if ($toResolve < 1 || $toReject < 1) {
+                    return;
+                }
+                $reasons[$i] = $reason;
+                if (0 === --$toReject) {
+                    $reject(new CompositeException($reasons, 'Too many promises rejected.'));
+                }
+            };
+            $cancellationQueue->enqueue($promiseOrValue);
+            resolve($promiseOrValue)->done($fulfiller, $rejecter);
+        }
     }, $cancellationQueue);
 }
 /**
@@ -193,29 +182,25 @@ function some($promisesOrValues, $howMany)
  * @param callable $mapFunc
  * @return PromiseInterface
  */
-function map($promisesOrValues, callable $mapFunc)
+function map(array $promisesOrValues, callable $mapFunc) : \React\Promise\PromiseInterface
 {
-    $cancellationQueue = new \WP_Ultimo\Dependencies\React\Promise\CancellationQueue();
-    $cancellationQueue->enqueue($promisesOrValues);
-    return new \WP_Ultimo\Dependencies\React\Promise\Promise(function ($resolve, $reject, $notify) use($promisesOrValues, $mapFunc, $cancellationQueue) {
-        resolve($promisesOrValues)->done(function ($array) use($mapFunc, $cancellationQueue, $resolve, $reject, $notify) {
-            if (!\is_array($array) || !$array) {
-                $resolve([]);
-                return;
-            }
-            $toResolve = \count($array);
-            $values = [];
-            foreach ($array as $i => $promiseOrValue) {
-                $cancellationQueue->enqueue($promiseOrValue);
-                $values[$i] = null;
-                resolve($promiseOrValue)->then($mapFunc)->done(function ($mapped) use($i, &$values, &$toResolve, $resolve) {
-                    $values[$i] = $mapped;
-                    if (0 === --$toResolve) {
-                        $resolve($values);
-                    }
-                }, $reject, $notify);
-            }
-        }, $reject, $notify);
+    if (!$promisesOrValues) {
+        return resolve([]);
+    }
+    $cancellationQueue = new \React\Promise\Internal\CancellationQueue();
+    return new \React\Promise\Promise(function ($resolve, $reject) use($promisesOrValues, $mapFunc, $cancellationQueue) : void {
+        $toResolve = \count($promisesOrValues);
+        $values = [];
+        foreach ($promisesOrValues as $i => $promiseOrValue) {
+            $cancellationQueue->enqueue($promiseOrValue);
+            $values[$i] = null;
+            resolve($promiseOrValue)->then($mapFunc)->done(function ($mapped) use($i, &$values, &$toResolve, $resolve) : void {
+                $values[$i] = $mapped;
+                if (0 === --$toResolve) {
+                    $resolve($values);
+                }
+            }, $reject);
+        }
     }, $cancellationQueue);
 }
 /**
@@ -229,40 +214,52 @@ function map($promisesOrValues, callable $mapFunc)
  * @param mixed $initialValue
  * @return PromiseInterface
  */
-function reduce($promisesOrValues, callable $reduceFunc, $initialValue = null)
+function reduce(array $promisesOrValues, callable $reduceFunc, $initialValue = null) : \React\Promise\PromiseInterface
 {
-    $cancellationQueue = new \WP_Ultimo\Dependencies\React\Promise\CancellationQueue();
-    $cancellationQueue->enqueue($promisesOrValues);
-    return new \WP_Ultimo\Dependencies\React\Promise\Promise(function ($resolve, $reject, $notify) use($promisesOrValues, $reduceFunc, $initialValue, $cancellationQueue) {
-        resolve($promisesOrValues)->done(function ($array) use($reduceFunc, $initialValue, $cancellationQueue, $resolve, $reject, $notify) {
-            if (!\is_array($array)) {
-                $array = [];
-            }
-            $total = \count($array);
-            $i = 0;
-            // Wrap the supplied $reduceFunc with one that handles promises and then
-            // delegates to the supplied.
-            $wrappedReduceFunc = function ($current, $val) use($reduceFunc, $cancellationQueue, $total, &$i) {
-                $cancellationQueue->enqueue($val);
-                return $current->then(function ($c) use($reduceFunc, $total, &$i, $val) {
-                    return resolve($val)->then(function ($value) use($reduceFunc, $total, &$i, $c) {
-                        return $reduceFunc($c, $value, $i++, $total);
-                    });
+    $cancellationQueue = new \React\Promise\Internal\CancellationQueue();
+    return new \React\Promise\Promise(function ($resolve, $reject) use($promisesOrValues, $reduceFunc, $initialValue, $cancellationQueue) : void {
+        $total = \count($promisesOrValues);
+        $i = 0;
+        $wrappedReduceFunc = function ($current, $val) use($reduceFunc, $cancellationQueue, $total, &$i) : PromiseInterface {
+            $cancellationQueue->enqueue($val);
+            return $current->then(function ($c) use($reduceFunc, $total, &$i, $val) {
+                return resolve($val)->then(function ($value) use($reduceFunc, $total, &$i, $c) {
+                    return $reduceFunc($c, $value, $i++, $total);
                 });
-            };
-            $cancellationQueue->enqueue($initialValue);
-            \array_reduce($array, $wrappedReduceFunc, resolve($initialValue))->done($resolve, $reject, $notify);
-        }, $reject, $notify);
+            });
+        };
+        $cancellationQueue->enqueue($initialValue);
+        \array_reduce($promisesOrValues, $wrappedReduceFunc, resolve($initialValue))->done($resolve, $reject);
     }, $cancellationQueue);
 }
 /**
  * @internal
  */
-function _checkTypehint(callable $callback, $object)
+function enqueue(callable $task) : void
 {
-    if (!\is_object($object)) {
-        return \true;
+    static $queue;
+    if (!$queue) {
+        $queue = new \React\Promise\Internal\Queue();
     }
+    $queue->enqueue($task);
+}
+/**
+ * @internal
+ */
+function fatalError($error) : void
+{
+    try {
+        \trigger_error($error, \E_USER_ERROR);
+    } catch (\Throwable $e) {
+        \set_error_handler(null);
+        \trigger_error($error, \E_USER_ERROR);
+    }
+}
+/**
+ * @internal
+ */
+function _checkTypehint(callable $callback, \Throwable $reason) : bool
+{
     if (\is_array($callback)) {
         $callbackReflection = new \ReflectionMethod($callback[0], $callback[1]);
     } elseif (\is_object($callback) && !$callback instanceof \Closure) {
@@ -275,8 +272,47 @@ function _checkTypehint(callable $callback, $object)
         return \true;
     }
     $expectedException = $parameters[0];
-    if (!$expectedException->getClass()) {
+    // Extract the type of the argument and handle different possibilities
+    $type = $expectedException->getType();
+    $isTypeUnion = \true;
+    $types = [];
+    switch (\true) {
+        case $type === null:
+            break;
+        case $type instanceof \ReflectionNamedType:
+            $types = [$type];
+            break;
+        case $type instanceof \WP_Ultimo\Dependencies\ReflectionIntersectionType:
+            $isTypeUnion = \false;
+        case $type instanceof \ReflectionUnionType:
+            $types = $type->getTypes();
+            break;
+        default:
+            throw new \LogicException('Unexpected return value of ReflectionParameter::getType');
+    }
+    // If there is no type restriction, it matches
+    if (empty($types)) {
         return \true;
     }
-    return $expectedException->getClass()->isInstance($object);
+    foreach ($types as $type) {
+        if (!$type instanceof \ReflectionNamedType) {
+            throw new \LogicException('This implementation does not support groups of intersection or union types');
+        }
+        // A named-type can be either a class-name or a built-in type like string, int, array, etc.
+        $matches = $type->isBuiltin() && \gettype($reason) === $type->getName() || (new \ReflectionClass($type->getName()))->isInstance($reason);
+        // If we look for a single match (union), we can return early on match
+        // If we look for a full match (intersection), we can return early on mismatch
+        if ($matches) {
+            if ($isTypeUnion) {
+                return \true;
+            }
+        } else {
+            if (!$isTypeUnion) {
+                return \false;
+            }
+        }
+    }
+    // If we look for a single match (union) and did not return early, we matched no type and are false
+    // If we look for a full match (intersection) and did not return early, we matched all types and are true
+    return $isTypeUnion ? \false : \true;
 }

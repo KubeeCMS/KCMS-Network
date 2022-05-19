@@ -104,12 +104,12 @@ class Product_Compat {
 			'desc'   => __('Options used by old 1.X versions. ', 'wp-ultimo'),
 			'icon'   => 'dashicons-wu-spreadsheet',
 			'state'  => array(
-				'legacy_options' => $object->is_migrated(),
+				'legacy_options' => $object->get_legacy_options(),
 			),
 			'fields' => array(
 				'legacy_options' => array(
 					'type'      => 'toggle',
-					'value'     => $object->is_migrated(),
+					'value'     => $object->get_legacy_options(),
 					'title'     => __('Toggle Legacy Options', 'wp-ultimo'),
 					'desc'      => __('Toggle this option to edit legacy options.', 'wp-ultimo'),
 					'html_attr' => array(
@@ -128,8 +128,8 @@ class Product_Compat {
 				'feature_list'   => array(
 					'type'              => 'textarea',
 					'title'             => __('Features List', 'wp-ultimo'),
-					'placeholder'       => __('Feature 1', 'wp-ultimo') . PHP_EOL . __('Feature 2', 'wp-ultimo'),
-					'tooltip'           => __('Add a feature per line. These will be shown on the pricing tables.', 'wp-ultimo'),
+					'placeholder'       => __('E.g. Feature 1', 'wp-ultimo') . PHP_EOL . __('Feature 2', 'wp-ultimo'),
+					'desc'              => __('Add a feature per line. These will be shown on the pricing tables.', 'wp-ultimo'),
 					'value'             => $object->get_feature_list(),
 					'wrapper_html_attr' => array(
 						'v-show' => 'legacy_options',

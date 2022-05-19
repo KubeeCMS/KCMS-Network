@@ -7,6 +7,7 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi;
 
 /**
@@ -14,7 +15,7 @@ namespace setasign\Fpdi;
  *
  * This class adds a templating feature to FPDF.
  */
-class FpdfTpl extends \WP_Ultimo\Dependencies\FPDF
+class FpdfTpl extends \FPDF
 {
     use FpdfTplTrait;
 }

@@ -15,7 +15,9 @@ namespace WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception;
  * Compiler exception
  *
  * @author Oleksandr Savchenko <traveltino@gmail.com>
+ *
+ * @internal
  */
-class CompilerException extends \Exception implements \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\SassException
+final class CompilerException extends \Exception implements SassException
 {
 }

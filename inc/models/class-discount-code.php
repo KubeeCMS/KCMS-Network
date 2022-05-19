@@ -112,6 +112,22 @@ class Discount_Code extends Base_Model {
 	protected $active = 1;
 
 	/**
+	 * If we should check for products or not.
+	 *
+	 * @since 2.0.0
+	 * @var bool
+	 */
+	protected $limit_products;
+
+	/**
+	 * Holds the list of allowed products.
+	 *
+	 * @since 2.0.0
+	 * @var array
+	 */
+	protected $allowed_products;
+
+	/**
 	 * Start date for the coupon code to be considered valid.
 	 *
 	 * @since 2.0.0
@@ -156,11 +172,18 @@ class Discount_Code extends Base_Model {
 	public function validation_rules() {
 
 		return array(
-			'name'     => 'required|min:2',
-			'code'     => 'required|min:4|max:20',
-			'uses'     => 'integer|default:0',
-			'max_uses' => 'integer|min:0|default:0',
-			'active'   => 'default:1',
+			'name'              => 'required|min:2',
+			'code'              => 'required|min:4|max:20|alpha_dash',
+			'uses'              => 'integer|default:0',
+			'max_uses'          => 'integer|min:0|default:0',
+			'active'            => 'default:1',
+			'apply_to_renewals' => 'default:0',
+			'type'              => 'default:absolute|in:percentage,absolute',
+			'value'             => 'required|numeric',
+			'setup_fee_type'    => 'in:percentage,absolute',
+			'setup_fee_value'   => 'numeric',
+			'allowed_products'  => 'array',
+			'limit_products'    => 'default:0',
 		);
 
 	} // end validation_rules;
@@ -181,7 +204,7 @@ class Discount_Code extends Base_Model {
 	 * Set name of the discount code.
 	 *
 	 * @since 2.0.0
-	 * @param string $name Name of the discount code.
+	 * @param string $name Your discount code name, which is used as discount code title as well.
 	 * @return void
 	 */
 	public function set_name($name) {
@@ -206,7 +229,7 @@ class Discount_Code extends Base_Model {
 	 * Set code to redeem the discount code.
 	 *
 	 * @since 2.0.0
-	 * @param string $code Code to redeem the discount code.
+	 * @param string $code A unique identification to redeem the discount code. E.g. PROMO10.
 	 * @return void
 	 */
 	public function set_code($code) {
@@ -231,7 +254,7 @@ class Discount_Code extends Base_Model {
 	 * Set text describing the coupon code. Useful for identifying it.
 	 *
 	 * @since 2.0.0
-	 * @param string $description Text describing the coupon code. Useful for identifying it.
+	 * @param string $description A description for the discount code, usually a short text.
 	 * @return void
 	 */
 	public function set_description($description) {
@@ -248,7 +271,7 @@ class Discount_Code extends Base_Model {
 	 */
 	public function get_uses() {
 
-		return $this->uses;
+		return (int) $this->uses;
 
 	} // end get_uses;
 
@@ -261,9 +284,24 @@ class Discount_Code extends Base_Model {
 	 */
 	public function set_uses($uses) {
 
-		$this->uses = $uses;
+		$this->uses = (int) $uses;
 
 	} // end set_uses;
+
+	/**
+	 * Add uses to this discount code.
+	 *
+	 * @since 2.0.4
+	 * @param integer $uses Number of uses to add.
+	 * @return void
+	 */
+	public function add_use($uses = 1) {
+
+		$use_count = (int) $this->get_uses();
+
+		$this->set_uses($use_count + (int) $uses);
+
+	} // end add_use;
 
 	/**
 	 * Get the number of times this discount can be used before becoming inactive.
@@ -286,7 +324,7 @@ class Discount_Code extends Base_Model {
 	 */
 	public function set_max_uses($max_uses) {
 
-		$this->max_uses = $max_uses;
+		$this->max_uses = (int) $max_uses;
 
 	} // end set_max_uses;
 
@@ -308,17 +346,17 @@ class Discount_Code extends Base_Model {
 	 * @since 2.0.0
 	 * @return int
 	 */
-	public function get_apply_to_renewals() {
+	public function should_apply_to_renewals() {
 
 		return (bool) $this->apply_to_renewals;
 
-	} // end get_apply_to_renewals;
+	} // end should_apply_to_renewals;
 
 	/**
 	 * Set if we should apply this coupon to renewals as well.
 	 *
 	 * @since 2.0.0
-	 * @param bool $apply_to_renewals Wether or not we should apply the discount to renewals.
+	 * @param bool $apply_to_renewals Wether or not we should apply the discount to membership renewals.
 	 * @return void
 	 */
 	public function set_apply_to_renewals($apply_to_renewals) {
@@ -343,7 +381,8 @@ class Discount_Code extends Base_Model {
 	 * Set type of the discount. Can be a percentage or absolute.
 	 *
 	 * @since 2.0.0
-	 * @param string $type Type of the discount. Can be a percentage or absolute.
+	 * @param string $type The type of the discount code. Can be 'percentage' (e.g. 10% OFF), 'absolute' (e.g. $10 OFF).
+	 * @options percentage,absolute
 	 * @return void
 	 */
 	public function set_type($type) {
@@ -360,7 +399,7 @@ class Discount_Code extends Base_Model {
 	 */
 	public function get_value() {
 
-		return $this->value;
+		return (float) $this->value;
 
 	} // end get_value;
 
@@ -394,6 +433,7 @@ class Discount_Code extends Base_Model {
 	 *
 	 * @since 2.0.0
 	 * @param string $setup_fee_type Type of the discount for the setup fee value. Can be a percentage or absolute.
+	 * @options percentage,absolute
 	 * @return void
 	 */
 	public function set_setup_fee_type($setup_fee_type) {
@@ -410,15 +450,15 @@ class Discount_Code extends Base_Model {
 	 */
 	public function get_setup_fee_value() {
 
-		return $this->setup_fee_value;
+		return (float) $this->setup_fee_value;
 
 	} // end get_setup_fee_value;
 
 	/**
-	 * Set amount discounted fpr setup fees in cents.
+	 * Set amount discounted for setup fees in cents.
 	 *
 	 * @since 2.0.0
-	 * @param int $setup_fee_value Amount discounted fpr setup fees in cents.
+	 * @param int $setup_fee_value Amount discounted for setup fees in cents.
 	 * @return void
 	 */
 	public function set_setup_fee_value($setup_fee_value) {
@@ -443,12 +483,87 @@ class Discount_Code extends Base_Model {
 	 * Checks if a given coupon code is valid and can be applied.
 	 *
 	 * @since 2.0.0
-	 * @param \WP_Ultimo\Models\Product $product Product to check against.
-	 * @return boolean
+	 * @param int|\WP_Ultimo\Models\Product $product Product to check against.
+	 * @return true|\WP_Error
 	 */
 	public function is_valid($product = false) {
 
-		return $this->is_active();
+		if ($this->is_active() === false) {
+
+			return new \WP_Error('discount_code', __('This coupon code is not valid.', 'wp-ultimo'));
+
+		} // end if;
+
+		/*
+		 * Check for uses
+		 */
+		if ($this->has_max_uses() && $this->get_uses() >= $this->get_max_uses()) {
+
+			return new \WP_Error('discount_code', __('This discount code was already redeemed the maximum amount of times allowed.', 'wp-ultimo'));
+
+		} // end if;
+
+		/*
+		 * Fist, check date boundaries.
+		 */
+		$start_date      = $this->get_date_start();
+		$expiration_date = $this->get_date_expiration();
+
+		$now = wu_date();
+
+		if ($start_date) {
+
+			$start_date_instance = wu_date($start_date);
+
+			if ($now < $start_date_instance) {
+
+				return new \WP_Error('discount_code', __('This coupon code is not valid.', 'wp-ultimo'));
+
+			} // end if;
+
+		} // end if;
+
+		if ($expiration_date) {
+
+			$expiration_date_instance = wu_date($expiration_date);
+
+			if ($now > $expiration_date) {
+
+				return new \WP_Error('discount_code', __('This coupon code is not valid.', 'wp-ultimo'));
+
+			} // end if;
+
+		} // end if;
+
+		if (!$this->get_limit_products()) {
+
+			return true;
+
+		} // end if;
+
+		if (!empty($product)) {
+
+			if (is_a($product, '\WP_Ultimo\Models\Product')) {
+
+				$product_id = $product->get_id();
+
+			} elseif (is_numeric($product)) {
+
+				$product_id = $product;
+
+			} // end if;
+
+			$allowed = $this->get_limit_products() && in_array($product_id, $this->get_allowed_products()); // phpcs:ignore
+
+			if ($allowed === false) {
+
+				return new \WP_Error('discount_code', __('This coupon code is not valid.', 'wp-ultimo'));
+
+			} // end if;
+
+		} // end if;
+
+		return true;
 
 	} // end is_valid;
 
@@ -460,7 +575,7 @@ class Discount_Code extends Base_Model {
 	 */
 	public function is_one_time() {
 
-		return (bool) $this->get_apply_to_renewals() === 1;
+		return (bool) $this->should_apply_to_renewals();
 
 	} // end is_one_time;
 
@@ -468,7 +583,7 @@ class Discount_Code extends Base_Model {
 	 * Set if this coupon code is active or not.
 	 *
 	 * @since 2.0.0
-	 * @param bool $active If this coupon code is active or not.
+	 * @param bool $active Set this discount code as active (true), which means available to be used, or inactive (false).
 	 * @return void
 	 */
 	public function set_active($active) {
@@ -484,6 +599,12 @@ class Discount_Code extends Base_Model {
 	 * @return string
 	 */
 	public function get_date_start() {
+
+		if (!wu_validate_date($this->date_start)) {
+
+			return '';
+
+		} // end if;
 
 		return $this->date_start;
 
@@ -509,6 +630,12 @@ class Discount_Code extends Base_Model {
 	 * @return string
 	 */
 	public function get_date_expiration() {
+
+		if (!wu_validate_date($this->date_expiration)) {
+
+			return '';
+
+		} // end if;
 
 		return $this->date_expiration;
 
@@ -586,14 +713,14 @@ class Discount_Code extends Base_Model {
 
 			if ($this->get_setup_fee_type() === 'percentage') {
 
-				$value = $this->get_setup_fee_value() . '%';
+				$setup_fee_value = $this->get_setup_fee_value() . '%';
 
 			} // end if;
 
 			$description[] = sprintf(
 				// translators: placeholder is the value off. Can be wither $X.XX or X%
 				__('%1$s OFF on Setup Fees', 'wp-ultimo'),
-				$value
+				$setup_fee_value
 			);
 
 		} // end if;
@@ -646,5 +773,71 @@ class Discount_Code extends Base_Model {
 		return $results;
 
 	} // end save;
+
+	/**
+	 * Get holds the list of allowed products.
+	 *
+	 * @since 2.0.0
+	 * @return array
+	 */
+	public function get_allowed_products() {
+
+		if ($this->allowed_products === null) {
+
+			$this->allowed_products = $this->get_meta('wu_allowed_products', array());
+
+		} // end if;
+
+		return (array) $this->allowed_products;
+
+	} // end get_allowed_products;
+
+	/**
+	 * Set holds the list of allowed products.
+	 *
+	 * @since 2.0.0
+	 * @param array $allowed_products The list of products that allows this discount code to be used. If empty, all products will accept this code.
+	 * @return void
+	 */
+	public function set_allowed_products($allowed_products) {
+
+		$this->meta['wu_allowed_products'] = (array) $allowed_products;
+
+		$this->allowed_products = $this->meta['wu_allowed_products'];
+
+	} // end set_allowed_products;
+
+	/**
+	 * Get if we should check for products or not.
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	public function get_limit_products() {
+
+		if ($this->limit_products === null) {
+
+			$this->limit_products = $this->get_meta('wu_limit_products', false);
+
+		} // end if;
+
+		return (bool) $this->limit_products;
+
+	} // end get_limit_products;
+
+	/**
+	 * Set if we should check for products or not.
+	 *
+	 * @since 2.0.0
+	 * @param bool $limit_products This discount code will be limited to be used in certain products? If set to true, you must define a list of allowed products.
+	 * @return void
+	 */
+	public function set_limit_products($limit_products) {
+
+		$this->meta['wu_limit_products'] = (bool) $limit_products;
+
+		$this->limit_products = $this->meta['wu_limit_products'];
+
+	} // end set_limit_products;
 
 } // end class Discount_Code;

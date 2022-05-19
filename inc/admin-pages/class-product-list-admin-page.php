@@ -63,6 +63,21 @@ class Product_List_Admin_Page extends List_Admin_Page {
 	public function hooks() {} // end hooks;
 
 	/**
+	 * Returns an array with the labels for the edit page.
+	 *
+	 * @since 1.8.2
+	 * @return array
+	 */
+	public function get_labels() {
+
+		return array(
+			'deleted_message' => __('Product removed successfully.', 'wp-ultimo'),
+			'search_label'    => __('Search Product', 'wp-ultimo'),
+		);
+
+	} // end get_labels;
+
+	/**
 	 * Returns the title of the page.
 	 *
 	 * @since 2.0.0

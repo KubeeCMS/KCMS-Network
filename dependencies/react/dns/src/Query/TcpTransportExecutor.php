@@ -1,12 +1,13 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Dns\Query;
+namespace React\Dns\Query;
 
-use WP_Ultimo\Dependencies\React\Dns\Model\Message;
-use WP_Ultimo\Dependencies\React\Dns\Protocol\BinaryDumper;
-use WP_Ultimo\Dependencies\React\Dns\Protocol\Parser;
-use WP_Ultimo\Dependencies\React\EventLoop\LoopInterface;
-use WP_Ultimo\Dependencies\React\Promise\Deferred;
+use React\Dns\Model\Message;
+use React\Dns\Protocol\BinaryDumper;
+use React\Dns\Protocol\Parser;
+use React\EventLoop\Loop;
+use React\EventLoop\LoopInterface;
+use React\Promise\Deferred;
 /**
  * Send DNS queries over a TCP/IP stream transport.
  *
@@ -16,8 +17,7 @@ use WP_Ultimo\Dependencies\React\Promise\Deferred;
  * The following example looks up the `IPv6` address for `reactphp.org`.
  *
  * ```php
- * $loop = Factory::create();
- * $executor = new TcpTransportExecutor('8.8.8.8:53', $loop);
+ * $executor = new TcpTransportExecutor('8.8.8.8:53');
  *
  * $executor->query(
  *     new Query($name, Message::TYPE_AAAA, Message::CLASS_IN)
@@ -26,8 +26,6 @@ use WP_Ultimo\Dependencies\React\Promise\Deferred;
  *         echo 'IPv6: ' . $answer->data . PHP_EOL;
  *     }
  * }, 'printf');
- *
- * $loop->run();
  * ```
  *
  * See also [example #92](examples).
@@ -37,9 +35,8 @@ use WP_Ultimo\Dependencies\React\Promise\Deferred;
  *
  * ```php
  * $executor = new TimeoutExecutor(
- *     new TcpTransportExecutor($nameserver, $loop),
- *     3.0,
- *     $loop
+ *     new TcpTransportExecutor($nameserver),
+ *     3.0
  * );
  * ```
  *
@@ -65,9 +62,8 @@ use WP_Ultimo\Dependencies\React\Promise\Deferred;
  * ```php
  * $executor = new CoopExecutor(
  *     new TimeoutExecutor(
- *         new TcpTransportExecutor($nameserver, $loop),
- *         3.0,
- *         $loop
+ *         new TcpTransportExecutor($nameserver),
+ *         3.0
  *     )
  * );
  * ```
@@ -78,7 +74,7 @@ use WP_Ultimo\Dependencies\React\Promise\Deferred;
  *   packages. Higher-level components should take advantage of the Socket
  *   component instead of reimplementing this socket logic from scratch.
  */
-class TcpTransportExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\ExecutorInterface
+class TcpTransportExecutor implements \React\Dns\Query\ExecutorInterface
 {
     private $nameserver;
     private $loop;
@@ -122,28 +118,30 @@ class TcpTransportExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\Ex
     private $writePending = \false;
     private $readBuffer = '';
     private $readPending = \false;
+    /** @var string */
+    private $readChunk = 0xffff;
     /**
-     * @param string        $nameserver
-     * @param LoopInterface $loop
+     * @param string         $nameserver
+     * @param ?LoopInterface $loop
      */
-    public function __construct($nameserver, \WP_Ultimo\Dependencies\React\EventLoop\LoopInterface $loop)
+    public function __construct($nameserver, LoopInterface $loop = null)
     {
         if (\strpos($nameserver, '[') === \false && \substr_count($nameserver, ':') >= 2 && \strpos($nameserver, '://') === \false) {
             // several colons, but not enclosed in square brackets => enclose IPv6 address in square brackets
             $nameserver = '[' . $nameserver . ']';
         }
         $parts = \parse_url((\strpos($nameserver, '://') === \false ? 'tcp://' : '') . $nameserver);
-        if (!isset($parts['scheme'], $parts['host']) || $parts['scheme'] !== 'tcp' || !\filter_var(\trim($parts['host'], '[]'), \FILTER_VALIDATE_IP)) {
+        if (!isset($parts['scheme'], $parts['host']) || $parts['scheme'] !== 'tcp' || @\inet_pton(\trim($parts['host'], '[]')) === \false) {
             throw new \InvalidArgumentException('Invalid nameserver address given');
         }
-        $this->nameserver = $parts['host'] . ':' . (isset($parts['port']) ? $parts['port'] : 53);
-        $this->loop = $loop;
-        $this->parser = new \WP_Ultimo\Dependencies\React\Dns\Protocol\Parser();
-        $this->dumper = new \WP_Ultimo\Dependencies\React\Dns\Protocol\BinaryDumper();
+        $this->nameserver = 'tcp://' . $parts['host'] . ':' . (isset($parts['port']) ? $parts['port'] : 53);
+        $this->loop = $loop ?: Loop::get();
+        $this->parser = new Parser();
+        $this->dumper = new BinaryDumper();
     }
-    public function query(\WP_Ultimo\Dependencies\React\Dns\Query\Query $query)
+    public function query(\React\Dns\Query\Query $query)
     {
-        $request = \WP_Ultimo\Dependencies\React\Dns\Model\Message::createRequestForQuery($query);
+        $request = Message::createRequestForQuery($query);
         // keep shuffing message ID to avoid using the same message ID for two pending queries at the same time
         while (isset($this->pending[$request->id])) {
             $request->id = \mt_rand(0, 0xffff);
@@ -152,17 +150,21 @@ class TcpTransportExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\Ex
         $queryData = $this->dumper->toBinary($request);
         $length = \strlen($queryData);
         if ($length > 0xffff) {
-            return \WP_Ultimo\Dependencies\React\Promise\reject(new \RuntimeException('DNS query for ' . $query->name . ' failed: Query too large for TCP transport'));
+            return \React\Promise\reject(new \RuntimeException('DNS query for ' . $query->describe() . ' failed: Query too large for TCP transport'));
         }
         $queryData = \pack('n', $length) . $queryData;
         if ($this->socket === null) {
             // create async TCP/IP connection (may take a while)
             $socket = @\stream_socket_client($this->nameserver, $errno, $errstr, 0, \STREAM_CLIENT_CONNECT | \STREAM_CLIENT_ASYNC_CONNECT);
             if ($socket === \false) {
-                return \WP_Ultimo\Dependencies\React\Promise\reject(new \RuntimeException('DNS query for ' . $query->name . ' failed: Unable to connect to DNS server (' . $errstr . ')', $errno));
+                return \React\Promise\reject(new \RuntimeException('DNS query for ' . $query->describe() . ' failed: Unable to connect to DNS server ' . $this->nameserver . ' (' . $errstr . ')', $errno));
             }
             // set socket to non-blocking and wait for it to become writable (connection success/rejected)
             \stream_set_blocking($socket, \false);
+            if (\function_exists('stream_set_chunk_size')) {
+                \stream_set_chunk_size($socket, $this->readChunk);
+                // @codeCoverageIgnore
+            }
             $this->socket = $socket;
         }
         if ($this->idleTimer !== null) {
@@ -177,15 +179,15 @@ class TcpTransportExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\Ex
         }
         $names =& $this->names;
         $that = $this;
-        $deferred = new \WP_Ultimo\Dependencies\React\Promise\Deferred(function () use($that, &$names, $request) {
+        $deferred = new Deferred(function () use($that, &$names, $request) {
             // remove from list of pending names, but remember pending query
             $name = $names[$request->id];
             unset($names[$request->id]);
             $that->checkIdle();
-            throw new \WP_Ultimo\Dependencies\React\Dns\Query\CancellationException('DNS query for ' . $name . ' has been cancelled');
+            throw new \React\Dns\Query\CancellationException('DNS query for ' . $name . ' has been cancelled');
         });
         $this->pending[$request->id] = $deferred;
-        $this->names[$request->id] = $query->name;
+        $this->names[$request->id] = $query->describe();
         return $deferred->promise();
     }
     /**
@@ -196,7 +198,18 @@ class TcpTransportExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\Ex
         if ($this->readPending === \false) {
             $name = @\stream_socket_get_name($this->socket, \true);
             if ($name === \false) {
-                $this->closeError('Connection to DNS server rejected');
+                // Connection failed? Check socket error if available for underlying errno/errstr.
+                // @codeCoverageIgnoreStart
+                if (\function_exists('socket_import_stream')) {
+                    $socket = \socket_import_stream($this->socket);
+                    $errno = \socket_get_option($socket, \SOL_SOCKET, \SO_ERROR);
+                    $errstr = \socket_strerror($errno);
+                } else {
+                    $errno = \defined('SOCKET_ECONNREFUSED') ? \SOCKET_ECONNREFUSED : 111;
+                    $errstr = 'Connection refused';
+                }
+                // @codeCoverageIgnoreEnd
+                $this->closeError('Unable to connect to DNS server ' . $this->nameserver . ' (' . $errstr . ')', $errno);
                 return;
             }
             $this->readPending = \true;
@@ -204,7 +217,9 @@ class TcpTransportExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\Ex
         }
         $written = @\fwrite($this->socket, $this->writeBuffer);
         if ($written === \false || $written === 0) {
-            $this->closeError('Unable to write to closed socket');
+            $error = \error_get_last();
+            \preg_match('/errno=(\\d+) (.+)/', $error['message'], $m);
+            $this->closeError('Unable to send query to DNS server ' . $this->nameserver . ' (' . (isset($m[2]) ? $m[2] : $error['message']) . ')', isset($m[1]) ? (int) $m[1] : 0);
             return;
         }
         if (isset($this->writeBuffer[$written])) {
@@ -222,9 +237,9 @@ class TcpTransportExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\Ex
     {
         // read one chunk of data from the DNS server
         // any error is fatal, this is a stream of TCP/IP data
-        $chunk = @\fread($this->socket, 65536);
+        $chunk = @\fread($this->socket, $this->readChunk);
         if ($chunk === \false || $chunk === '') {
-            $this->closeError('Connection to DNS server lost');
+            $this->closeError('Connection to DNS server ' . $this->nameserver . ' lost');
             return;
         }
         // reassemble complete message by concatenating all chunks.
@@ -242,12 +257,12 @@ class TcpTransportExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\Ex
                 $response = $this->parser->parseMessage($data);
             } catch (\Exception $e) {
                 // reject all pending queries if we received an invalid message from remote server
-                $this->closeError('Invalid message received from DNS server');
+                $this->closeError('Invalid message received from DNS server ' . $this->nameserver);
                 return;
             }
             // reject all pending queries if we received an unexpected response ID or truncated response
             if (!isset($this->pending[$response->id]) || $response->tc) {
-                $this->closeError('Invalid response message received from DNS server');
+                $this->closeError('Invalid response message received from DNS server ' . $this->nameserver);
                 return;
             }
             $deferred = $this->pending[$response->id];
@@ -259,8 +274,9 @@ class TcpTransportExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\Ex
     /**
      * @internal
      * @param string $reason
+     * @param int    $code
      */
-    public function closeError($reason)
+    public function closeError($reason, $code = 0)
     {
         $this->readBuffer = '';
         if ($this->readPending) {
@@ -279,7 +295,7 @@ class TcpTransportExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\Ex
         @\fclose($this->socket);
         $this->socket = null;
         foreach ($this->names as $id => $name) {
-            $this->pending[$id]->reject(new \RuntimeException('DNS query for ' . $name . ' failed: ' . $reason));
+            $this->pending[$id]->reject(new \RuntimeException('DNS query for ' . $name . ' failed: ' . $reason, $code));
         }
         $this->pending = $this->names = array();
     }

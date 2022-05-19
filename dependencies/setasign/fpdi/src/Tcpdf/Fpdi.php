@@ -7,6 +7,7 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\Tcpdf;
 
 use setasign\Fpdi\FpdiTrait;
@@ -21,6 +22,7 @@ use setasign\Fpdi\PdfParser\Type\PdfStream;
 use setasign\Fpdi\PdfParser\Type\PdfString;
 use setasign\Fpdi\PdfParser\Type\PdfType;
 use setasign\Fpdi\PdfParser\Type\PdfTypeException;
+
 /**
  * Class Fpdi
  *
@@ -28,35 +30,40 @@ use setasign\Fpdi\PdfParser\Type\PdfTypeException;
  *
  * @method _encrypt_data(int $n, string $s) string
  */
-class Fpdi extends \WP_Ultimo\Dependencies\TCPDF
+class Fpdi extends \TCPDF
 {
     use FpdiTrait {
         writePdfType as fpdiWritePdfType;
         useImportedPage as fpdiUseImportedPage;
     }
+
     /**
      * FPDI version
      *
      * @string
      */
-    const VERSION = '2.3.4';
+    const VERSION = '2.3.6';
+
     /**
      * A counter for template ids.
      *
      * @var int
      */
     protected $templateId = 0;
+
     /**
      * The currently used object number.
      *
      * @var int|null
      */
     protected $currentObjectNumber;
+
     protected function _enddoc()
     {
         parent::_enddoc();
         $this->cleanUp();
     }
+
     /**
      * Get the next template id.
      *
@@ -66,6 +73,7 @@ class Fpdi extends \WP_Ultimo\Dependencies\TCPDF
     {
         return $this->templateId++;
     }
+
     /**
      * Draws an imported page onto the page or another template.
      *
@@ -82,10 +90,11 @@ class Fpdi extends \WP_Ultimo\Dependencies\TCPDF
      * @return array The size
      * @see FpdiTrait::getTemplateSize()
      */
-    public function useTemplate($tpl, $x = 0, $y = 0, $width = null, $height = null, $adjustPageSize = \false)
+    public function useTemplate($tpl, $x = 0, $y = 0, $width = null, $height = null, $adjustPageSize = false)
     {
         return $this->useImportedPage($tpl, $x, $y, $width, $height, $adjustPageSize);
     }
+
     /**
      * Draws an imported page onto the page.
      *
@@ -102,15 +111,17 @@ class Fpdi extends \WP_Ultimo\Dependencies\TCPDF
      * @return array The size.
      * @see Fpdi::getTemplateSize()
      */
-    public function useImportedPage($pageId, $x = 0, $y = 0, $width = null, $height = null, $adjustPageSize = \false)
+    public function useImportedPage($pageId, $x = 0, $y = 0, $width = null, $height = null, $adjustPageSize = false)
     {
         $size = $this->fpdiUseImportedPage($pageId, $x, $y, $width, $height, $adjustPageSize);
         if ($this->inxobj) {
             $importedPage = $this->importedPages[$pageId];
             $this->xobjects[$this->xobjid]['importedPages'][$importedPage['id']] = $pageId;
         }
+
         return $size;
     }
+
     /**
      * Get the size of an imported page.
      *
@@ -126,17 +137,21 @@ class Fpdi extends \WP_Ultimo\Dependencies\TCPDF
     {
         return $this->getImportedPageSize($tpl, $width, $height);
     }
+
     /**
      * @inheritdoc
      */
     protected function _getxobjectdict()
     {
         $out = parent::_getxobjectdict();
+
         foreach ($this->importedPages as $key => $pageData) {
             $out .= '/' . $pageData['id'] . ' ' . $pageData['objectNumber'] . ' 0 R ';
         }
+
         return $out;
     }
+
     /**
      * @inheritdoc
      * @throws CrossReferenceException
@@ -151,42 +166,50 @@ class Fpdi extends \WP_Ultimo\Dependencies\TCPDF
             $this->writePdfType($pageData['stream']);
             $this->_put('endobj');
         }
+
         foreach (\array_keys($this->readers) as $readerId) {
             $parser = $this->getPdfReader($readerId)->getParser();
             $this->currentReaderId = $readerId;
+
             while (($objectNumber = \array_pop($this->objectsToCopy[$readerId])) !== null) {
                 try {
                     $object = $parser->getIndirectObject($objectNumber);
-                } catch (\setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException $e) {
-                    if ($e->getCode() === \setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException::OBJECT_NOT_FOUND) {
-                        $object = \setasign\Fpdi\PdfParser\Type\PdfIndirectObject::create($objectNumber, 0, new \setasign\Fpdi\PdfParser\Type\PdfNull());
+                } catch (CrossReferenceException $e) {
+                    if ($e->getCode() === CrossReferenceException::OBJECT_NOT_FOUND) {
+                        $object = PdfIndirectObject::create($objectNumber, 0, new PdfNull());
                     } else {
                         throw $e;
                     }
                 }
+
                 $this->writePdfType($object);
             }
         }
+
         // let's prepare resources for imported pages in templates
         foreach ($this->xobjects as $xObjectId => $data) {
             if (!isset($data['importedPages'])) {
                 continue;
             }
+
             foreach ($data['importedPages'] as $id => $pageKey) {
                 $page = $this->importedPages[$pageKey];
                 $this->xobjects[$xObjectId]['xobjects'][$id] = ['n' => $page['objectNumber']];
             }
         }
+
+
         parent::_putxobjects();
         $this->currentObjectNumber = null;
     }
+
     /**
      * Append content to the buffer of TCPDF.
      *
      * @param string $s
      * @param bool $newLine
      */
-    protected function _put($s, $newLine = \true)
+    protected function _put($s, $newLine = true)
     {
         if ($newLine) {
             $this->setBuffer($s . "\n");
@@ -194,6 +217,7 @@ class Fpdi extends \WP_Ultimo\Dependencies\TCPDF
             $this->setBuffer($s);
         }
     }
+
     /**
      * Begin a new object and return the object number.
      *
@@ -205,39 +229,42 @@ class Fpdi extends \WP_Ultimo\Dependencies\TCPDF
         $this->_out($this->_getobj($objid));
         return $this->n;
     }
+
     /**
      * Writes a PdfType object to the resulting buffer.
      *
      * @param PdfType $value
      * @throws PdfTypeException
      */
-    protected function writePdfType(\setasign\Fpdi\PdfParser\Type\PdfType $value)
+    protected function writePdfType(PdfType $value)
     {
         if (!$this->encrypted) {
             $this->fpdiWritePdfType($value);
             return;
         }
-        if ($value instanceof \setasign\Fpdi\PdfParser\Type\PdfString) {
-            $string = \setasign\Fpdi\PdfParser\Type\PdfString::unescape($value->value);
+
+        if ($value instanceof PdfString) {
+            $string = PdfString::unescape($value->value);
             $string = $this->_encrypt_data($this->currentObjectNumber, $string);
-            $value->value = \WP_Ultimo\Dependencies\TCPDF_STATIC::_escape($string);
-        } elseif ($value instanceof \setasign\Fpdi\PdfParser\Type\PdfHexString) {
-            $filter = new \setasign\Fpdi\PdfParser\Filter\AsciiHex();
+            $value->value = \TCPDF_STATIC::_escape($string);
+        } elseif ($value instanceof PdfHexString) {
+            $filter = new AsciiHex();
             $string = $filter->decode($value->value);
             $string = $this->_encrypt_data($this->currentObjectNumber, $string);
-            $value->value = $filter->encode($string, \true);
-        } elseif ($value instanceof \setasign\Fpdi\PdfParser\Type\PdfStream) {
+            $value->value = $filter->encode($string, true);
+        } elseif ($value instanceof PdfStream) {
             $stream = $value->getStream();
             $stream = $this->_encrypt_data($this->currentObjectNumber, $stream);
             $dictionary = $value->value;
-            $dictionary->value['Length'] = \setasign\Fpdi\PdfParser\Type\PdfNumeric::create(\strlen($stream));
-            $value = \setasign\Fpdi\PdfParser\Type\PdfStream::create($dictionary, $stream);
-        } elseif ($value instanceof \setasign\Fpdi\PdfParser\Type\PdfIndirectObject) {
+            $dictionary->value['Length'] = PdfNumeric::create(\strlen($stream));
+            $value = PdfStream::create($dictionary, $stream);
+        } elseif ($value instanceof PdfIndirectObject) {
             /**
              * @var PdfIndirectObject $value
              */
             $this->currentObjectNumber = $this->objectMap[$this->currentReaderId][$value->objectNumber];
         }
+
         $this->fpdiWritePdfType($value);
     }
 }

@@ -15,7 +15,7 @@ class AuthorizationService extends \WP_Ultimo\Dependencies\Stripe\Service\Abstra
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\Issuing\Authorization>
      */
     public function all($params = null, $opts = null)
     {

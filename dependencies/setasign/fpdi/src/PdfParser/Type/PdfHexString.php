@@ -7,13 +7,15 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\PdfParser\Type;
 
 use setasign\Fpdi\PdfParser\StreamReader;
+
 /**
  * Class representing a hexadecimal encoded PDF string object
  */
-class PdfHexString extends \setasign\Fpdi\PdfParser\Type\PdfType
+class PdfHexString extends PdfType
 {
     /**
      * Parses a hexadecimal string object from the stream reader.
@@ -21,26 +23,32 @@ class PdfHexString extends \setasign\Fpdi\PdfParser\Type\PdfType
      * @param StreamReader $streamReader
      * @return bool|self
      */
-    public static function parse(\setasign\Fpdi\PdfParser\StreamReader $streamReader)
+    public static function parse(StreamReader $streamReader)
     {
         $bufferOffset = $streamReader->getOffset();
-        while (\true) {
-            $buffer = $streamReader->getBuffer(\false);
+
+        while (true) {
+            $buffer = $streamReader->getBuffer(false);
             $pos = \strpos($buffer, '>', $bufferOffset);
-            if ($pos === \false) {
+            if ($pos === false) {
                 if (!$streamReader->increaseLength()) {
-                    return \false;
+                    return false;
                 }
                 continue;
             }
+
             break;
         }
+
         $result = \substr($buffer, $bufferOffset, $pos - $bufferOffset);
         $streamReader->setOffset($pos + 1);
+
         $v = new self();
         $v->value = $result;
+
         return $v;
     }
+
     /**
      * Helper method to create an instance.
      *
@@ -51,8 +59,10 @@ class PdfHexString extends \setasign\Fpdi\PdfParser\Type\PdfType
     {
         $v = new self();
         $v->value = $string;
+
         return $v;
     }
+
     /**
      * Ensures that the passed value is a PdfHexString instance.
      *
@@ -62,6 +72,6 @@ class PdfHexString extends \setasign\Fpdi\PdfParser\Type\PdfType
      */
     public static function ensure($hexString)
     {
-        return \setasign\Fpdi\PdfParser\Type\PdfType::ensureType(self::class, $hexString, 'Hex string value expected.');
+        return PdfType::ensureType(self::class, $hexString, 'Hex string value expected.');
     }
 }

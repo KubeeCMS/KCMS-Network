@@ -49,11 +49,12 @@ trait Rounding
             'millisecond' => [1000, 'microsecond'],
         ];
         $normalizedUnit = static::singularUnit($unit);
-        $ranges = \array_merge(static::getRangesByUnit(), [
+        $ranges = \array_merge(static::getRangesByUnit($this->daysInMonth), [
             // @call roundUnit
             'microsecond' => [0, 999999],
         ]);
         $factor = 1;
+        $initialMonth = $this->month;
         if ($normalizedUnit === 'week') {
             $normalizedUnit = 'day';
             $precision *= static::DAYS_PER_WEEK;
@@ -63,7 +64,7 @@ trait Rounding
         }
         $precision *= $factor;
         if (!isset($ranges[$normalizedUnit])) {
-            throw new \WP_Ultimo\Dependencies\Carbon\Exceptions\UnknownUnitException($unit);
+            throw new UnknownUnitException($unit);
         }
         $found = \false;
         $fraction = 0;
@@ -81,8 +82,8 @@ trait Rounding
                 $delta = $maximum + 1 - $minimum;
                 $factor /= $delta;
                 $fraction *= $delta;
-                $arguments[0] += $this->{$unit} * $factor;
-                $changes[$unit] = \round($minimum + ($fraction ? $fraction * \call_user_func($function, ($this->{$unit} - $minimum) / $fraction) : 0));
+                $arguments[0] += ($this->{$unit} - $minimum) * $factor;
+                $changes[$unit] = \round($minimum + ($fraction ? $fraction * $function(($this->{$unit} - $minimum) / $fraction) : 0));
                 // Cannot use modulo as it lose double precision
                 while ($changes[$unit] >= $delta) {
                     $changes[$unit] -= $delta;
@@ -91,12 +92,13 @@ trait Rounding
             }
         }
         [$value, $minimum] = $arguments;
+        $normalizedValue = \floor($function(($value - $minimum) / $precision) * $precision + $minimum);
         /** @var CarbonInterface $result */
-        $result = $this->{$normalizedUnit}(\floor(\call_user_func($function, ($value - $minimum) / $precision) * $precision + $minimum));
+        $result = $this->{$normalizedUnit}($normalizedValue);
         foreach ($changes as $unit => $value) {
             $result = $result->{$unit}($value);
         }
-        return $result;
+        return $normalizedUnit === 'month' && $precision <= 1 && \abs($result->month - $initialMonth) === 2 ? $result->{$normalizedUnit}($normalizedValue) : $result;
     }
     /**
      * Truncate the current instance at the given unit with given precision if specified.
@@ -165,7 +167,7 @@ trait Rounding
      */
     public function roundWeek($weekStartsAt = null)
     {
-        return $this->closest($this->copy()->floorWeek($weekStartsAt), $this->copy()->ceilWeek($weekStartsAt));
+        return $this->closest($this->avoidMutation()->floorWeek($weekStartsAt), $this->avoidMutation()->ceilWeek($weekStartsAt));
     }
     /**
      * Truncate the current instance week.
@@ -188,10 +190,10 @@ trait Rounding
     public function ceilWeek($weekStartsAt = null)
     {
         if ($this->isMutable()) {
-            $startOfWeek = $this->copy()->startOfWeek($weekStartsAt);
+            $startOfWeek = $this->avoidMutation()->startOfWeek($weekStartsAt);
             return $startOfWeek != $this ? $this->startOfWeek($weekStartsAt)->addWeek() : $this;
         }
         $startOfWeek = $this->startOfWeek($weekStartsAt);
-        return $startOfWeek != $this ? $startOfWeek->addWeek() : $this->copy();
+        return $startOfWeek != $this ? $startOfWeek->addWeek() : $this->avoidMutation();
     }
 }

@@ -8,7 +8,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @deprecated Alipay accounts are deprecated. Please use the sources API instead.
  * @see https://stripe.com/docs/sources/alipay
  */
-class AlipayAccount extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class AlipayAccount extends ApiResource
 {
     const OBJECT_NAME = 'alipay_account';
     use ApiOperations\Delete;
@@ -20,15 +20,15 @@ class AlipayAccount extends \WP_Ultimo\Dependencies\Stripe\ApiResource
     public function instanceUrl()
     {
         if ($this['customer']) {
-            $base = \WP_Ultimo\Dependencies\Stripe\Customer::classUrl();
+            $base = Customer::classUrl();
             $parent = $this['customer'];
             $path = 'sources';
         } else {
             $msg = 'Alipay accounts cannot be accessed without a customer ID.';
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException($msg);
+            throw new Exception\UnexpectedValueException($msg);
         }
-        $parentExtn = \urlencode(\WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($parent));
-        $extn = \urlencode(\WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($this['id']));
+        $parentExtn = \urlencode(Util\Util::utf8($parent));
+        $extn = \urlencode(Util\Util::utf8($this['id']));
         return "{$base}/{$parentExtn}/{$path}/{$extn}";
     }
     /**
@@ -43,7 +43,7 @@ class AlipayAccount extends \WP_Ultimo\Dependencies\Stripe\ApiResource
     public static function retrieve($_id, $_opts = null)
     {
         $msg = 'Alipay accounts cannot be retrieved without a customer ID. ' . 'Retrieve an Alipay account using `Customer::retrieveSource(' . "'customer_id', 'alipay_account_id')`.";
-        throw new \WP_Ultimo\Dependencies\Stripe\Exception\BadMethodCallException($msg);
+        throw new Exception\BadMethodCallException($msg);
     }
     /**
      * @param string $_id
@@ -58,6 +58,6 @@ class AlipayAccount extends \WP_Ultimo\Dependencies\Stripe\ApiResource
     public static function update($_id, $_params = null, $_options = null)
     {
         $msg = 'Alipay accounts cannot be updated without a customer ID. ' . 'Update an Alipay account using `Customer::updateSource(' . "'customer_id', 'alipay_account_id', \$updateParams)`.";
-        throw new \WP_Ultimo\Dependencies\Stripe\Exception\BadMethodCallException($msg);
+        throw new Exception\BadMethodCallException($msg);
     }
 }

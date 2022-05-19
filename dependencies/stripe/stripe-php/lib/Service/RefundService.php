@@ -16,11 +16,29 @@ class RefundService extends \WP_Ultimo\Dependencies\Stripe\Service\AbstractServi
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\Refund>
      */
     public function all($params = null, $opts = null)
     {
         return $this->requestCollection('get', '/v1/refunds', $params, $opts);
+    }
+    /**
+     * Cancels a refund with a status of <code>requires_action</code>.
+     *
+     * Refunds in other states cannot be canceled, and only refunds for payment methods
+     * that require customer action will enter the <code>requires_action</code> state.
+     *
+     * @param string $id
+     * @param null|array $params
+     * @param null|array|\Stripe\Util\RequestOptions $opts
+     *
+     * @throws \Stripe\Exception\ApiErrorException if the request fails
+     *
+     * @return \Stripe\Refund
+     */
+    public function cancel($id, $params = null, $opts = null)
+    {
+        return $this->request('post', $this->buildPath('/v1/refunds/%s/cancel', $id), $params, $opts);
     }
     /**
      * Create a refund.

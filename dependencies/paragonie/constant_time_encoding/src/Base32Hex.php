@@ -31,7 +31,7 @@ namespace WP_Ultimo\Dependencies\ParagonIE\ConstantTime;
  *
  * @package ParagonIE\ConstantTime
  */
-abstract class Base32Hex extends \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Base32
+abstract class Base32Hex extends Base32
 {
     /**
      * Uses bitwise operators instead of table-lookups to turn 5-bit integers

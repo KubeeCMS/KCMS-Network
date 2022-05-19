@@ -57,7 +57,7 @@ class Signup_Field_Discount_Code extends Base_Signup_Field {
 	 */
 	public function get_title() {
 
-		return __('Discount Code', 'wp-ultimo');
+		return __('Coupon Code', 'wp-ultimo');
 
 	} // end get_title;
 
@@ -71,9 +71,23 @@ class Signup_Field_Discount_Code extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('Discount Code Description', 'wp-ultimo');
+		return __('Adds an additional field to apply a discount code.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Adds an additional field to apply a discount code.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -85,7 +99,7 @@ class Signup_Field_Discount_Code extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-wu-ticket';
+		return 'dashicons-wu-tag1';
 
 	} // end get_icon;
 
@@ -145,14 +159,7 @@ class Signup_Field_Discount_Code extends Base_Signup_Field {
 	 */
 	public function get_fields() {
 
-		return array(
-			'display_checkbox' => array(
-				'type'    => 'toggle',
-				'title'   => __('Display a "Have a coupon code checkbox"?', 'wp-ultimo'),
-				'tooltip' => __('This will display a checkbox that the customer has to check before we show the discount code input.', 'wp-ultimo'),
-				'value'   => 0,
-			),
-		);
+		return array();
 
 	} // end get_fields;
 
@@ -168,19 +175,15 @@ class Signup_Field_Discount_Code extends Base_Signup_Field {
 
 		$checkout_fields = array();
 
-		if ($attributes['display_checkbox']) {
-
-			$checkout_fields['discount_code_checkbox'] = array(
-				'id'        => 'discount_code',
-				'type'      => 'toggle',
-				'name'      => __('Have a coupon code?', 'wp-ultimo'),
-				'class'     => 'wu-w-auto',
-				'html_attr' => array(
-					'v-model' => 'toggle_discount_code',
-				),
-			);
-
-		} // end if;
+		$checkout_fields['discount_code_checkbox'] = array(
+			'id'        => 'discount_code',
+			'type'      => 'toggle',
+			'name'      => __('Have a coupon code?', 'wp-ultimo'),
+			'class'     => 'wu-w-auto',
+			'html_attr' => array(
+				'v-model' => 'toggle_discount_code',
+			),
+		);
 
 		$checkout_fields['discount_code'] = array(
 			'type'              => 'text',
@@ -189,12 +192,16 @@ class Signup_Field_Discount_Code extends Base_Signup_Field {
 			'placeholder'       => $attributes['placeholder'],
 			'tooltip'           => $attributes['tooltip'],
 			'default'           => $attributes['default'],
-			'value'             => wu_request('discount_code'),
+			'wrapper_classes'   => wu_get_isset($attributes, 'wrapper_element_classes', ''),
+			'classes'           => wu_get_isset($attributes, 'element_classes', ''),
 			'wrapper_html_attr' => array(
 				'v-show' => 'toggle_discount_code',
+				'style'  => $this->calculate_style_attr(),
 			),
 			'html_attr'         => array(
-				'v-model.lazy' => 'discount_code',
+				'v-model.lazy'                => 'discount_code',
+				'v-init:discount_code'        => "'{$this->get_value()}'",
+				'v-init:toggle_discount_code' => !empty($this->get_value()),
 			),
 		);
 

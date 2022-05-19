@@ -19,14 +19,15 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property null|\Stripe\Plan $plan The plan of the subscription, if the line item is a subscription or a proration.
  * @property null|\Stripe\Price $price The price of the line item.
  * @property bool $proration Whether this is a proration.
+ * @property null|\Stripe\StripeObject $proration_details Additional details for proration line items
  * @property null|int $quantity The quantity of the subscription, if the line item is a subscription or a proration.
  * @property null|string $subscription The subscription that the invoice item pertains to, if any.
  * @property string $subscription_item The subscription item that generated this invoice item. Left empty if the line item is not an explicit result of a subscription.
- * @property null|\Stripe\StripeObject[] $tax_amounts The amount of tax calculated per tax rate for this line item
- * @property null|\Stripe\TaxRate[] $tax_rates The tax rates which apply to the line item.
+ * @property \Stripe\StripeObject[] $tax_amounts The amount of tax calculated per tax rate for this line item
+ * @property \Stripe\TaxRate[] $tax_rates The tax rates which apply to the line item.
  * @property string $type A string identifying the type of the source of this line item, either an <code>invoiceitem</code> or a <code>subscription</code>.
  */
-class InvoiceLineItem extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class InvoiceLineItem extends ApiResource
 {
     const OBJECT_NAME = 'line_item';
 }

@@ -74,12 +74,12 @@ class Payment_Manager extends Base_Manager {
 	 *
 	 * @since 2.0.0
 	 *
+	 * @param \WP_Ultimo\Models\Payment        $payment The payment.
 	 * @param \WP_Ultimo\Models\Membership     $membership The membership.
-	 * @param \WP_Ultimo\Models\Membership     $payment The payment.
 	 * @param \WP_Ultimo\Gateways\Base_Gateway $gateway The gateway.
 	 * @return void
 	 */
-	public function handle_payment_success($membership, $payment, $gateway) {
+	public function handle_payment_success($payment, $membership, $gateway) {
 
 		$payload = array_merge(
 			wu_generate_event_payload('payment', $payment),
@@ -124,6 +124,8 @@ class Payment_Manager extends Base_Manager {
 			 * Displays the PDF on the screen.
 			 */
 			$invoice->print_file();
+
+			exit;
 
 		} // end if;
 

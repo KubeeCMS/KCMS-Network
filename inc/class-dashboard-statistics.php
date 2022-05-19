@@ -165,7 +165,7 @@ class Dashboard_Statistics {
 				'compare'  => 'BETWEEN',
 				'relation' => '',
 				array(
-					'year' => current_time('Y'),
+					'year' => current_time('Y', true),
 				),
 			)
 		));

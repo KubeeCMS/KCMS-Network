@@ -13,7 +13,7 @@ class CheckoutServiceFactory extends \WP_Ultimo\Dependencies\Stripe\Service\Abst
     /**
      * @var array<string, string>
      */
-    private static $classMap = ['sessions' => \WP_Ultimo\Dependencies\Stripe\Service\Checkout\SessionService::class];
+    private static $classMap = ['sessions' => SessionService::class];
     protected function getServiceClass($name)
     {
         return \array_key_exists($name, self::$classMap) ? self::$classMap[$name] : null;

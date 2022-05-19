@@ -78,6 +78,83 @@ class Broadcast extends Post_Base_Model {
 	protected $notice_type;
 
 	/**
+	 * Constructs the object via the constructor arguments
+	 *
+	 * @since 2.0.7
+	 *
+	 * @param mixed $object Std object with model parameters.
+	 */
+	public function __construct($object = null) {
+
+		$object = (array) $object;
+
+		if (!wu_get_isset($object, 'migrated_from_id')) {
+
+			unset($object['migrated_from_id']);
+
+		} // end if;
+
+		parent::__construct($object);
+
+	} // end __construct;
+
+	/**
+	 * Set the validation rules for this particular model.
+	 *
+	 * To see how to setup rules, check the documentation of the
+	 * validation library we are using: https://github.com/rakit/validation
+	 *
+	 * @since 2.0.0
+	 * @link https://github.com/rakit/validation
+	 * @return array
+	 */
+	public function validation_rules() {
+
+		return array(
+			'notice_type' => 'in:info,success,warning,error',
+			'status'      => 'default:publish',
+			'name'        => 'default:title',
+			'title'       => 'required|min:2',
+			'content'     => 'required|min:3',
+			'type'        => 'required|in:broadcast_email,broadcast_notice|default:broadcast_notice',
+		);
+
+	} // end validation_rules;
+
+	/**
+	 * Get the id of the original 1.X model that was used to generate this item on migration.
+	 *
+	 * @since 2.0.0
+	 * @return int
+	 */
+	public function get_migrated_from_id() {
+
+		if ($this->migrated_from_id === null) {
+
+			$this->migrated_from_id = $this->get_meta('migrated_from_id', 0);
+
+		} // end if;
+
+		return $this->migrated_from_id;
+
+	} // end get_migrated_from_id;
+
+	/**
+	 * Set the id of the original 1.X model that was used to generate this item on migration.
+	 *
+	 * @since 2.0.0
+	 * @param int $migrated_from_id The ID of the original 1.X model that was used to generate this item on migration.
+	 * @return void
+	 */
+	public function set_migrated_from_id($migrated_from_id) {
+
+		$this->meta['migrated_from_id'] = $migrated_from_id;
+
+		$this->migrated_from_id = $this->meta['migrated_from_id'];
+
+	} // end set_migrated_from_id;
+
+	/**
 	 * Get name of the broadcast
 	 *
 	 * @since 2.0.0
@@ -136,7 +213,7 @@ class Broadcast extends Post_Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $message_targets The message targets.
+	 * @param string $message_targets The targets for this broadcast.
 	 * @return void
 	 */
 	public function set_message_targets($message_targets) {
@@ -150,7 +227,8 @@ class Broadcast extends Post_Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $notice_type Can be info, success, warning, danger.
+	 * @param string $notice_type Can be info, success, warning or error.
+	 * @options info,success,warning,danger
 	 * @return void
 	 */
 	public function set_notice_type($notice_type) {
@@ -166,7 +244,7 @@ class Broadcast extends Post_Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $name The name being set as title.
+	 * @param string $name This broadcast name, which is used as broadcast title as well.
 	 * @return void
 	 */
 	public function set_name($name) {

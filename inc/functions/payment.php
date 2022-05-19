@@ -1,20 +1,16 @@
 <?php
 /**
- * Payments Functions
+ * Payment Functions
  *
- * Public APIs to load and deal with WP Ultimo payment.
- *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Payment
- * @version     2.0.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
-
-use \WP_Ultimo\Models\Payment;
-use \WP_Ultimo\Database\Payments\Payment_Status;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
+
+use \WP_Ultimo\Models\Payment;
+use \WP_Ultimo\Database\Payments\Payment_Status;
 
 /**
  * Returns a payment.
@@ -113,6 +109,7 @@ function wu_create_payment($payment_data) {
 	*/
 	$payment_data = shortcode_atts(array(
 		'line_items'         => array(),
+		'meta'               => array(),
 		'customer_id'        => false,
 		'membership_id'      => false,
 		'parent_id'          => '',
@@ -126,9 +123,10 @@ function wu_create_payment($payment_data) {
 		'status'             => Payment_Status::COMPLETED,
 		'gateway'            => '',
 		'gateway_payment_id' => '',
-		'date_created'       => current_time('mysql'),
-		'date_modified'      => current_time('mysql'),
+		'date_created'       => wu_get_current_time('mysql', true),
+		'date_modified'      => wu_get_current_time('mysql', true),
 		'migrated_from_id'   => 0,
+		'skip_validation'    => false,
 	), $payment_data);
 
 	$payment = new Payment($payment_data);
@@ -138,3 +136,39 @@ function wu_create_payment($payment_data) {
 	return is_wp_error($saved) ? $saved : $payment;
 
 } // end wu_create_payment;
+
+/**
+ * Returns a list of the refundable payment types.
+ *
+ * Can be filtered if new payment types that
+ * can be refunded are added by developers.
+ *
+ * @since 2.0.0
+ * @return array
+ */
+function wu_get_refundable_payment_types() {
+
+	$refundable_payment_types = array(
+		Payment_Status::COMPLETED,
+		Payment_Status::PARTIAL_REFUND,
+	);
+
+	return apply_filters('wu_get_refundable_payment_type', $refundable_payment_types);
+
+} // end wu_get_refundable_payment_types;
+
+/**
+ * Returns the icon classes for a payment status.
+ *
+ * @since 2.0.0
+ *
+ * @param string $payment_status The payment status.
+ * @return string
+ */
+function wu_get_payment_icon_classes($payment_status) {
+
+	$payment_status_instance = new Payment_Status($payment_status);
+
+	return $payment_status_instance->get_icon_classes();
+
+} // end wu_get_payment_icon_classes;

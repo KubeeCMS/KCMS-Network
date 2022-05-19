@@ -10,9 +10,9 @@
  */
 namespace WP_Ultimo\Dependencies\Carbon\Exceptions;
 
-use Exception;
 use InvalidArgumentException as BaseInvalidArgumentException;
-class InvalidDateException extends \InvalidArgumentException implements \WP_Ultimo\Dependencies\Carbon\Exceptions\InvalidArgumentException
+use Throwable;
+class InvalidDateException extends BaseInvalidArgumentException implements InvalidArgumentException
 {
     /**
      * The invalid field.
@@ -32,9 +32,9 @@ class InvalidDateException extends \InvalidArgumentException implements \WP_Ulti
      * @param string         $field
      * @param mixed          $value
      * @param int            $code
-     * @param Exception|null $previous
+     * @param Throwable|null $previous
      */
-    public function __construct($field, $value, $code = 0, \Exception $previous = null)
+    public function __construct($field, $value, $code = 0, Throwable $previous = null)
     {
         $this->field = $field;
         $this->value = $value;

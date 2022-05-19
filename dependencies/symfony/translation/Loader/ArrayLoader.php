@@ -24,7 +24,7 @@ class ArrayLoader implements \Symfony\Component\Translation\Loader\LoaderInterfa
     public function load($resource, string $locale, string $domain = 'messages')
     {
         $resource = $this->flatten($resource);
-        $catalogue = new \Symfony\Component\Translation\MessageCatalogue($locale);
+        $catalogue = new MessageCatalogue($locale);
         $catalogue->add($resource, $domain);
         return $catalogue;
     }

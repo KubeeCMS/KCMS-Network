@@ -6,7 +6,7 @@ use WP_Ultimo\Dependencies\Rakit\Validation\Helper;
 use WP_Ultimo\Dependencies\Rakit\Validation\MimeTypeGuesser;
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
 use WP_Ultimo\Dependencies\Rakit\Validation\Rules\Interfaces\BeforeValidate;
-class UploadedFile extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule implements \WP_Ultimo\Dependencies\Rakit\Validation\Rules\Interfaces\BeforeValidate
+class UploadedFile extends Rule implements BeforeValidate
 {
     use Traits\FileTrait, Traits\SizeTrait;
     /** @var string */
@@ -23,7 +23,7 @@ class UploadedFile extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule impleme
      * @param array $params
      * @return self
      */
-    public function fillParameters(array $params) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function fillParameters(array $params) : Rule
     {
         $this->minSize(\array_shift($params));
         $this->maxSize(\array_shift($params));
@@ -36,7 +36,7 @@ class UploadedFile extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule impleme
      * @param string|int $size
      * @return self
      */
-    public function maxSize($size) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function maxSize($size) : Rule
     {
         $this->params['max_size'] = $size;
         return $this;
@@ -47,7 +47,7 @@ class UploadedFile extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule impleme
      * @param string|int $size
      * @return self
      */
-    public function minSize($size) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function minSize($size) : Rule
     {
         $this->params['min_size'] = $size;
         return $this;
@@ -59,7 +59,7 @@ class UploadedFile extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule impleme
      * @param string|int $max
      * @return self
      */
-    public function sizeBetween($min, $max) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function sizeBetween($min, $max) : Rule
     {
         $this->minSize($min);
         $this->maxSize($max);
@@ -71,7 +71,7 @@ class UploadedFile extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule impleme
      * @param mixed $types
      * @return self
      */
-    public function fileTypes($types) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function fileTypes($types) : Rule
     {
         if (\is_string($types)) {
             $types = \explode('|', $types);
@@ -113,7 +113,7 @@ class UploadedFile extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule impleme
         $allowedTypes = $this->parameter('allowed_types');
         if ($allowedTypes) {
             $or = $this->validation ? $this->validation->getTranslation('or') : 'or';
-            $this->setParameterText('allowed_types', \WP_Ultimo\Dependencies\Rakit\Validation\Helper::join(\WP_Ultimo\Dependencies\Rakit\Validation\Helper::wraps($allowedTypes, "'"), ', ', ", {$or} "));
+            $this->setParameterText('allowed_types', Helper::join(Helper::wraps($allowedTypes, "'"), ', ', ", {$or} "));
         }
         // below is Required rule job
         if (!$this->isValueFromUploadedFiles($value) or $value['error'] == \UPLOAD_ERR_NO_FILE) {
@@ -141,7 +141,7 @@ class UploadedFile extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule impleme
             }
         }
         if (!empty($allowedTypes)) {
-            $guesser = new \WP_Ultimo\Dependencies\Rakit\Validation\MimeTypeGuesser();
+            $guesser = new MimeTypeGuesser();
             $ext = $guesser->getExtension($value['type']);
             unset($guesser);
             if (!\in_array($ext, $allowedTypes)) {

@@ -12,7 +12,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property string $subscription_item The ID of the subscription item this summary is describing.
  * @property int $total_usage The total usage within this usage period.
  */
-class UsageRecordSummary extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class UsageRecordSummary extends ApiResource
 {
     const OBJECT_NAME = 'usage_record_summary';
 }

@@ -73,8 +73,8 @@ class Arrch
     public static function sort(array $data, $key, $order = null)
     {
         \uasort($data, function ($a, $b) use($key) {
-            $a_val = \WP_Ultimo\Dependencies\Arrch\Arrch::extractValues($a, $key);
-            $b_val = \WP_Ultimo\Dependencies\Arrch\Arrch::extractValues($b, $key);
+            $a_val = Arrch::extractValues($a, $key);
+            $b_val = Arrch::extractValues($b, $key);
             // Strings
             if (\is_string($a_val) && \is_string($b_val)) {
                 return \strcasecmp($a_val, $b_val);
@@ -86,7 +86,7 @@ class Arrch
                 }
             }
         });
-        if (\strtoupper($order ?: \WP_Ultimo\Dependencies\Arrch\Arrch::$defaults['sort_order']) == 'DESC') {
+        if (\strtoupper($order ?: Arrch::$defaults['sort_order']) == 'DESC') {
             $data = \array_reverse($data, \true);
         }
         return $data;
@@ -117,24 +117,24 @@ class Arrch
                         if (\is_array($search_value)) {
                             // array of values
                             foreach ($condition[0] as $prop) {
-                                $value = \WP_Ultimo\Dependencies\Arrch\Arrch::extractValues($item, $prop);
+                                $value = Arrch::extractValues($item, $prop);
                                 foreach ($search_value as $query_val) {
-                                    $return += \WP_Ultimo\Dependencies\Arrch\Arrch::compare(array($value, $operator, $query_val)) ? 1 : 0;
+                                    $return += Arrch::compare(array($value, $operator, $query_val)) ? 1 : 0;
                                 }
                             }
                         } else {
                             // single value
                             foreach ($condition[0] as $prop) {
-                                $value = \WP_Ultimo\Dependencies\Arrch\Arrch::extractValues($item, $prop);
-                                $return += \WP_Ultimo\Dependencies\Arrch\Arrch::compare(array($value, $operator, $search_value)) ? 1 : 0;
+                                $value = Arrch::extractValues($item, $prop);
+                                $return += Arrch::compare(array($value, $operator, $search_value)) ? 1 : 0;
                             }
                         }
                     } elseif (\is_array($search_value)) {
                         // single key, array of query values
-                        $value = \WP_Ultimo\Dependencies\Arrch\Arrch::extractValues($item, $condition[0]);
+                        $value = Arrch::extractValues($item, $condition[0]);
                         $c = 0;
                         foreach ($search_value as $query_val) {
-                            $c += \WP_Ultimo\Dependencies\Arrch\Arrch::compare(array($value, $operator, $query_val)) ? 1 : 0;
+                            $c += Arrch::compare(array($value, $operator, $query_val)) ? 1 : 0;
                         }
                         // Negate options that don't pass all negative assertions
                         if (\in_array($operator, array('!==', '!=', '!~')) && $c < \count($search_value)) {
@@ -143,8 +143,8 @@ class Arrch
                         $return += $c;
                     } else {
                         // single key, single value
-                        $value = \WP_Ultimo\Dependencies\Arrch\Arrch::extractValues($item, $condition[0]);
-                        $return = \WP_Ultimo\Dependencies\Arrch\Arrch::compare(array($value, $operator, $search_value));
+                        $value = Arrch::extractValues($item, $condition[0]);
+                        $return = Arrch::compare(array($value, $operator, $search_value));
                     }
                     // Unset
                     if (!$return) {

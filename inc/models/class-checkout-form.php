@@ -9,8 +9,8 @@
 
 namespace WP_Ultimo\Models;
 
-use WP_Ultimo\Models\Base_Model;
-use WP_Ultimo\Managers\Signup_Fields_Manager;
+use \WP_Ultimo\Models\Base_Model;
+use \WP_Ultimo\Dependencies\Arrch\Arrch as Array_Search;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -87,6 +87,14 @@ class Checkout_Form extends Base_Model {
 	protected $conversion_snippets;
 
 	/**
+	 * Set a template to use.
+	 *
+	 * @since 2.0.0
+	 * @var string can be either 'blank', 'single-step' or 'multi-step'
+	 */
+	protected $template;
+
+	/**
 	 * Query Class to the static query methods.
 	 *
 	 * @since 2.0.0
@@ -109,11 +117,15 @@ class Checkout_Form extends Base_Model {
 		$id = $this->get_id();
 
 		return array(
-			'name'              => 'required',
-			'slug'              => "required|unique:\WP_Ultimo\Models\Checkout_Form,slug,{$id}|min:3",
-			'active'            => 'required|default:1',
-			'thank_you_page_id' => 'integer',
-			'settings'          => 'checkout_steps',
+			'name'                => 'required',
+			'slug'                => "required|unique:\WP_Ultimo\Models\Checkout_Form,slug,{$id}|min:3",
+			'active'              => 'required|default:1',
+			'custom_css'          => 'default:',
+			'settings'            => 'checkout_steps',
+			'allowed_countries'   => 'default:',
+			'thank_you_page_id'   => 'integer',
+			'conversion_snippets' => 'default:',
+			'template'            => 'in:blank,single-step,multi-step',
 		);
 
 	} // end validation_rules;
@@ -131,10 +143,11 @@ class Checkout_Form extends Base_Model {
 	} // end get_slug;
 
 	/**
-	 * Set the object type associated with this event.
+	 * Set the checkout form slug
 	 *
 	 * @since 2.0.0
-	 * @param string $slug of the event.
+	 *
+	 * @param string $slug The checkout form slug. It needs to be unique and preferably make it clear what it is about. E.g. my_checkout_form.
 	 * @return void
 	 */
 	public function set_slug($slug) {
@@ -159,7 +172,7 @@ class Checkout_Form extends Base_Model {
 	 * Set the name of the checkout form.
 	 *
 	 * @since 2.0.0
-	 * @param string $name The name of the checkout form.
+	 * @param string $name Your checkout form name, which is used as checkout form title as well.
 	 * @return void
 	 */
 	public function set_name($name) {
@@ -184,7 +197,7 @@ class Checkout_Form extends Base_Model {
 	 * Set is this checkout form active?
 	 *
 	 * @since 2.0.0
-	 * @param boolean $active Is this checkout form active.
+	 * @param boolean $active Set this checkout form as active (true), which means available to be used, or inactive (false).
 	 * @return void
 	 */
 	public function set_active($active) {
@@ -209,7 +222,7 @@ class Checkout_Form extends Base_Model {
 	 * Set custom CSS code.
 	 *
 	 * @since 2.0.0
-	 * @param string $custom_css Custom CSS code.
+	 * @param string $custom_css Custom CSS code for the checkout form.
 	 * @return void
 	 */
 	public function set_custom_css($custom_css) {
@@ -243,10 +256,10 @@ class Checkout_Form extends Base_Model {
 	} // end get_settings;
 
 	/**
-	 * Set settings of the event.
+	 * Set settings of the checkout form.
 	 *
 	 * @since 2.0.0
-	 * @param mixed $settings Payload of the event.
+	 * @param object $settings The checkout form settings and configurations.
 	 * @return void
 	 */
 	public function set_settings($settings) {
@@ -281,6 +294,7 @@ class Checkout_Form extends Base_Model {
 
 			$step = wp_parse_args($step, array(
 				'logged' => 'always',
+				'fields' => array(),
 			));
 
 		} // end if;
@@ -302,6 +316,12 @@ class Checkout_Form extends Base_Model {
 
 		$step = $this->get_step($step_name);
 
+		if (!is_array($step)) {
+
+			return false;
+
+		} // end if;
+
 		$field_key = array_search($field_name, array_column($step['fields'], 'id'), true);
 
 		return $field_key !== false ? $step['fields'][$field_key] : false;
@@ -316,7 +336,15 @@ class Checkout_Form extends Base_Model {
 	 */
 	public function get_all_fields() {
 
-		$fields = array_column($this->get_settings(), 'fields');
+		$settings = $this->get_settings();
+
+		if (!is_array($settings)) {
+
+			return array();
+
+		} // end if;
+
+		$fields = array_column($settings, 'fields');
 
 		if (empty($fields)) {
 
@@ -329,6 +357,51 @@ class Checkout_Form extends Base_Model {
 	} // end get_all_fields;
 
 	/**
+	 * Get all fields of a given type.
+	 *
+	 * @since 2.0.11
+	 *
+	 * @param string|array $type The field type or types to search for.
+	 * @return array
+	 */
+	public function get_all_fields_by_type($type) {
+
+		$all_fields = $this->get_all_fields();
+
+		$types = (array) $type;
+
+		return Array_Search::find($all_fields, array(
+			'where' => array(
+				array('type', $types),
+			),
+		));
+
+	} // end get_all_fields_by_type;
+
+	/**
+	 * Get fields that are meta-related.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $meta_type The meta type.
+	 * @return array
+	 */
+	public function get_all_meta_fields($meta_type = 'customer_meta') {
+
+		$all_fields = $this->get_all_fields();
+
+		$types = apply_filters('wu_checkout_form_meta_fields_list', array('text', 'select', 'color', 'color_picker', 'textarea', 'checkbox'), $this);
+
+		return Array_Search::find($all_fields, array(
+			'where' => array(
+				array('type', $types),
+				array('save_as', $meta_type),
+			),
+		));
+
+	} // end get_all_meta_fields;
+
+	/**
 	 * Returns the number of steps in this form.
 	 *
 	 * @since 2.0.0
@@ -338,7 +411,7 @@ class Checkout_Form extends Base_Model {
 
 		$steps = $this->get_settings();
 
-		return count($steps);
+		return is_array($steps) ? count($steps) : 0;
 
 	} // end get_step_count;
 
@@ -352,7 +425,7 @@ class Checkout_Form extends Base_Model {
 
 		$fields = $this->get_all_fields();
 
-		return count($fields);
+		return is_array($fields) ? count($fields) : 0;
 
 	} // end get_field_count;
 
@@ -417,7 +490,7 @@ class Checkout_Form extends Base_Model {
 						'id'                     => 'pricing_table',
 						'required'               => true,
 						'pricing_table_products' => implode(',', wu_get_plans(array('fields' => 'ids'))),
-						'pricing_table_template' => 'checkout/partials/pricing-table-list',
+						'pricing_table_template' => 'list',
 					),
 					array (
 						'step'        => 'checkout',
@@ -468,13 +541,15 @@ class Checkout_Form extends Base_Model {
 						'tooltip'             => '',
 						'required'            => true,
 						'auto_generate'       => false,
-						'display_url_preview' => false,
+						'display_url_preview' => true,
 					),
 					array (
-						'step' => 'checkout',
-						'name' => __('Your Order', 'wp-ultimo'),
-						'type' => 'order_summary',
-						'id'   => 'order_summary',
+						'step'                   => 'checkout',
+						'name'                   => __('Your Order', 'wp-ultimo'),
+						'type'                   => 'order_summary',
+						'id'                     => 'order_summary',
+						'order_summary_template' => 'clean',
+						'table_columns'          => 'simple',
 					),
 					array (
 						'step' => 'checkout',
@@ -525,7 +600,7 @@ class Checkout_Form extends Base_Model {
 						'id'                     => 'pricing_table',
 						'required'               => true,
 						'pricing_table_products' => implode(',', wu_get_plans(array('fields' => 'ids'))),
-						'pricing_table_template' => 'checkout/partials/pricing-table-list',
+						'pricing_table_template' => 'list',
 					),
 					array (
 						'step' => 'checkout',
@@ -559,7 +634,7 @@ class Checkout_Form extends Base_Model {
 						'placeholder'         => '',
 						'tooltip'             => '',
 						'auto_generate'       => false,
-						'display_url_preview' => false,
+						'display_url_preview' => true,
 					),
 					array (
 						'step' => 'site',
@@ -619,10 +694,12 @@ class Checkout_Form extends Base_Model {
 				'desc'   => '',
 				'fields' => array (
 					array (
-						'step' => 'checkout',
-						'name' => __('Your Order', 'wp-ultimo'),
-						'type' => 'order_summary',
-						'id'   => 'order_summary',
+						'step'                   => 'checkout',
+						'name'                   => __('Your Order', 'wp-ultimo'),
+						'type'                   => 'order_summary',
+						'id'                     => 'order_summary',
+						'order_summary_template' => 'clean',
+						'table_columns'          => 'simple',
 					),
 					array (
 						'step' => 'checkout',
@@ -668,6 +745,14 @@ class Checkout_Form extends Base_Model {
 			'create-account',
 		);
 
+		$old_template_list = wu_get_isset($old_settings, 'templates', array());
+
+		if (empty($old_template_list)) {
+
+			$exclude_steps[] = 'template';
+
+		} // end if;
+
 		$new_format = array();
 
 		foreach ($steps as $step_id => $step) {
@@ -687,14 +772,61 @@ class Checkout_Form extends Base_Model {
 					'fields' => 'ids',
 				));
 
-				$step['fields'] = array(
-					'pricing_table' => array(
-						'name'                   => __('Pricing Tables', 'wp-ultimo'),
-						'id'                     => 'pricing_table',
-						'type'                   => 'pricing_table',
-						'pricing_table_template' => 'checkout/partials/legacy-pricing-table-list',
-						'pricing_table_products' => implode(',', $products_list),
+				/*
+				 * Calculate the period selector
+				 */
+				$available_periods = array();
+
+				$period_options = array(
+					'enable_price_1'  => array(
+						'duration'      => '1',
+						'duration_unit' => 'month',
+						'label'         => __('Monthly', 'wp-ultimo'),
 					),
+					'enable_price_3'  => array(
+						'duration'      => '3',
+						'duration_unit' => 'month',
+						'label'         => __('Quarterly', 'wp-ultimo'),
+					),
+					'enable_price_12' => array(
+						'duration'      => '1',
+						'duration_unit' => 'year',
+						'label'         => __('Yearly', 'wp-ultimo'),
+					),
+				);
+
+				foreach ($period_options as $period_option_key => $period_option) {
+
+					$has_period_option = wu_get_isset($old_settings, $period_option_key, true);
+
+					if ($has_period_option) {
+
+						$available_periods[] = $period_option;
+
+					} // end if;
+
+				} // end foreach;
+
+				$step['fields'] = array();
+
+				if ($available_periods && count($available_periods) > 1) {
+
+					$step['fields']['period_selection'] = array(
+						'type'                      => 'period_selection',
+						'id'                        => 'period_selection',
+						'period_selection_template' => 'legacy',
+						'period_options_header'     => '',
+						'period_options'            => $available_periods,
+					);
+
+				} // end if;
+
+				$step['fields']['pricing_table'] = array(
+					'name'                   => __('Pricing Tables', 'wp-ultimo'),
+					'id'                     => 'pricing_table',
+					'type'                   => 'pricing_table',
+					'pricing_table_template' => 'legacy',
+					'pricing_table_products' => implode(',', $products_list),
 				);
 
 			} // end if;
@@ -702,7 +834,7 @@ class Checkout_Form extends Base_Model {
 			/**
 			 * Deal with special cases.
 			 */
-			if ($step_id === 'template') {
+			if ($step_id === 'template' && wu_get_isset($old_settings, 'allow_template', true)) {
 
 				$templates = array();
 
@@ -712,7 +844,9 @@ class Checkout_Form extends Base_Model {
 
 				} // end foreach;
 
-				$template_list = array_flip(wu_get_isset($old_settings, 'templates', array()));
+				$old_template_list = is_array($old_template_list) ? $old_template_list : array();
+
+				$template_list = array_flip($old_template_list);
 
 				$template_list = !empty($template_list) ? $template_list : $templates;
 
@@ -721,7 +855,7 @@ class Checkout_Form extends Base_Model {
 						'name'                        => __('Template Selection', 'wp-ultimo'),
 						'id'                          => 'template_selection',
 						'type'                        => 'template_selection',
-						'template_selection_template' => 'checkout/partials/legacy-template-selection',
+						'template_selection_template' => 'legacy',
 						'template_selection_sites'    => implode(',', $template_list),
 					),
 				);
@@ -729,7 +863,7 @@ class Checkout_Form extends Base_Model {
 			} // end if;
 
 			/**
-			 * Remove unecessary callbacks
+			 * Remove unnecessary callbacks
 			 */
 			unset($step['handler']);
 			unset($step['view']);
@@ -785,14 +919,15 @@ class Checkout_Form extends Base_Model {
 						break;
 
 					case 'blogname':
-						$field['type']                    = 'site_url';
-						$field['id']                      = 'site_url';
-						$field['url_preview_template']    = 'legacy/signup/steps/step-domain-url-preview';
-						$field['auto_generate']           = false;
-						$field['display_url_preview']     = true;
-						$field['required']                = true;
-						$field['enable_domain_selection'] = wu_get_isset($old_settings, 'enable_multiple_domains');
-						$field['available_domains']       = wu_get_isset($old_settings, 'domain_options', array());
+						$field['type']                      = 'site_url';
+						$field['id']                        = 'site_url';
+						$field['url_preview_template']      = 'legacy/signup/steps/step-domain-url-preview';
+						$field['auto_generate']             = false;
+						$field['display_url_preview']       = true;
+						$field['required']                  = true;
+						$field['display_field_attachments'] = false;
+						$field['enable_domain_selection']   = wu_get_isset($old_settings, 'enable_multiple_domains', false);
+						$field['available_domains']         = wu_get_isset($old_settings, 'domain_options', array());
 						break;
 
 					case 'submit':
@@ -829,9 +964,11 @@ class Checkout_Form extends Base_Model {
 			'name'   => __('Checkout', 'wp-ultimo'),
 			'fields' => array(
 				array(
-					'name' => __('Order Summary', 'wp-ultimo'),
-					'type' => 'order_summary',
-					'id'   => 'order_summary',
+					'name'                   => __('Order Summary', 'wp-ultimo'),
+					'type'                   => 'order_summary',
+					'id'                     => 'order_summary',
+					'order_summary_template' => 'clean',
+					'table_columns'          => 'simple',
 				),
 				array(
 					'name'            => __('Billing Address', 'wp-ultimo'),
@@ -879,7 +1016,7 @@ class Checkout_Form extends Base_Model {
 	 * Get countries allowed on this checkout.
 	 *
 	 * @since 2.0.0
-	 * @return string
+	 * @return array
 	 */
 	public function get_allowed_countries() {
 
@@ -891,7 +1028,7 @@ class Checkout_Form extends Base_Model {
 	 * Set countries allowed on this checkout.
 	 *
 	 * @since 2.0.0
-	 * @param string $allowed_countries Countries allowed on this checkout.
+	 * @param string $allowed_countries The allowed countries that can access this checkout.
 	 * @return void
 	 */
 	public function set_allowed_countries($allowed_countries) {
@@ -936,7 +1073,7 @@ class Checkout_Form extends Base_Model {
 	 * Set custom thank you page, if set.
 	 *
 	 * @since 2.0.0
-	 * @param string $thank_you_page_id Countries allowed on this checkout.
+	 * @param int $thank_you_page_id The thank you page ID. This page is shown after a successful purchase.
 	 * @return void
 	 */
 	public function set_thank_you_page_id($thank_you_page_id) {
@@ -966,7 +1103,7 @@ class Checkout_Form extends Base_Model {
 	} // end get_conversion_snippets;
 
 	/**
-	 * Set Snippets to run on thank you page.
+	 * Set snippets to run on thank you page.
 	 *
 	 * @since 2.0.0
 	 * @param string $conversion_snippets Snippets to run on thank you page.
@@ -979,5 +1116,313 @@ class Checkout_Form extends Base_Model {
 		$this->conversion_snippets = $conversion_snippets;
 
 	} // end set_conversion_snippets;
+
+	/**
+	 * Save (create or update) the model on the database.
+	 *
+	 * Overrides the save method to set the template.
+	 * This is used on CLI creation.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return bool
+	 */
+	public function save() {
+
+		$step_types = array(
+			'multi-step',
+			'single-step',
+		);
+
+		if ($this->template && in_array($this->template, $step_types, true)) {
+
+			$this->use_template($this->template);
+
+		} // end if;
+
+		return parent::save();
+
+	} // end save;
+
+	/**
+	 * Get can be either 'blank', 'single-step' or 'multi-step'.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_template() {
+
+		return $this->template;
+
+	} // end get_template;
+
+	/**
+	 * Set the template mode. THis is mostly used on CLI.
+	 *
+	 * @since 2.0.0
+	 * @param string $template Template mode. Can be either 'blank', 'single-step' or 'multi-step'.
+	 * @options blank,single-step,multi-step
+	 * @return void
+	 */
+	public function set_template($template) {
+
+		$this->template = $template;
+
+	} // end set_template;
+
+	/**
+	 * Custom fields for back-end upgrade/downgrades and such.
+	 *
+	 * @since 2.0.0
+	 * @return array
+	 */
+	public static function membership_change_form_fields() {
+
+		$membership = wu_get_membership_by_hash(wu_request('membership'));
+
+		if (!$membership && wu_request('membership_id')) {
+
+			$membership = wu_get_membership(wu_request('membership_id'));
+
+		} // end if;
+
+		if (!$membership && current_user_can('manage_options')) {
+
+			$membership = wu_mock_membership();
+
+		} // end if;
+
+		if (!$membership) {
+
+			return array();
+
+		} // end if;
+
+		$fields = array();
+
+		/*
+		 * Adds the addons
+		 * selected on the plan.
+		 */
+		$plan = $membership->get_plan();
+
+		if ($plan) {
+			/*
+			 * Get the group
+			 */
+			$group = $plan->get_group();
+
+			$search_arguments = array(
+				'fields' => 'ids',
+			);
+
+			if ($group) {
+
+				$search_arguments['product_group'] = $group;
+
+			} else {
+				/*
+				 * If there isn't a group available
+				 * limit the return to 3.
+				 */
+				$search_arguments['number'] = 3;
+
+			} // end if;
+
+			$fields[] = array(
+				'step'                   => 'checkout',
+				'name'                   => __('Plans', 'wp-ultimo'),
+				'type'                   => 'pricing_table',
+				'id'                     => 'pricing_table',
+				'required'               => true,
+				'pricing_table_products' => implode(',', wu_get_plans($search_arguments)),
+				'pricing_table_template' => 'list',
+			);
+
+			$available_addons = (array) $plan->get_available_addons();
+
+			foreach ($available_addons as $addon_id) {
+
+				if (!$addon_id) {
+
+					continue;
+
+				} // end if;
+
+				$addon = wu_get_product($addon_id);
+
+				if (!$addon) {
+
+					continue;
+
+				} // end if;
+
+				$fields[] = array(
+					'id'                    => "order_bump_{$addon_id}",
+					'type'                  => 'order_bump',
+					'name'                  => $addon->get_name(),
+					'product'               => $addon_id,
+					'display_product_image' => true,
+				);
+
+			} // end foreach;
+
+		} // end if;
+
+		$end_fields = array(
+			array (
+				'step'                   => 'checkout',
+				'name'                   => __('Your Order', 'wp-ultimo'),
+				'type'                   => 'order_summary',
+				'id'                     => 'order_summary',
+				'order_summary_template' => 'clean',
+				'table_columns'          => 'simple',
+			),
+			array (
+				'step' => 'checkout',
+				'name' => __('Payment Method', 'wp-ultimo'),
+				'type' => 'payment',
+				'id'   => 'payment',
+			),
+			array (
+				'step'  => 'checkout',
+				'name'  => __('Complete Checkout', 'wp-ultimo'),
+				'type'  => 'submit_button',
+				'id'    => 'checkout',
+				'order' => 0,
+			),
+		);
+
+		$fields = array_merge($fields, $end_fields);
+
+		$steps = array (
+			array (
+				'id'     => 'checkout',
+				'name'   => __('Checkout', 'wp-ultimo'),
+				'desc'   => '',
+				'fields' => $fields,
+			),
+		);
+
+		return apply_filters('wu_checkout_form_membership_change_form_fields', $steps);
+
+	} // end membership_change_form_fields;
+
+	/**
+	 * Custom fields to add to the add new site screen.
+	 *
+	 * @since 2.0.11
+	 * @return array
+	 */
+	public static function add_new_site_form_fields() {
+
+		$membership = wu_get_current_site()->get_membership();
+
+		if (!$membership) {
+
+			return array();
+
+		} // end if;
+
+		/*
+		 * Adds the addons
+		 * selected on the plan.
+		 */
+		$plan = $membership->get_plan();
+
+		$steps = array();
+
+		if ($membership->get_limitations()->site_templates->is_enabled()) {
+
+			$template_selection_fields = array(
+				array(
+					'step'                        => 'template',
+					'name'                        => __('Template Selection', 'wp-ultimo'),
+					'type'                        => 'template_selection',
+					'id'                          => 'template_selection',
+					'cols'                        => 4,
+					'template_selection_template' => 'clean',
+					'order'                       => 0,
+				),
+				array(
+					'step'        => 'template',
+					'type'        => 'hidden',
+					'id'          => 'create-new-site',
+					'fixed_value' => wp_create_nonce('create-new-site'),
+				),
+			);
+
+			$steps[] = array(
+				'id'     => 'template',
+				'name'   => __('Template Selection', 'wp-ultimo'),
+				'desc'   => '',
+				'fields' => $template_selection_fields,
+			);
+
+		} // end if;
+
+		$final_fields = array(
+			array(
+				'step'     => 'create',
+				'type'     => 'products',
+				'id'       => 'products',
+				'products' => $plan->get_id(),
+			),
+			array(
+				'step'        => 'create',
+				'type'        => 'hidden',
+				'id'          => 'membership_id',
+				'fixed_value' => $membership->get_id(),
+			),
+			array(
+				'step'        => 'create',
+				'type'        => 'hidden',
+				'id'          => 'create-new-site',
+				'fixed_value' => wp_create_nonce('create-new-site'),
+			),
+		);
+
+		$final_fields[] = array(
+			'step'        => 'create',
+			'id'          => 'site_title',
+			'name'        => __('Site Title', 'wp-ultimo'),
+			'tooltip'     => '',
+			'placeholder' => '',
+			'type'        => 'site_title',
+		);
+
+		$domain_options = wu_get_available_domain_options();
+
+		$final_fields[] = array(
+			'step'                      => 'create',
+			'id'                        => 'site_url',
+			'name'                      => __('Site URL', 'wp-ultimo'),
+			'tooltip'                   => '',
+			'placeholder'               => '',
+			'display_field_attachments' => false,
+			'type'                      => 'site_url',
+			'enable_domain_selection'   => !empty($domain_options),
+			'available_domains'         => implode(PHP_EOL, $domain_options),
+		);
+
+		$final_fields[] = array(
+			'step'  => 'create',
+			'name'  => __('Create Site', 'wp-ultimo'),
+			'type'  => 'submit_button',
+			'id'    => 'checkout',
+			'order' => 0,
+		);
+
+		$steps[] = array(
+			'id'      => 'create',
+			'name'    => __('Create Site', 'wp-ultimo'),
+			'desc'    => '',
+			'classes' => 'wu-max-w-sm',
+			'fields'  => $final_fields,
+		);
+
+		return apply_filters('wu_checkout_form_add_new_site_form_fields', $steps);
+
+	} // end add_new_site_form_fields;
 
 } // end class Checkout_Form;

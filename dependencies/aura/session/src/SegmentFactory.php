@@ -27,8 +27,8 @@ class SegmentFactory
      *
      * @return Segment
      */
-    public function newInstance(\WP_Ultimo\Dependencies\Aura\Session\Session $session, $name)
+    public function newInstance(Session $session, $name)
     {
-        return new \WP_Ultimo\Dependencies\Aura\Session\Segment($session, $name);
+        return new Segment($session, $name);
     }
 }

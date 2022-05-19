@@ -174,6 +174,22 @@ class Line_Item implements \JsonSerializable {
 	protected $discount_type = 'percentage';
 
 	/**
+	 * Discount Label.
+	 *
+	 * @since 2.0.0
+	 * @var string
+	 */
+	protected $discount_label = '';
+
+	/**
+	 * If we should apply discount to renewals.
+	 *
+	 * @since 2.0.0
+	 * @var boolean
+	 */
+	protected $apply_discount_to_renewals = true;
+
+	/**
 	 * The total value in discounts.
 	 *
 	 * @since 2.0.0
@@ -212,6 +228,22 @@ class Line_Item implements \JsonSerializable {
 	 * @var float
 	 */
 	protected $tax_rate = 0;
+
+	/**
+	 * If tax are included in the price or not.
+	 *
+	 * @since 2.0.0
+	 * @var boolean
+	 */
+	protected $tax_inclusive = false;
+
+	/**
+	 * If the line item is tax exempt ot not.
+	 *
+	 * @since 2.0.0
+	 * @var boolean
+	 */
+	protected $tax_exempt = false;
 
 	/**
 	 * The amount, in currency, of the tax.
@@ -391,7 +423,7 @@ class Line_Item implements \JsonSerializable {
 	 */
 	public function calculate_taxes($sub_total) {
 
-		return wu_get_tax_amount($sub_total, $this->get_tax_rate(), $this->get_tax_type(), false);
+		return wu_get_tax_amount($sub_total, $this->get_tax_rate(), $this->get_tax_type(), false, $this->get_tax_inclusive());
 
 	} // end calculate_taxes;
 
@@ -422,9 +454,11 @@ class Line_Item implements \JsonSerializable {
 
 		$discounts = $this->calculate_discounts($sub_total);
 
+		$original_sub_total = $sub_total;
+
 		$sub_total = $sub_total - $discounts;
 
-		if ($sub_total < 0) {
+		if ($original_sub_total > 0 && $sub_total < 0) {
 
 			$sub_total = 0;
 
@@ -434,11 +468,29 @@ class Line_Item implements \JsonSerializable {
 
 		$taxes = $this->calculate_taxes($sub_total);
 
+		if ($this->get_tax_inclusive()) {
+
+			$total = $this->is_tax_exempt() ? $sub_total - $taxes : $sub_total;
+
+			$sub_total = $sub_total - $taxes; // tax inclusive
+
+		} else {
+
+			$total = $this->is_tax_exempt() ? $sub_total : $sub_total + $taxes; // tax exclusive
+
+		} // end if;
+
+		if ($this->is_tax_exempt()) {
+
+			$taxes = 0;
+
+		} // end if;
+
 		$totals = array(
 			'subtotal'       => $sub_total,
 			'discount_total' => $discounts,
 			'tax_total'      => $taxes,
-			'total'          => $sub_total + $taxes,
+			'total'          => $total,
 		);
 
 		$this->attributes($totals);
@@ -546,6 +598,56 @@ class Line_Item implements \JsonSerializable {
 		$this->tax_type = $tax_type;
 
 	} // end set_tax_type;
+
+	/**
+	 * Get if tax are included in the price or not.
+	 *
+	 * @since 2.0.0
+	 * @return boolean
+	 */
+	public function get_tax_inclusive() {
+
+		return $this->tax_inclusive;
+
+	} // end get_tax_inclusive;
+
+	/**
+	 * Set if tax are included in the price or not.
+	 *
+	 * @since 2.0.0
+	 * @param boolean $tax_inclusive If tax are included in the price or not.
+	 * @return void
+	 */
+	public function set_tax_inclusive($tax_inclusive) {
+
+		$this->tax_inclusive = $tax_inclusive;
+
+	} // end set_tax_inclusive;
+
+	/**
+	 * Get if the line item is tax exempt ot not.
+	 *
+	 * @since 2.0.0
+	 * @return boolean
+	 */
+	public function is_tax_exempt() {
+
+		return $this->tax_exempt;
+
+	} // end is_tax_exempt;
+
+	/**
+	 * Set if the line item is tax exempt ot not.
+	 *
+	 * @since 2.0.0
+	 * @param boolean $tax_exempt If the line item is tax exempt ot not.
+	 * @return void
+	 */
+	public function set_tax_exempt($tax_exempt) {
+
+		$this->tax_exempt = $tax_exempt;
+
+	} // end set_tax_exempt;
 
 	/**
 	 * Get the amount, in currency, of the tax.
@@ -873,6 +975,56 @@ class Line_Item implements \JsonSerializable {
 	} // end set_discount_type;
 
 	/**
+	 * Get discount Label.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_discount_label() {
+
+		return $this->discount_label;
+
+	} // end get_discount_label;
+
+	/**
+	 * Set discount Label.
+	 *
+	 * @since 2.0.0
+	 * @param string $discount_label Discount Label.
+	 * @return void
+	 */
+	public function set_discount_label($discount_label) {
+
+		$this->discount_label = $discount_label;
+
+	} // end set_discount_label;
+
+	/**
+	 * Get if we should apply discount to renewals.
+	 *
+	 * @since 2.0.0
+	 * @return boolean
+	 */
+	public function should_apply_discount_to_renewals() {
+
+		return $this->apply_discount_to_renewals;
+
+	} // end should_apply_discount_to_renewals;
+
+	/**
+	 * Set if we should apply discount to renewals.
+	 *
+	 * @since 2.0.0
+	 * @param boolean $apply_discount_to_renewals If we should apply discount to renewals.
+	 * @return void
+	 */
+	public function set_apply_discount_to_renewals($apply_discount_to_renewals) {
+
+		$this->apply_discount_to_renewals = $apply_discount_to_renewals;
+
+	} // end set_apply_discount_to_renewals;
+
+	/**
 	 * Get the value of product_id.
 	 *
 	 * @since 2.0.0
@@ -973,6 +1125,31 @@ class Line_Item implements \JsonSerializable {
 	} // end set_tax_label;
 
 	/**
+	 * Returns the amount recurring in a human-friendly way.
+	 *
+	 * @since 2.0.8
+	 * @return string
+	 */
+	public function get_recurring_description() {
+
+		if (!$this->is_recurring()) {
+
+			return '';
+
+		} // end if;
+
+		$description = sprintf(
+			// translators: %1$s the duration, and %2$s the duration unit (day, week, month, etc)
+			_n('%2$s', 'every %1$s %2$s', $this->get_duration(), 'wp-ultimo'), // phpcs:ignore
+			$this->get_duration(),
+			wu_get_translatable_string(($this->get_duration() <= 1 ? $this->get_duration_unit() : $this->get_duration_unit() . 's'))
+		);
+
+		return $description;
+
+	} // end get_recurring_description;
+
+	/**
 	 * Converts the line item to an array.
 	 *
 	 * @since 2.0.0
@@ -980,7 +1157,11 @@ class Line_Item implements \JsonSerializable {
 	 */
 	public function to_array() {
 
-		return get_object_vars($this);
+		$array = get_object_vars($this);
+
+		$array['recurring_description'] = $this->get_recurring_description();
+
+		return $array;
 
 	} // end to_array;
 
@@ -992,7 +1173,7 @@ class Line_Item implements \JsonSerializable {
 	 */
 	public function jsonSerialize() {
 
-		return get_object_vars($this);
+		return $this->to_array();
 
 	} // end jsonSerialize;
 

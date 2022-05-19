@@ -7,13 +7,15 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\PdfParser\Type;
 
 use setasign\Fpdi\PdfParser\StreamReader;
+
 /**
  * Class representing a PDF string object
  */
-class PdfString extends \setasign\Fpdi\PdfParser\Type\PdfType
+class PdfString extends PdfType
 {
     /**
      * Parses a string object from the stream reader.
@@ -21,12 +23,12 @@ class PdfString extends \setasign\Fpdi\PdfParser\Type\PdfType
      * @param StreamReader $streamReader
      * @return self
      */
-    public static function parse(\setasign\Fpdi\PdfParser\StreamReader $streamReader)
+    public static function parse(StreamReader $streamReader)
     {
         $pos = $startPos = $streamReader->getOffset();
         $openBrackets = 1;
         do {
-            $buffer = $streamReader->getBuffer(\false);
+            $buffer = $streamReader->getBuffer(false);
             for ($length = \strlen($buffer); $openBrackets !== 0 && $pos < $length; $pos++) {
                 switch ($buffer[$pos]) {
                     case '(':
@@ -40,12 +42,16 @@ class PdfString extends \setasign\Fpdi\PdfParser\Type\PdfType
                 }
             }
         } while ($openBrackets !== 0 && $streamReader->increaseLength());
+
         $result = \substr($buffer, $startPos, $openBrackets + $pos - $startPos - 1);
         $streamReader->setOffset($pos);
+
         $v = new self();
         $v->value = $result;
+
         return $v;
     }
+
     /**
      * Helper method to create an instance.
      *
@@ -56,8 +62,10 @@ class PdfString extends \setasign\Fpdi\PdfParser\Type\PdfType
     {
         $v = new self();
         $v->value = $value;
+
         return $v;
     }
+
     /**
      * Ensures that the passed value is a PdfString instance.
      *
@@ -67,8 +75,9 @@ class PdfString extends \setasign\Fpdi\PdfParser\Type\PdfType
      */
     public static function ensure($string)
     {
-        return \setasign\Fpdi\PdfParser\Type\PdfType::ensureType(self::class, $string, 'String value expected.');
+        return PdfType::ensureType(self::class, $string, 'String value expected.');
     }
+
     /**
      * Unescapes escaped sequences in a PDF string according to the PDF specification.
      *
@@ -84,52 +93,72 @@ class PdfString extends \setasign\Fpdi\PdfParser\Type\PdfType
                 $out .= $s[$count];
             } else {
                 // A backslash at the end of the string - ignore it
-                if ($count === $n - 1) {
+                if ($count === ($n - 1)) {
                     break;
                 }
+
                 switch ($s[++$count]) {
                     case ')':
                     case '(':
                     case '\\':
                         $out .= $s[$count];
                         break;
+
                     case 'f':
-                        $out .= "\f";
+                        $out .= "\x0C";
                         break;
+
                     case 'b':
-                        $out .= "\10";
+                        $out .= "\x08";
                         break;
+
                     case 't':
-                        $out .= "\t";
+                        $out .= "\x09";
                         break;
+
                     case 'r':
-                        $out .= "\r";
+                        $out .= "\x0D";
                         break;
+
                     case 'n':
-                        $out .= "\n";
+                        $out .= "\x0A";
                         break;
+
                     case "\r":
                         if ($count !== $n - 1 && $s[$count + 1] === "\n") {
                             $count++;
                         }
                         break;
+
                     case "\n":
                         break;
+
                     default:
                         $actualChar = \ord($s[$count]);
                         // ascii 48 = number 0
                         // ascii 57 = number 9
                         if ($actualChar >= 48 && $actualChar <= 57) {
                             $oct = '' . $s[$count];
+
                             /** @noinspection NotOptimalIfConditionsInspection */
-                            if ($count + 1 < $n && \ord($s[$count + 1]) >= 48 && \ord($s[$count + 1]) <= 57) {
+                            if (
+                                $count + 1 < $n
+                                && \ord($s[$count + 1]) >= 48
+                                && \ord($s[$count + 1]) <= 57
+                            ) {
                                 $count++;
                                 $oct .= $s[$count];
+
                                 /** @noinspection NotOptimalIfConditionsInspection */
-                                if ($count + 1 < $n && \ord($s[$count + 1]) >= 48 && \ord($s[$count + 1]) <= 57) {
+                                if (
+                                    $count + 1 < $n
+                                    && \ord($s[$count + 1]) >= 48
+                                    && \ord($s[$count + 1]) <= 57
+                                ) {
                                     $oct .= $s[++$count];
                                 }
                             }
+
                             $out .= \chr(\octdec($oct));
                         } else {
                             // If the character is not one of those defined, the backslash is ignored

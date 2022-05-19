@@ -227,20 +227,28 @@ class Hosting_Integration_Wizard_Admin_Page extends Wizard_Admin_Page {
 	 */
 	public function section_configuration() {
 
-		$form = new \WP_Ultimo\UI\Form($this->get_current_section(), $this->integration->get_fields(), array(
+		$fields = $this->integration->get_fields();
+
+		foreach ($fields as $field_constant => &$field) {
+
+			$field['value'] = defined($field_constant) && constant($field_constant) ? constant($field_constant) : '';
+
+		} // end foreach;
+
+		$form = new \WP_Ultimo\UI\Form($this->get_current_section(), $fields, array(
 			'views'                 => 'admin-pages/fields',
 			'classes'               => 'wu-widget-list wu-striped wu-m-0 wu--mt-2 wu--mb-3 wu--mx-3',
 			'field_wrapper_classes' => 'wu-w-full wu-box-border wu-items-center wu-flex wu-justify-between wu-px-6 wu-py-4 wu-m-0 wu-border-t wu-border-l-0 wu-border-r-0 wu-border-b-0 wu-border-gray-300 wu-border-solid',
 		));
 
-		if (!empty($_POST)) {
+		if (wu_request('manual')) {
 
 			wu_get_template('wizards/host-integrations/configuration-results', array(
 				'screen'      => get_current_screen(),
 				'page'        => $this,
 				'integration' => $this->integration,
 				'form'        => $form,
-				'post'        => $_POST,
+				'post'        => $_GET['post'],
 			));
 
 			return;
@@ -306,9 +314,30 @@ class Hosting_Integration_Wizard_Admin_Page extends Wizard_Admin_Page {
 	 */
 	public function handle_configuration() {
 
-		$this->integration->setup_constants($_POST);
+		if (wu_request('submit') == '0') { // phpcs:ignore
+
+			$redirect_url = add_query_arg(array(
+				'manual' => '1',
+				'post'   => $_POST,
+			));
+
+			wp_redirect($redirect_url);
+
+			exit;
+
+		} // end if;
+
+		if (wu_request('submit') == '1') { // phpcs:ignore
+
+			$this->integration->setup_constants($_POST);
+
+		} // end if;
 
 		$redirect_url = $this->get_next_section_link();
+
+		$redirect_url = remove_query_arg('post', $redirect_url);
+
+		$redirect_url = remove_query_arg('manual', $redirect_url);
 
 		wp_redirect($redirect_url);
 

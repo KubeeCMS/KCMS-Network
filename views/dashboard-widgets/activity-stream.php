@@ -116,73 +116,74 @@
 </div>
 
 <script type="application/javascript">
-Object.defineProperty(Vue.prototype, '$moment', {
-  value: moment
-});
+(function($) {
+  $(document).ready(function() {
 
-var wuActivityStream = new Vue({
-  el: '#activity-stream-content',
-  data: {
-    count: 0,
-    loading: true,
-    page: 1,
-    queried: [],
-    error: false,
-    errorMessage: "",
-  },
-  mounted: function() {
-    this.pullQuery();
-  },
-  watch: {
-    queried: function(value) {},
-  },
-  methods: {
-    hasMore: function() {
-      return this.queried.count > (this.page * 5)
-    },
-    refresh: function() {
-      this.loading = true;
-      this.pullQuery();
-    },
-    navigatePrev: function() {
-      this.page = this.page <= 1 ? 1 : this.page - 1;
-      this.loading = true;
-      this.pullQuery();
-    },
-    navigateNext: function() {
-      this.page = this.page + 1;
-      this.loading = true;
-      this.pullQuery();
-    },
-    pullQuery: function() {
-      var that = this;
-      jQuery.ajax({
-        url: ajaxurl,
-        data: {
-          _ajax_nonce: '<?php echo esc_js(wp_create_nonce('wu_activity_stream')); ?>',
-          action: 'wu_fetch_activity',
-          page: this.page,
+    Object.defineProperty(Vue.prototype, '$moment', {
+      value: wu_moment
+    });
+
+    var wuActivityStream = new Vue({
+      el: '#activity-stream-content',
+      data: {
+        count: 0,
+        loading: true,
+        page: 1,
+        queried: [],
+        error: false,
+        errorMessage: "",
+      },
+      mounted: function() {
+        this.pullQuery();
+      },
+      watch: {
+        queried: function(value) {},
+      },
+      methods: {
+        hasMore: function() {
+          return this.queried.count > (this.page * 5)
         },
-        success: function(data) {
-          that.loading = false;
-          Vue.set(wuActivityStream, 'loading', false);
-          //console.log(wuActivityStream.loading);
+        refresh: function() {
+          this.loading = true;
+          this.pullQuery();
+        },
+        navigatePrev: function() {
+          this.page = this.page <= 1 ? 1 : this.page - 1;
+          this.loading = true;
+          this.pullQuery();
+        },
+        navigateNext: function() {
+          this.page = this.page + 1;
+          this.loading = true;
+          this.pullQuery();
+        },
+        pullQuery: function() {
+          var that = this;
+          jQuery.ajax({
+            url: ajaxurl,
+            data: {
+              _ajax_nonce: '<?php echo esc_js(wp_create_nonce('wu_activity_stream')); ?>',
+              action: 'wu_fetch_activity',
+              page: this.page,
+            },
+            success: function(data) {
+              that.loading = false;
+              Vue.set(wuActivityStream, 'loading', false);
 
-          if (data.success) {
+              if (data.success) {
 
-            Vue.set(wuActivityStream, 'queried', data.data);
+                Vue.set(wuActivityStream, 'queried', data.data);
 
-          } // end if;
+              } // end if;
+
+            },
+          })
 
         },
-      })
+        get_color_event: function(type) {},
+      }
+    });
 
-    },
-    get_color_event: function(type) {
-
-      // return 'wu-border-' + wu_dashboard_widgets.colors[type];
-
-    },
-  }
-});
+  });
+})(jQuery);
 </script>

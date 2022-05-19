@@ -62,7 +62,7 @@ trait Mixin
      */
     public static function mixin($mixin)
     {
-        \is_string($mixin) && \trait_exists($mixin) ? static::loadMixinTrait($mixin) : static::loadMixinClass($mixin);
+        \is_string($mixin) && \trait_exists($mixin) ? self::loadMixinTrait($mixin) : self::loadMixinClass($mixin);
     }
     /**
      * @param object|string $mixin
@@ -71,7 +71,7 @@ trait Mixin
      */
     private static function loadMixinClass($mixin)
     {
-        $methods = (new \ReflectionClass($mixin))->getMethods(\ReflectionMethod::IS_PUBLIC | \ReflectionMethod::IS_PROTECTED);
+        $methods = (new ReflectionClass($mixin))->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED);
         foreach ($methods as $method) {
             if ($method->isConstructor() || $method->isDestructor()) {
                 continue;
@@ -88,15 +88,20 @@ trait Mixin
         $context = eval(self::getAnonymousClassCodeForTrait($trait));
         $className = \get_class($context);
         foreach (self::getMixableMethods($context) as $name) {
-            $closureBase = \Closure::fromCallable([$context, $name]);
+            $closureBase = Closure::fromCallable([$context, $name]);
             static::macro($name, function () use($closureBase, $className) {
                 /** @phpstan-ignore-next-line */
                 $context = isset($this) ? $this->cast($className) : new $className();
                 try {
-                    $closure = $closureBase->bindTo($context);
-                } catch (\Throwable $throwable) {
+                    // @ is required to handle error if not converted into exceptions
+                    $closure = @$closureBase->bindTo($context);
+                } catch (Throwable $throwable) {
+                    // @codeCoverageIgnore
                     $closure = $closureBase;
+                    // @codeCoverageIgnore
                 }
+                // in case of errors not converted into exceptions
+                $closure = $closure ?: $closureBase;
                 return $closure(...\func_get_args());
             });
         }
@@ -105,7 +110,7 @@ trait Mixin
     {
         return 'return new class() extends ' . static::class . ' {use ' . $trait . ';};';
     }
-    private static function getMixableMethods(self $context) : \Generator
+    private static function getMixableMethods(self $context) : Generator
     {
         foreach (\get_class_methods($context) as $name) {
             if (\method_exists(static::class, $name)) {
@@ -131,7 +136,7 @@ trait Mixin
         $result = null;
         try {
             $result = $callable();
-        } catch (\Throwable $throwable) {
+        } catch (Throwable $throwable) {
             $exception = $throwable;
         }
         \array_pop(static::$macroContextStack);
@@ -139,6 +144,15 @@ trait Mixin
             throw $exception;
         }
         return $result;
+    }
+    /**
+     * Return the current context from inside a macro callee or a null if static.
+     *
+     * @return static|null
+     */
+    protected static function context()
+    {
+        return \end(static::$macroContextStack) ?: null;
     }
     /**
      * Return the current context from inside a macro callee or a new one if static.

@@ -10,6 +10,7 @@
 namespace WP_Ultimo\Checkout\Signup_Fields;
 
 use \WP_Ultimo\Checkout\Signup_Fields\Base_Signup_Field;
+use \WP_Ultimo\Managers\Gateway_Manager;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -71,9 +72,23 @@ class Signup_Field_Payment extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('Order Description', 'wp-ultimo');
+		return __('Adds the payment options and the additional fields required to complete a purchase (e.g. credit card field).', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Adds the payment options and the additional fields required to complete a purchase (e.g. credit card field).', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -85,7 +100,7 @@ class Signup_Field_Payment extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-wu-credit-card';
+		return 'dashicons-wu-credit-card2';
 
 	} // end get_icon;
 
@@ -156,7 +171,7 @@ class Signup_Field_Payment extends Base_Signup_Field {
 	 */
 	public function to_fields_array($attributes) {
 
-		return array(
+		$fields = array(
 			'payment_template' => array(
 				'type'    => 'text',
 				'id'      => 'payment_template',
@@ -164,11 +179,45 @@ class Signup_Field_Payment extends Base_Signup_Field {
 				'classes' => 'wu-hidden',
 			),
 			'payment'          => array(
-				'type' => 'payment-methods',
-				'id'   => 'payment',
-				'name' => $attributes['name'],
+				'type'              => 'payment-methods',
+				'id'                => 'payment',
+				'name'              => $attributes['name'],
+				'wrapper_classes'   => wu_get_isset($attributes, 'wrapper_element_classes', ''),
+				'classes'           => wu_get_isset($attributes, 'element_classes', ''),
+				'wrapper_html_attr' => array(
+					'style' => $this->calculate_style_attr(),
+				),
 			),
 		);
+
+		/*
+		 * Checks if we need to add the
+		 * auto renew field.
+		 */
+		if (!wu_get_setting('force_auto_renew', 1)) {
+
+			$auto_renewable_gateways = Gateway_Manager::get_instance()->get_auto_renewable_gateways();
+
+			$fields['auto_renew'] = array(
+				'type'              => 'toggle',
+				'id'                => 'auto_renew',
+				'name'              => __('Auto-renew', 'wp-ultimo'),
+				'tooltip'           => '',
+				'value'             => '1',
+				'html_attr'         => array(
+					'v-model'     => 'auto_renew',
+					'true-value'  => '1',
+					'false-value' => '0',
+				),
+				'wrapper_html_attr' => array(
+					'v-cloak' => 1,
+					'v-show'  => sprintf('%s.includes(gateway) && order.should_collect_payment && order.has_recurring', json_encode($auto_renewable_gateways)),
+				)
+			);
+
+		} // end if;
+
+		return $fields;
 
 	} // end to_fields_array;
 

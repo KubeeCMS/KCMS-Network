@@ -24,7 +24,7 @@ defined('ABSPATH') || exit;
  */
 class Site extends Base_Model {
 
-	use Traits\Limitable, \WP_Ultimo\Traits\WP_Ultimo_Site_Deprecated;
+	use Traits\Limitable, \WP_Ultimo\Traits\WP_Ultimo_Site_Deprecated, Traits\Notable;
 
 	/**  DEFAULT WP_SITE COLUMNS */
 
@@ -99,6 +99,22 @@ class Site extends Base_Model {
 	 * @var string
 	 */
 	protected $last_updated;
+
+	/**
+	 * If the site is being published.
+	 *
+	 * @since 2.0.11
+	 * @var string
+	 */
+	protected $is_publishing;
+
+	/**
+	 * Is this a active site?
+	 *
+	 * @since 2.0.0
+	 * @var bool
+	 */
+	protected $active = true;
 
 	/**
 	 * Is this a public site?
@@ -202,7 +218,7 @@ class Site extends Base_Model {
 	 * @since 2.0.0
 	 * @var int
 	 */
-	protected $feature_image_id;
+	protected $featured_image_id;
 
 	/**
 	 * Categories
@@ -235,6 +251,68 @@ class Site extends Base_Model {
 	 * @var array
 	 */
 	protected $transient;
+
+	/**
+	 * Keeps signup options for the site.
+	 *
+	 * @since 2.0.0
+	 * @var array
+	 */
+	protected $signup_options;
+
+	/**
+	 * Keeps signup meta for the site.
+	 *
+	 * @since 2.0.0
+	 * @var array
+	 */
+	protected $signup_meta;
+
+	/**
+	 * Set the validation rules for this particular model.
+	 *
+	 * To see how to setup rules, check the documentation of the
+	 * validation library we are using: https://github.com/rakit/validation
+	 *
+	 * @since 2.0.0
+	 * @link https://github.com/rakit/validation
+	 * @return array
+	 */
+	public function validation_rules() {
+
+		$date = wu_get_current_time('mysql', true);
+
+		$site_types = new \WP_Ultimo\Database\Sites\Site_Type;
+
+		$site_types = implode(',', array_values($site_types->get_options()));
+
+		return array(
+			'categories'        => 'default:',
+			'featured_image_id' => 'integer|default:',
+			'site_id'           => 'required|integer',
+			'title'             => 'required',
+			'name'              => 'required',
+			'description'       => 'required|min:2',
+			'domain'            => 'domain',
+			'path'              => 'required|default:',
+			'registered'        => "default:{$date}",
+			'last_updated'      => 'default:',
+			'public'            => 'boolean|default:1',
+			'archived'          => 'boolean|default:0',
+			'mature'            => 'boolean|default:0',
+			'spam'              => 'boolean|default:0',
+			'deleted'           => 'boolean|default:0',
+			'is_publishing'     => 'boolean|default:0',
+			'land_id'           => 'integer|default:',
+			'extra_information' => 'default:',
+			'customer_id'       => 'required|integer|exists:\WP_Ultimo\Models\Customer,id',
+			'membership_id'     => 'required|integer|exists:\WP_Ultimo\Models\Membership,id',
+			'template_id'       => 'integer|default:',
+			'type'              => "required|in:{$site_types}",
+			'signup_options'    => 'default:',
+		);
+
+	} // end validation_rules;
 
 	/**
 	 * Prepare data before it is stored into the database.
@@ -287,7 +365,7 @@ class Site extends Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param array $categories The categories.
+	 * @param array $categories The categories this site belongs to.
 	 * @return void
 	 */
 	public function set_categories($categories) {
@@ -312,7 +390,13 @@ class Site extends Base_Model {
 
 		} // end if;
 
-		return $this->categories;
+		if (!is_array($this->categories)) {
+
+			return array();
+
+		} // end if;
+
+		return array_filter($this->categories);
 
 	} // end get_categories;
 
@@ -324,13 +408,13 @@ class Site extends Base_Model {
 	 */
 	public function get_featured_image_id() {
 
-		if ($this->feature_image_id === null) {
+		if ($this->featured_image_id === null) {
 
 			return $this->get_meta('wu_featured_image_id');
 
 		} // end if;
 
-		return $this->feature_image_id;
+		return $this->featured_image_id;
 
 	} // end get_featured_image_id;
 	/**
@@ -368,14 +452,14 @@ class Site extends Base_Model {
 	 * Set featured image ID.
 	 *
 	 * @since 2.0.0
-	 * @param int $image_id Holds the ID of the featured image.
+	 * @param int $image_id The ID of the feature image of the site.
 	 * @return void
 	 */
 	public function set_featured_image_id($image_id) {
 
 		$this->meta['wu_featured_image_id'] = $image_id;
 
-		$this->feature_image_id = $image_id;
+		$this->featured_image_id = $image_id;
 
 	} // end set_featured_image_id;
 
@@ -411,7 +495,7 @@ class Site extends Base_Model {
 
 		$onclick = 'onclick="window.open(\'%s\')"';
 
-		return sprintf($onclick, $this->get_preview_url());
+		return sprintf($onclick, add_query_arg('open', 1, $this->get_preview_url()));
 
 	} // end get_preview_url_attrs;
 
@@ -435,7 +519,7 @@ class Site extends Base_Model {
 	 */
 	public function get_blog_id() {
 
-		return $this->blog_id;
+		return (int) $this->blog_id;
 
 	} // end get_blog_id;
 
@@ -443,7 +527,7 @@ class Site extends Base_Model {
 	 * Set blog ID. Should be accessed via id..
 	 *
 	 * @since 2.0.0
-	 * @param int $blog_id Blog ID. Should be accessed via id.
+	 * @param int $blog_id The blog ID. Should be accessed via id.
 	 * @return void
 	 */
 	public function set_blog_id($blog_id) {
@@ -468,7 +552,7 @@ class Site extends Base_Model {
 	 * Set network ID for this site..
 	 *
 	 * @since 2.0.0
-	 * @param int $site_id Network ID for this site.
+	 * @param int $site_id The network ID for this site.
 	 * @return void
 	 */
 	public function set_site_id($site_id) {
@@ -485,20 +569,21 @@ class Site extends Base_Model {
 	 */
 	public function get_title() {
 
-		return $this->title;
+		return stripslashes($this->title);
 
 	} // end get_title;
 
 	/**
-	 * Set title of the site..
+	 * Set title of the site.
 	 *
 	 * @since 2.0.0
-	 * @param string $title Title of the site.
+	 *
+	 * @param string $title The site title.
 	 * @return void
 	 */
 	public function set_title($title) {
 
-		$this->title = $title;
+		$this->title = sanitize_text_field($title);
 
 	} // end set_title;
 
@@ -518,7 +603,7 @@ class Site extends Base_Model {
 	 * Alias to set title.
 	 *
 	 * @since 2.0.0
-	 * @param string $title Title of the site.
+	 * @param string $title The site name.
 	 * @return void
 	 */
 	public function set_name($title) {
@@ -551,7 +636,7 @@ class Site extends Base_Model {
 	 * @todo This is not yet persistent.
 	 *
 	 * @since 2.0.0
-	 * @param string $description The site description.
+	 * @param string $description A description for the site, usually a short text.
 	 * @return void
 	 */
 	public function set_description($description) {
@@ -576,7 +661,7 @@ class Site extends Base_Model {
 	 * Set domain name used by this site..
 	 *
 	 * @since 2.0.0
-	 * @param string $domain Domain name used by this site.
+	 * @param string $domain The site domain. You don't need to put http or https in front of your domain in this field. e.g: example.com.
 	 * @return void
 	 */
 	public function set_domain($domain) {
@@ -685,6 +770,64 @@ class Site extends Base_Model {
 	} // end set_last_updated;
 
 	/**
+	 * Get if the site is being published.
+	 *
+	 * @since 2.0.11
+	 * @return int
+	 */
+	public function is_publishing() {
+
+		return $this->is_publishing;
+
+	} // end is_publishing;
+
+	/**
+	 * Set if the site is being published.
+	 *
+	 * @since 2.0.11
+	 * @param int $publishing Holds the ID of the customer that owns this site.
+	 * @return void
+	 */
+	public function set_publishing($publishing) {
+
+		$this->is_publishing = $publishing;
+
+	} // end set_publishing;
+
+	/**
+	 * Get holds the ID of the customer that owns this site.
+	 *
+	 * @since 2.0.0
+	 * @return int
+	 */
+	public function is_active() {
+
+		if ($this->active === null) {
+
+			$this->active = $this->get_meta('wu_active', true);
+
+		} // end if;
+
+		return $this->active;
+
+	} // end is_active;
+
+	/**
+	 * Set holds the ID of the customer that owns this site..
+	 *
+	 * @since 2.0.0
+	 * @param int $active Holds the ID of the customer that owns this site.
+	 * @return void
+	 */
+	public function set_active($active) {
+
+		$this->meta['wu_active'] = $active;
+
+		$this->active = $active;
+
+	} // end set_active;
+
+	/**
 	 * Get is this a public site?.
 	 *
 	 * @since 2.0.0
@@ -700,7 +843,7 @@ class Site extends Base_Model {
 	 * Set is this a public site?.
 	 *
 	 * @since 2.0.0
-	 * @param bool $public Is this a public site.
+	 * @param bool $public Set true if this site is a public one, false if not.
 	 * @return void
 	 */
 	public function set_public($public) {
@@ -825,7 +968,7 @@ class Site extends Base_Model {
 	 * Set iD of the language being used on this site.
 	 *
 	 * @since 2.0.0
-	 * @param int $lang_id ID of the language being used on this site.
+	 * @param int $lang_id The ID of the language being used on this site.
 	 * @return void
 	 */
 	public function set_lang_id($lang_id) {
@@ -833,117 +976,6 @@ class Site extends Base_Model {
 		$this->lang_id = $lang_id;
 
 	} // end set_lang_id;
-
-	/**
-	 * Get extra information.
-	 *
-	 * @since 2.0.0
-	 * @return array
-	 */
-	public function get_extra_information() {
-
-		if ($this->extra_information === null) {
-
-			return $this->get_meta('wu_site_extra_information');
-
-		} // end if;
-
-		return $this->extra_information;
-
-	} // end get_extra_information;
-
-	/**
-	 * Set extra information.
-	 *
-	 * @since 2.0.0
-	 * @param string $extra_information Holds extra information.
-	 * @return void
-	 */
-	public function set_extra_information($extra_information) {
-
-		$this->meta['wu_site_extra_information'] = $extra_information;
-
-	} // end set_extra_information;
-
-	/** LIMITATIONS TO CHECK ***************************/
-
-	/**
-	 * Check if we are already above the post quota.
-	 *
-	 * @since 2.0.0
-	 *
-	 * @param string $post_type The post type to check against.
-	 * @return boolean
-	 */
-	public function is_post_above_limit($post_type) {
-		/*
-		 * Calculate post count based on all different status
-		 */
-		$post_count = $this->get_post_count($post_type);
-
-		// Get the allowed quota
-		$quota = $this->get_quota($post_type);
-
-		/**
-		 * Checks if a given post type is allowed on this plan
-		 * Allow plugin developers to filter the return value
-		 *
-		 * @since 1.7.0
-		 * @param bool If the post type is disabled or not
-		 * @param WU_Plan Plan of the current user
-		 * @param int User id
-		 */
-		return apply_filters('wu_limits_is_post_above_limit', $quota > 0 && $post_count >= $quota);
-
-	} // end is_post_above_limit;
-
-	/**
-	 * Get the post count for this site.
-	 *
-	 * @since 2.0.0
-	 *
-	 * @param string $post_type The post type to check against.
-	 * @return int
-	 */
-	public static function get_post_count($post_type) {
-
-		$count = 0;
-
-		$post_count = wp_count_posts($post_type);
-
-		/**
-		 * Allow plugin developers to change which post status should be counted
-		 * By default, published and private posts are counted
-		 *
-		 * @since 1.9.1
-		 * @param array $post_status The list of post statuses
-		 * @param string $post_type  The post type slug
-		 * @return array New array of post status
-		 */
-		$post_statuses = apply_filters('wu_post_count_statuses', array('publish', 'private'), $post_type);
-
-		foreach ($post_statuses as $post_status) {
-
-			if (isset($post_count->{$post_status})) {
-
-				$count += (int) $post_count->{$post_status};
-
-			} // end if;
-
-		} // end foreach;
-
-		/**
-		 * Allow plugin developers to change the count total
-		 *
-		 * @since 1.9.1
-		 * @param int $count The total post count
-		 * @param object $post_counts WordPress object return by the wp_count_posts fn
-		 * @param string $post_type  The post type slug
-		 * @return int New total
-		 */
-		return apply_filters('wu_post_count', $count, $post_count, $post_type);
-
-	} // end get_post_count;
 
 	/**
 	 * Get holds the ID of the customer that owns this site..
@@ -967,7 +999,7 @@ class Site extends Base_Model {
 	 * Set holds the ID of the customer that owns this site..
 	 *
 	 * @since 2.0.0
-	 * @param int $customer_id Holds the ID of the customer that owns this site.
+	 * @param int $customer_id The ID of the customer that owns this site.
 	 * @return void
 	 */
 	public function set_customer_id($customer_id) {
@@ -1014,7 +1046,7 @@ class Site extends Base_Model {
 
 		} // end if;
 
-		$allowed = abs($customer_id) === abs($this->get_customer_id());
+		$allowed = absint($customer_id) === absint($this->get_customer_id());
 
 		return apply_filters('wu_site_is_customer_allowed', $allowed, $customer_id, $this);
 
@@ -1042,7 +1074,7 @@ class Site extends Base_Model {
 	 * Set holds the ID of the membership associated with this site, if any..
 	 *
 	 * @since 2.0.0
-	 * @param int $membership_id Holds the ID of the membership associated with this site, if any.
+	 * @param int $membership_id The ID of the membership associated with this site, if any.
 	 * @return void
 	 */
 	public function set_membership_id($membership_id) {
@@ -1167,12 +1199,12 @@ class Site extends Base_Model {
 	 * Set the template ID.
 	 *
 	 * @since 2.0.0
-	 * @param boolean $template_id If this site is a template or not.
+	 * @param int $template_id The ID of the templated used to create this site.
 	 * @return void
 	 */
 	public function set_template_id($template_id) {
 
-		$this->meta['wu_template_id'] = abs($template_id);
+		$this->meta['wu_template_id'] = absint($template_id);
 
 		$this->template_id = $template_id;
 
@@ -1205,6 +1237,18 @@ class Site extends Base_Model {
 		);
 
 	} // end get_default_duplication_arguments;
+
+	/**
+	 * Convert the Ultimo instance to a WP_Site.
+	 *
+	 * @since 2.0.11
+	 * @return \WP_Site
+	 */
+	public function to_wp_site() {
+
+		return get_site($this->get_id());
+
+	} // end to_wp_site;
 
 	/**
 	 * Get duplication arguments..
@@ -1260,10 +1304,11 @@ class Site extends Base_Model {
 	} // end get_type;
 
 	/**
-	 * Set the site type of this particular site..
+	 * Set the site type of this particular site.
 	 *
 	 * @since 2.0.0
-	 * @param string $type The site type of this particular site.
+	 * @param string $type The type of this particular site. Can be default, site_template, customer_owned, pending, external, main or other values added by third-party add-ons.
+	 * @options \WP_Ultimo\Database\Sites\Site_Type
 	 * @return void
 	 */
 	public function set_type($type) {
@@ -1275,6 +1320,31 @@ class Site extends Base_Model {
 		$this->type = $type;
 
 	} // end set_type;
+
+	/**
+	 * Get the primary mapped domain for this site.
+	 *
+	 * @since 2.0.0
+	 * @return \WP_Ultimo\Models\Domain|false
+	 */
+	public function get_primary_mapped_domain() {
+
+		if (!function_exists('wu_get_domains')) {
+
+			return false;
+
+		} // end if;
+
+		$domains = wu_get_domains(array(
+			'primary_domain' => true,
+			'blog_id'        => $this->get_id(),
+			'stage__not_in'  => \WP_Ultimo\Models\Domain::INACTIVE_STAGES,
+			'number'         => 1,
+		));
+
+		return empty($domains) ? false : $domains[0];
+
+	} // end get_primary_mapped_domain;
 
 	/**
 	 * Returns the active site URL, which can be a mapped domain.
@@ -1290,18 +1360,11 @@ class Site extends Base_Model {
 
 		} // end if;
 
-		$domains = wu_get_domains(array(
-			'primary'       => true,
-			'blog_id'       => $this->get_id(),
-			'stage__not_in' => \WP_Ultimo\Models\Domain::INACTIVE_STAGES,
-			'number'        => 1,
-		));
+		$domain = $this->get_primary_mapped_domain();
 
-		if (!empty($domains)) {
+		if ($domain) {
 
-			$domain = current($domains);
-
-			return ($domain->is_secure() ? 'https://' : 'http://') . $domain->get_domain();
+			return $domain->get_url();
 
 		} // end if;
 
@@ -1320,7 +1383,7 @@ class Site extends Base_Model {
 	 */
 	public function get_site_url() {
 
-		$url = esc_url(sprintf($this->get_domain() . '/' . $this->get_path()));
+		$url = set_url_scheme(esc_url(sprintf($this->get_domain() . '/' . $this->get_path())));
 
 		return $url;
 
@@ -1349,6 +1412,12 @@ class Site extends Base_Model {
 
 		parent::__construct($object);
 
+		if (is_array($object)) {
+
+			$object = (object) $object;
+
+		} // end if;
+
 		$details = get_blog_details($this->get_blog_id());
 
 		if ($details && $this->title === null) {
@@ -1360,9 +1429,9 @@ class Site extends Base_Model {
 		/*
 		 * Quick fix for WP CLI, since it uses the --path arg to do other things.
 		 */
-		if (!$this->path) {
+		if (!$this->path && is_object($object)) {
 
-			$this->path = $this->site_path;
+			$this->path = $object->site_path;
 
 		} // end if;
 
@@ -1402,6 +1471,56 @@ class Site extends Base_Model {
 		$this->transient = $transient;
 
 	} // end set_transient;
+
+	/**
+	 * Get signup options for the site.
+	 *
+	 * @since 2.0.0
+	 * @return array
+	 */
+	public function get_signup_options() {
+
+		return is_array($this->signup_options) ? $this->signup_options : array();
+
+	} // end get_signup_options;
+
+	/**
+	 * Set signup options for the site.
+	 *
+	 * @since 2.0.0
+	 * @param array $signup_options Keeps signup options for the site.
+	 * @return void
+	 */
+	public function set_signup_options($signup_options) {
+
+		$this->signup_options = $signup_options;
+
+	} // end set_signup_options;
+
+	/**
+	 * Get signup meta for the site.
+	 *
+	 * @since 2.0.0
+	 * @return array
+	 */
+	public function get_signup_meta() {
+
+		return is_array($this->signup_meta) ? $this->signup_meta : array();
+
+	} // end get_signup_meta;
+
+	/**
+	 * Set signup meta for the site.
+	 *
+	 * @since 2.0.0
+	 * @param array $signup_meta Keeps signup meta for the site.
+	 * @return void
+	 */
+	public function set_signup_meta($signup_meta) {
+
+		$this->signup_meta = $signup_meta;
+
+	} // end set_signup_meta;
 
 	/**
 	 * Returns the Label for a given type.
@@ -1481,7 +1600,7 @@ class Site extends Base_Model {
 
 		$primary_site_id = get_user_option('primary_blog', $user_id);
 
-		return abs($primary_site_id) === abs($this->get_id());
+		return absint($primary_site_id) === absint($this->get_id());
 
 	} // end is_customer_primary_site;
 
@@ -1509,7 +1628,17 @@ class Site extends Base_Model {
 		 */
 		do_action("wu_{$this->model}_pre_delete", $this);
 
-		$result = (bool) wp_delete_site($this->get_id());
+		try {
+
+			$result = (bool) wp_delete_site($this->get_id());
+
+		} catch (\Throwable $e) {
+
+			$result = false;
+
+			wu_log_add('fatal-error', $e->getMessage());
+
+		} // end try;
 
 		/**
 		 * Fires after an object is stored into the database.
@@ -1521,9 +1650,41 @@ class Site extends Base_Model {
 		 */
 		do_action("wu_{$this->model}_post_delete", $result, $this);
 
+		wp_cache_flush();
+
 		return $result;
 
 	} // end delete;
+
+	/**
+	 * Replaces meta fields with the data collected during signup.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	protected function handles_existing_search_and_replace() {
+
+		$transient = $this->get_transient();
+
+		if ($transient) {
+
+			add_filter('wu_search_and_replace_on_duplication', function($replace_list, $from_site_id, $to_site_id) use ($transient) {
+
+				foreach ($transient as $transient_key => $transient_value) {
+
+					$key = sprintf('{{%s}}', $transient_key);
+
+					$replace_list[$key] = $transient_value;
+
+				} // end foreach;
+
+				return $replace_list;
+
+			}, 9, 3);
+
+		} // end if;
+
+	} // end handles_existing_search_and_replace;
 
 	/**
 	 * Save (create or update) the model on the database.
@@ -1533,6 +1694,10 @@ class Site extends Base_Model {
 	 * @return bool
 	 */
 	public function save() {
+		/*
+		 * Prepares the substitutions.
+		 */
+		$this->handles_existing_search_and_replace();
 
 		/**
 		 * In order to be backwards compatible here, we'll have to do some crazy stuff,
@@ -1560,7 +1725,9 @@ class Site extends Base_Model {
 
 		$this->prepare_extra_information_to_save();
 
-		if (!$this->exists()) {
+		$new = !$this->exists();
+
+		if ($new) {
 
 			$network = get_network();
 
@@ -1571,6 +1738,11 @@ class Site extends Base_Model {
 			$user_id = get_current_user_id();
 
 			$customer = wu_get_customer($this->get_customer_id());
+
+			/*
+			 * By default, use the current user email address.
+			 */
+			$email = wp_get_current_user() ? wp_get_current_user()->user_email : get_network_option(null, 'admin_email');
 
 			if ($customer) {
 
@@ -1589,12 +1761,26 @@ class Site extends Base_Model {
 					'email'  => $email,
 					'path'   => $this->get_path(),
 					'domain' => $domain,
-					'meta'   => $this->meta,
+					'meta'   => $this->get_signup_options(),
 				));
+
+				if (is_wp_error($saved)) {
+					// Here we check if the site was created and if so, get the ID to finish the execution to ensure the customer is set.
+
+					$error = $saved;
+					$saved = get_blog_id_from_url($domain, $this->get_path());
+
+					if ($saved === 0 || $saved === get_main_site_id()) {
+
+						return $error;
+
+					} // end if;
+
+				} // end if;
 
 			} else {
 
-				$saved = wpmu_create_blog($domain, $this->get_path(), $this->get_title(), $user_id, $this->meta, $network_id);
+				$saved = wpmu_create_blog($domain, $this->get_path(), $this->get_title(), $user_id, $this->get_signup_options(), $network_id);
 
 				if ($saved && $this->get_public()) {
 
@@ -1618,9 +1804,13 @@ class Site extends Base_Model {
 
 			} // end if;
 
-			wu_enqueue_async_action('wu_async_take_screenshot', array(
-				'site_id' => $saved,
-			), 'site');
+			if (!is_wp_error($saved) && wu_get_setting('enable_screenshot_generator', true)) {
+
+				wu_enqueue_async_action('wu_async_take_screenshot', array(
+					'site_id' => $saved,
+				), 'site');
+
+			} // end if;
 
 		} else {
 
@@ -1631,6 +1821,22 @@ class Site extends Base_Model {
 		if (!is_wp_error($saved)) {
 
 			$this->blog_id = $saved;
+
+			switch_to_blog($this->blog_id);
+
+			foreach ($this->get_signup_options() as $key => $value) {
+
+				update_option($key, $value);
+
+			} // end foreach;
+
+			restore_current_blog();
+
+			foreach ($this->get_signup_meta() as $key => $value) {
+
+				update_site_meta($saved, $key, $value);
+
+			} // end foreach;
 
 			foreach ($this->meta as $key => $value) {
 
@@ -1658,13 +1864,19 @@ class Site extends Base_Model {
 		} // end if;
 
 		/**
-		 * Handles customers
+		 * Handles customers.
 		 */
 		$customer = $this->get_customer();
 
 		if ($customer) {
 
 			$role = wu_get_setting('default_role', 'administrator');
+
+			if ($membership->has_limitations()) {
+
+				$role = $membership->get_limitations()->customer_user_role->get_limit();
+
+			} // end if;
 
 			update_site_meta($this->get_id(), 'wu_customer_id', $customer->get_id());
 
@@ -1673,6 +1885,10 @@ class Site extends Base_Model {
 			add_user_to_blog($this->get_id(), $user_id, $role);
 
 		} // end if;
+
+		update_blog_option($this->get_id(), 'blogname', $this->get_name());
+
+		update_blog_option($this->get_id(), 'blogdescription', $this->get_description());
 
 		/**
 		 * Fires after an object is stored into the database.
@@ -1683,8 +1899,9 @@ class Site extends Base_Model {
 		 * @param array      $data The object data that will be stored, serialized.
 		 * @param array      $data_unserialized The object data that will be stored.
 		 * @param Base_Model $this The object instance.
+		 * @param array      $new If this object is a new one.
 		 */
-		do_action('wu_model_post_save', $this->model, $data, $data_unserialized, $this);
+		do_action('wu_model_post_save', $this->model, $data, $data_unserialized, $this, $new);
 
 		/**
 		 * Fires after an object is stored into the database.
@@ -1693,8 +1910,9 @@ class Site extends Base_Model {
 		 *
 		 * @param array      $data The object data that will be stored.
 		 * @param Base_Model $this The object instance.
+		 * @param array      $new If this object is a new one.
 		 */
-		do_action("wu_{$this->model}_post_save", $data, $this);
+		do_action("wu_{$this->model}_post_save", $data, $this, $new);
 
 		if (isset($session)) {
 
@@ -1702,7 +1920,7 @@ class Site extends Base_Model {
 
 		} // end if;
 
-		return $this;
+		return $saved;
 
 	} // end save;
 
@@ -1730,9 +1948,10 @@ class Site extends Base_Model {
 	 * @since 2.0.0
 	 *
 	 * @param string $type Type to return. Can be customer_owned or template.
+	 * @param array  $query_args Additional query args.
 	 * @return array
 	 */
-	public static function get_all_by_type($type = 'customer_owned') {
+	public static function get_all_by_type($type = 'customer_owned', $query_args = array()) {
 
 		global $wpdb;
 
@@ -1758,12 +1977,12 @@ class Site extends Base_Model {
 
 		} // end if;
 
-		$query = array(
-			'meta_query' => array(
-				array(
-					'key'   => 'wu_type',
-					'value' => $type,
-				),
+		$query = $query_args;
+
+		$query['meta_query'] = array(
+			array(
+				'key'   => 'wu_type',
+				'value' => $type,
 			),
 		);
 
@@ -1775,9 +1994,10 @@ class Site extends Base_Model {
 	 * Get the list of all Site Template Categories.
 	 *
 	 * @since 2.0.0
+	 * @param array $sites An array of selected site ids or site objects.
 	 * @return array
 	 */
-	public static function get_all_categories() {
+	public static function get_all_categories($sites = array()) {
 
 		global $wpdb;
 
@@ -1789,7 +2009,23 @@ class Site extends Base_Model {
 
 		} // end if;
 
+		$final_array = array();
+
 		$query = "SELECT DISTINCT meta_value FROM {$wpdb->base_prefix}blogmeta WHERE meta_key = %s";
+
+		if (!empty($sites)) {
+
+			if (is_a($sites[0], '\\WP_Ultimo\\Models\\Site')) {
+
+				$array_sites = json_decode(json_encode($sites), true);
+
+				$sites = array_values(array_column($array_sites, 'blog_id'));
+
+			} // end if;
+
+			$query .= ' AND blog_id IN (' . implode(', ', $sites) . ')';
+
+		} // end if;
 
 		$results = $wpdb->get_results($wpdb->prepare($query, 'wu_categories'), ARRAY_A); // phpcs:ignore
 
@@ -1797,18 +2033,65 @@ class Site extends Base_Model {
 
 		$all_arrays = array_map('maybe_unserialize', $all_arrays);
 
-		$all_arrays = array_merge(...$all_arrays);
+		if ($all_arrays) {
 
-		$all_arrays = array_filter($all_arrays);
+			$filtered_array = array();
 
-		$all_arrays = array_unique($all_arrays);
+			foreach ($all_arrays as $array) {
 
-		$final_array = array_combine($all_arrays, $all_arrays);
+				if (is_array($array)) {
+
+					$filtered_array = array_merge($filtered_array, $array);
+
+				} // end if;
+
+			} // end foreach;
+
+			$all_arrays = array_filter($filtered_array);
+
+			$all_arrays = array_unique($all_arrays);
+
+			$final_array = array_combine($all_arrays, $all_arrays);
+
+		} // end if;
 
 		wp_cache_set('site_categories', $final_array, 'sites');
 
 		return $final_array;
 
 	} // end get_all_categories;
+
+	/**
+	 * List of limitations that need to be merged.
+	 *
+	 * Every model that is limitable (imports this trait)
+	 * needs to declare explicitly the limitations that need to be
+	 * merged. This allows us to chain the merges, and gives us
+	 * a final list of limitations at the end of the process.
+	 *
+	 * In the case of sites, we need to get the membership
+	 * limitations.
+	 *
+	 * @see \WP_Ultimo\Models\Traits\Trait_Limitable
+	 * @since 2.0.0
+	 * @return array
+	 */
+	public function limitations_to_merge() {
+
+		$limitations_to_merge = array();
+
+		$membership = $this->get_membership();
+
+		if ($membership) {
+
+			$membership_limitations = $membership->get_limitations();
+
+			$limitations_to_merge[] = $membership_limitations;
+
+		} // end if;
+
+		return $limitations_to_merge;
+
+	} // end limitations_to_merge;
 
 } // end class Site;

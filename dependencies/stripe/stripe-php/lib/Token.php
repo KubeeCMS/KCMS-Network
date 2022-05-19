@@ -25,8 +25,8 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * href="https://stripe.com/docs/api#customers">Customer</a> objects or <a
  * href="https://stripe.com/docs/api#external_accounts">Custom accounts</a>. Note
  * that <a href="https://stripe.com/docs/radar">Radar</a>, our integrated solution
- * for automatic fraud protection, supports only integrations that use client-side
- * tokenization.
+ * for automatic fraud protection, performs best with integrations that use
+ * client-side tokenization.
  *
  * Related guide: <a
  * href="https://stripe.com/docs/payments/accept-a-payment-charges#web-create-token">Accept
@@ -42,7 +42,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property string $type Type of the token: <code>account</code>, <code>bank_account</code>, <code>card</code>, or <code>pii</code>.
  * @property bool $used Whether this token has already been used (tokens can be used only once).
  */
-class Token extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class Token extends ApiResource
 {
     const OBJECT_NAME = 'token';
     use ApiOperations\Create;

@@ -1,15 +1,18 @@
 <?php
 /**
- * Settings Helper Functions and Public APIs
+ * Settings Functions
  *
- * This file register the settings public APIs and functions.
- * Whenever possible, user the functions here instead of directly accessing WP_Ultimo()->setting.
- *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Helper/Settings
- * @version     2.0.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
+
+// Exit if accessed directly
+defined('ABSPATH') || exit;
+
+/**
+ * Loads dependencies: the option apis.
+ */
+require_once wu_path('inc/functions/options.php');
 
 /**
  * Returns an array with all the WP Ultimo settings.
@@ -56,7 +59,7 @@ function wu_save_setting($setting, $value) {
 /**
  * Adds a new settings section.
  *
- * Sections are a way to organize corelated settings into one cohesive unit.
+ * Sections are a way to organize correlated settings into one cohesive unit.
  * Developers should be able to add their own sections, if they need to.
  * This is the purpose of this APIs.
  *
@@ -135,12 +138,24 @@ function wu_register_settings_side_panel($section_slug, $atts) {
 } // end wu_register_settings_side_panel;
 
 /**
- * Retrieve the network custom logo
+ * Retrieve the network custom logo.
  *
  * @param string $size The size of the logo. It could be Thumbnail, Medium, Large or Full.
  * @return string With the logo's url.
  */
 function wu_get_network_logo($size = 'full') {
+
+	switch_to_blog(wu_get_main_site_id());
+
+		$settings_logo = wp_get_attachment_image_src(wu_get_setting('company_logo'), $size); // phpcs:ignore
+
+	restore_current_blog();
+
+	if ($settings_logo) {
+
+		return $settings_logo[0];
+
+	} // end if;
 
 	$logo = wu_get_asset('logo.png', 'img');
 

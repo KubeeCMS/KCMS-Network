@@ -4,7 +4,7 @@ namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Helper;
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class NotIn extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class NotIn extends Rule
 {
     /** @var string */
     protected $message = "The :attribute is not allowing :disallowed_values";
@@ -16,7 +16,7 @@ class NotIn extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
      * @param array $params
      * @return self
      */
-    public function fillParameters(array $params) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function fillParameters(array $params) : Rule
     {
         if (\count($params) == 1 and \is_array($params[0])) {
             $params = $params[0];
@@ -45,7 +45,7 @@ class NotIn extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
         $this->requireParameters(['disallowed_values']);
         $disallowedValues = (array) $this->parameter('disallowed_values');
         $and = $this->validation ? $this->validation->getTranslation('and') : 'and';
-        $disallowedValuesText = \WP_Ultimo\Dependencies\Rakit\Validation\Helper::join(\WP_Ultimo\Dependencies\Rakit\Validation\Helper::wraps($disallowedValues, "'"), ', ', ", {$and} ");
+        $disallowedValuesText = Helper::join(Helper::wraps($disallowedValues, "'"), ', ', ", {$and} ");
         $this->setParameterText('disallowed_values', $disallowedValuesText);
         return !\in_array($value, $disallowedValues, $this->strict);
     }

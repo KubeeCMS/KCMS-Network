@@ -1,5 +1,22 @@
 /* eslint-disable no-undef */
-(function($) {
+(function($, hooks) {
+
+  /**
+   * Fixes the value of the action for deleting pending sites.
+   */
+  hooks.addAction('wu_list_table_update', 'nextpress/wp-ultimo', function(results, data, $parent) {
+
+    if (results.type === 'pending' && data.table_id === 'site_list_table') {
+
+      $parent.find('select[name^=action] > option[value=delete]').attr('value', 'delete-pending');
+
+    } else {
+
+      $parent.find('select[name^=action] > option[value=delete-pending]').attr('value', 'delete');
+
+    } // end if;
+
+  });
 
   /**
    * Select All
@@ -82,6 +99,49 @@
         let timer;
 
         const delay = 500;
+
+        /*
+         * Handles bulk-delete.
+         */
+        jQuery('body').on('click', '#doaction, #doaction2', function(event) {
+
+          const form = jQuery(event.target).parents('form');
+
+          const form_data = form.serialize();
+
+          const params = new URL('https://example.com?' + form_data);
+
+          const action = params.searchParams.get('action') || params.searchParams.get('action2');
+
+          const ids = params.searchParams.getAll('bulk-delete[]');
+
+          if (action !== '-1' && ids.length) {
+
+            event.preventDefault();
+
+          } else {
+
+            return;
+
+          }// end if;
+
+          params.searchParams.set('bulk_action', action);
+
+          params.searchParams.forEach((value, key) => {
+
+            if (key !== 'bulk_action' && key !== 'bulk-delete[]') {
+
+              params.searchParams.delete(key);
+
+            } // end if;
+
+          });
+
+          params.searchParams.set('model', wu_list_table.model);
+
+          wutb_show(wu_list_table.i18n.confirm, wu_list_table.base_url + '&' + params.searchParams.toString());
+
+        });
 
         // Pagination links, sortable link
         $table_parent.on('click', '.tablenav-pages a, .manage-column.sortable a, .manage-column.sorted a', function(e) {
@@ -426,6 +486,8 @@
 
             } // end if;
 
+            hooks.doAction('wu_list_table_update', response, form_data, $table_parent);
+
             // Init back our event handlers
             // table.init();
 
@@ -484,4 +546,4 @@
 
   }; // end wu_create_list;
 
-}(jQuery));
+}(jQuery, wp.hooks));

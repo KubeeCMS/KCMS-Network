@@ -394,7 +394,7 @@ class Debug {
 
 		$fake_ids_generated = array_merge_recursive($faker->get_option_debug_faker(), $fake_ids_generated);
 
-		WP_Ultimo()->helper->save_option('debug_faker', $fake_ids_generated);
+		wu_save_option('debug_faker', $fake_ids_generated);
 
 		$wpdb->query('COMMIT');
 
@@ -483,10 +483,10 @@ class Debug {
 
 		$wpdb->query('COMMIT');
 
-		WP_Ultimo()->helper->delete_option('debug_faker');
+		wu_delete_option('debug_faker');
 
 		wp_send_json_success(array(
-			'redirect_url' => wu_network_admin_url('wp-ultimo'),
+			'redirect_url' => wu_network_admin_url('wp-ultimo-setup'),
 		));
 
 	} // end handle_debug_reset_database_form;
@@ -541,7 +541,7 @@ class Debug {
 
 		try {
 
-			WP_Ultimo()->helper->drop_tables();
+			wu_drop_tables();
 
 		} catch (\Throwable $e) {
 
@@ -592,7 +592,7 @@ class Debug {
 
 			add_filter('wu_tour_finished', '__return_false');
 
-			add_action('init', function() {
+			add_action('plugins_loaded', function() {
 
 				do_action('wp_ultimo_debug');
 
@@ -648,7 +648,7 @@ class Debug {
 	 */
 	private function reset_fake_data() {
 
-		$fake_data_generated = WP_Ultimo()->helper->get_option('debug_faker', array());
+		$fake_data_generated = wu_get_option('debug_faker', array());
 
 		$customers_id = wu_get_isset($fake_data_generated, 'customers');
 
@@ -701,6 +701,14 @@ class Debug {
 		$this->reset_discount_codes();
 
 		$this->reset_payments();
+
+		$this->reset_checkout_forms();
+
+		$this->reset_post_like_models();
+
+		$this->reset_events();
+
+		$this->reset_settings();
 
 	} // end reset_all_data;
 
@@ -928,5 +936,103 @@ class Debug {
 		$this->reset_table($payments_table, $ids);
 
 	} // end reset_payments;
+
+	/**
+	 * Reset checkout forms
+	 *
+	 * @since 2.0.7
+	 * @param array $ids The ids to delete.
+	 * @return void
+	 */
+	private function reset_checkout_forms($ids = array()) {
+
+		global $wpdb;
+
+		$forms_table = "{$wpdb->base_prefix}wu_forms";
+
+		$form_meta_table = "{$wpdb->base_prefix}wu_formmeta";
+
+		$this->reset_table($forms_table, $ids);
+
+		$this->reset_table($form_meta_table, $ids, 'wu_form_id');
+
+	} // end reset_checkout_forms;
+
+	/**
+	 * Reset custom posts.
+	 *
+	 * @since 2.0.7
+	 * @param array $ids The ids to delete.
+	 * @return void
+	 */
+	private function reset_post_like_models($ids = array()) {
+
+		global $wpdb;
+
+		$posts_table = "{$wpdb->base_prefix}wu_posts";
+
+		$post_meta_table = "{$wpdb->base_prefix}wu_postmeta";
+
+		$this->reset_table($posts_table, $ids);
+
+		$this->reset_table($post_meta_table, $ids, 'wu_post_id');
+
+	} // end reset_post_like_models;
+
+	/**
+	 * Reset events.
+	 *
+	 * @since 2.0.7
+	 * @param array $ids The ids to delete.
+	 * @return void
+	 */
+	private function reset_events($ids = array()) {
+
+		global $wpdb;
+
+		$events_table = "{$wpdb->base_prefix}wu_events";
+
+		$this->reset_table($events_table, $ids);
+
+	} // end reset_events;
+
+	/**
+	 * Reset the settings.
+	 *
+	 * @since 2.0.7
+	 * @return void
+	 */
+	private function reset_settings() {
+
+		$the_prefix = 'wp-ultimo_';
+
+		/*
+		 * List of WP Ultimo options.
+		 * Format: $option_name => $should_use_prefix
+		 */
+		$options = array(
+			'v2_settings'                  => true,
+			'debug_faker'                  => true,
+			'finished'                     => true,
+			'invoice_settings'             => true,
+			'template_placeholders'        => true,
+			'tax_rates'                    => true,
+			'top_bar_settings'             => true,
+			'wu_setup_finished'            => false,
+			'wu_activation'                => false,
+			'wu_default_email_template'    => false,
+			'wu_is_migration_done'         => false,
+			'wu_host_integrations_enabled' => false,
+		);
+
+		foreach ($options as $option_name => $should_use_prefix) {
+
+			$prefix = $should_use_prefix ? $the_prefix : '';
+
+			delete_network_option(null, $prefix . $option_name);
+
+		} // end foreach;
+
+	} // end reset_settings;
 
 } // end class Debug;

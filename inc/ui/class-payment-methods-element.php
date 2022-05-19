@@ -21,6 +21,8 @@ defined('ABSPATH') || exit;
  */
 class Payment_Methods_Element extends Base_Element {
 
+	use \WP_Ultimo\Traits\Singleton;
+
 	/**
 	 * The id of the element.
 	 *

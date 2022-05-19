@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * This file is part of the Carbon package.
+ *
+ * (c) Brian Nesbitt <brian@nesbot.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
 namespace WP_Ultimo\Dependencies\Carbon\PHPStan;
 
 use WP_Ultimo\Dependencies\Carbon\CarbonInterface;
@@ -19,7 +27,7 @@ final class MacroScanner
      */
     public function hasMethod(string $className, string $methodName) : bool
     {
-        return \is_a($className, \WP_Ultimo\Dependencies\Carbon\CarbonInterface::class, \true) && \is_callable([$className, 'hasMacro']) && $className::hasMacro($methodName);
+        return \is_a($className, CarbonInterface::class, \true) && \is_callable([$className, 'hasMacro']) && $className::hasMacro($methodName);
     }
     /**
      * Return the Macro for a given pair class-method.
@@ -33,12 +41,12 @@ final class MacroScanner
      *
      * @return Macro
      */
-    public function getMethod(string $className, string $methodName) : \WP_Ultimo\Dependencies\Carbon\PHPStan\Macro
+    public function getMethod(string $className, string $methodName) : Macro
     {
-        $reflectionClass = new \ReflectionClass($className);
+        $reflectionClass = new ReflectionClass($className);
         $property = $reflectionClass->getProperty('globalMacros');
         $property->setAccessible(\true);
         $macro = $property->getValue()[$methodName];
-        return new \WP_Ultimo\Dependencies\Carbon\PHPStan\Macro($className, $methodName, $macro);
+        return new Macro($className, $methodName, $macro);
     }
 }

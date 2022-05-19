@@ -13,7 +13,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property int $quantity
  * @property string $type
  */
-class OrderItem extends \WP_Ultimo\Dependencies\Stripe\StripeObject
+class OrderItem extends StripeObject
 {
     const OBJECT_NAME = 'order_item';
 }

@@ -7,31 +7,36 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi;
 
 use setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException;
 use setasign\Fpdi\PdfParser\PdfParserException;
 use setasign\Fpdi\PdfParser\Type\PdfIndirectObject;
 use setasign\Fpdi\PdfParser\Type\PdfNull;
+
 /**
  * Class Fpdi
  *
  * This class let you import pages of existing PDF documents into a reusable structure for FPDF.
  */
-class Fpdi extends \setasign\Fpdi\FpdfTpl
+class Fpdi extends FpdfTpl
 {
     use FpdiTrait;
+
     /**
      * FPDI version
      *
      * @string
      */
-    const VERSION = '2.3.4';
+    const VERSION = '2.3.6';
+
     protected function _enddoc()
     {
         parent::_enddoc();
         $this->cleanUp();
     }
+
     /**
      * Draws an imported page or a template onto the page or another template.
      *
@@ -48,7 +53,7 @@ class Fpdi extends \setasign\Fpdi\FpdfTpl
      * @return array The size
      * @see Fpdi::getTemplateSize()
      */
-    public function useTemplate($tpl, $x = 0, $y = 0, $width = null, $height = null, $adjustPageSize = \false)
+    public function useTemplate($tpl, $x = 0, $y = 0, $width = null, $height = null, $adjustPageSize = false)
     {
         if (isset($this->importedPages[$tpl])) {
             $size = $this->useImportedPage($tpl, $x, $y, $width, $height, $adjustPageSize);
@@ -57,8 +62,10 @@ class Fpdi extends \setasign\Fpdi\FpdfTpl
             }
             return $size;
         }
+
         return parent::useTemplate($tpl, $x, $y, $width, $height, $adjustPageSize);
     }
+
     /**
      * Get the size of an imported page or template.
      *
@@ -73,11 +80,13 @@ class Fpdi extends \setasign\Fpdi\FpdfTpl
     public function getTemplateSize($tpl, $width = null, $height = null)
     {
         $size = parent::getTemplateSize($tpl, $width, $height);
-        if ($size === \false) {
+        if ($size === false) {
             return $this->getImportedPageSize($tpl, $width, $height);
         }
+
         return $size;
     }
+
     /**
      * @inheritdoc
      * @throws CrossReferenceException
@@ -87,6 +96,7 @@ class Fpdi extends \setasign\Fpdi\FpdfTpl
     {
         $this->currentReaderId = null;
         parent::_putimages();
+
         foreach ($this->importedPages as $key => $pageData) {
             $this->_newobj();
             $this->importedPages[$key]['objectNumber'] = $this->n;
@@ -94,24 +104,29 @@ class Fpdi extends \setasign\Fpdi\FpdfTpl
             $this->writePdfType($pageData['stream']);
             $this->_put('endobj');
         }
+
         foreach (\array_keys($this->readers) as $readerId) {
             $parser = $this->getPdfReader($readerId)->getParser();
             $this->currentReaderId = $readerId;
+
             while (($objectNumber = \array_pop($this->objectsToCopy[$readerId])) !== null) {
                 try {
                     $object = $parser->getIndirectObject($objectNumber);
-                } catch (\setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException $e) {
-                    if ($e->getCode() === \setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException::OBJECT_NOT_FOUND) {
-                        $object = \setasign\Fpdi\PdfParser\Type\PdfIndirectObject::create($objectNumber, 0, new \setasign\Fpdi\PdfParser\Type\PdfNull());
+                } catch (CrossReferenceException $e) {
+                    if ($e->getCode() === CrossReferenceException::OBJECT_NOT_FOUND) {
+                        $object = PdfIndirectObject::create($objectNumber, 0, new PdfNull());
                     } else {
                         throw $e;
                     }
                 }
+
                 $this->writePdfType($object);
             }
         }
+
         $this->currentReaderId = null;
     }
+
     /**
      * @inheritdoc
      */
@@ -120,12 +135,14 @@ class Fpdi extends \setasign\Fpdi\FpdfTpl
         foreach ($this->importedPages as $key => $pageData) {
             $this->_put('/' . $pageData['id'] . ' ' . $pageData['objectNumber'] . ' 0 R');
         }
+
         parent::_putxobjectdict();
     }
+
     /**
      * @inheritdoc
      */
-    protected function _put($s, $newLine = \true)
+    protected function _put($s, $newLine = true)
     {
         if ($newLine) {
             $this->buffer .= $s . "\n";

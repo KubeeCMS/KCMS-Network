@@ -132,11 +132,13 @@ class Broadcast_List_Table extends Base_List_Table {
 
 		$url_atts = array(
 			'id' => $item->get_id(),
+			'slug' => $item->get_slug(),
+			'model' => 'broadcast'
 		);
 
 		$actions = array(
 			'edit'   => sprintf('<a href="%s">%s</a>', wu_network_admin_url('wp-ultimo-edit-broadcast', $url_atts), __('Edit', 'wp-ultimo')),
-			'delete' => sprintf('<a href="%s">%s</a>', '', __('Delete', 'wp-ultimo')),
+			'delete' => sprintf('<a title="%s" class="wubox" href="%s">%s</a>', __('Delete', 'wp-ultimo'), wu_get_form_url('delete_modal', $url_atts), __('Delete', 'wp-ultimo')),
 		);
 
 		return $title . $content . $this->row_actions($actions);
@@ -153,30 +155,16 @@ class Broadcast_List_Table extends Base_List_Table {
 	 */
 	public function column_target_customers($item) {
 
-		$all_targets = $item->get_message_targets();
+		$targets = wu_get_broadcast_targets($item->get_id(), 'customers');
 
-		$targets = array();
-
-		$customer_targets = wu_get_isset($all_targets, 'customers', '');
-
-		if ($customer_targets) {
-
-			if (is_array($all_targets['customers'])) {
-
-				$all_targets['customers'] = $all_targets['customers'][0];
-
-			} // end if;
-
-			$targets = explode(',', $all_targets['customers']);
-
-		} // end if;
+		$targets = array_filter(array_map('wu_get_customer', $targets));
 
 		$targets_count = count($targets);
 
 		$html = '<div class="wu-p-2 wu-mr-1 wu-flex wu-rounded wu-items-center wu-border wu-border-solid wu-border-gray-300 wu-bg-gray-100 wu-relative wu-overflow-hidden">';
 
-		switch ($targets) {
-			case $targets_count < 0:
+		switch ($targets_count) {
+			case 0:
 				$not_found = __('No customer found', 'wp-ultimo');
 
 				return "<div class='wu-p-2 wu-mr-1 wu-flex wu-rounded wu-items-center wu-border wu-border-solid wu-border-gray-300 wu-bg-gray-100 wu-relative wu-overflow-hidden'>
@@ -187,8 +175,8 @@ class Broadcast_List_Table extends Base_List_Table {
 										</div>";
 
 			break;
-			case $targets_count == 1:
-				$customer = wu_get_customer($targets[0]);
+			case 1:
+				$customer = array_pop($targets);
 
 				$url_atts = array(
 					'id' => $customer->get_id(),
@@ -217,10 +205,10 @@ class Broadcast_List_Table extends Base_List_Table {
 
 				return $html;
 			break;
-			case $targets_count > 1:
+			default:
 				foreach ($targets as $key => $target) {
 
-					$customer = wu_get_customer($target);
+					$customer = $target;
 
 					$tooltip_name = $customer->get_display_name();
 
@@ -294,31 +282,25 @@ class Broadcast_List_Table extends Base_List_Table {
 
 		$targets = wu_get_broadcast_targets($item->get_id(), 'products');
 
-		$html = '<div class="wu-p-2 wu-mr-1 wu-flex wu-rounded wu-items-center wu-border wu-border-solid wu-border-gray-300 wu-bg-gray-100 wu-relative wu-overflow-hidden">';
+		$html = '';
 
-		if ($targets) {
+		$products = array_filter(array_map('wu_get_product', $targets));
 
-			$targets_count = count($targets);
+		$product_count = count($products);
 
-		} // end if;
-
-		switch ($targets) {
-			case '':
-			case $targets_count < 1:
+		switch ($product_count) {
+			case 0:
 				$not_found = __('No product found', 'wp-ultimo');
 
 				$html = "<div class='wu-p-2 wu-mr-1 wu-flex wu-rounded wu-items-center wu-border wu-border-solid wu-border-gray-300 wu-bg-gray-100 wu-relative wu-overflow-hidden'>
-								<span class='dashicons dashicons-wu-block wu-text-gray-600 wu-px-1 wu-pr-3'>&nbsp;</span>
-										<div class=''>
-												<span class='wu-block wu-py-3 wu-text-gray-600 wu-text-2xs wu-font-bold wu-uppercase'>{$not_found}</span>
-										</div>
-								</div>";
-
-				return $html;
-
-			break;
-			case $targets_count == 1:
-				$product = wu_get_product($targets[0]);
+					<span class='dashicons dashicons-wu-block wu-text-gray-600 wu-px-1 wu-pr-3'>&nbsp;</span>
+							<div class=''>
+									<span class='wu-block wu-py-3 wu-text-gray-600 wu-text-2xs wu-font-bold wu-uppercase'>{$not_found}</span>
+							</div>
+					</div>";
+				break;
+			case 1:
+				$product = array_pop($products);
 
 				$image = $product->get_featured_image('thumbnail');
 
@@ -351,89 +333,90 @@ class Broadcast_List_Table extends Base_List_Table {
 				$description = sprintf(__('%s customer(s) targeted.', 'wp-ultimo'), $customer_count);
 
 				$url_atts = array(
-					'id' => $targets[0],
+					'id' => $product->get_id(),
 				);
 
 				$product_link = wu_network_admin_url('wp-ultimo-edit-product', $url_atts);
 
 				$html = "<a href='{$product_link}' class='wu-p-2 wu-flex wu-flex-grow wu-bg-gray-100 wu-rounded wu-items-center wu-border wu-border-solid wu-border-gray-300'>
-										{$image}
-										<div class='wu-pl-2'>
-												<strong class='wu-block'>{$name} <small class='wu-font-normal'>(#{$id})</small></strong>
-												<small>{$description}</small>
-										</div>
-								</a>";
-
-				return $html;
-
-			break;
-			case $targets_count > 1:
-				foreach ($targets as $key => $target) {
-
-					$product = wu_get_product($target);
-
-					$url_atts = array(
-						'id' => $product->get_id(),
-					);
-
-					$product_link = wu_network_admin_url('wp-ultimo-edit-product', $url_atts);
-
-					$product_name = $product->get_name();
-
-					$image = $product->get_featured_image('thumbnail');
-
-					if ($image) {
-
-						$image = sprintf('<img class="wu-w-7 wu-h-7 wu-bg-gray-200 wu-rounded-full wu-text-gray-600 wu-flex wu-items-center wu-justify-center wu-border-solid wu-border-1 wu-border-white hover:wu-border-gray-400" src="%s">', esc_attr($image));
-
-					} else {
-
-						$image = '<div class="wu-w-7 wu-h-7 wu-bg-gray-200 wu-rounded-full wu-text-gray-600 wu-flex wu-items-center wu-justify-center wu-border-solid wu-border-1 wu-border-white hover:wu-border-gray-400">
-						<span class="dashicons-wu-image wu-p-1 wu-rounded-full"></span>
-				</div>';
-
-					} // end if;
-
-					$html .= "<div class='wu-flex wu--mr-4'><a role='tooltip' aria-label='{$product_name}' href='{$product_link}'>{$image}</a></div>";
-
-				} // end foreach;
-
-				if ($targets_count > 1 && $targets_count < 5) {
-
-					$modal_atts = array(
-						'action'      => 'wu_modal_targets_display',
-						'object_id'   => $item->get_id(),
-						'width'       => '400',
-						'height'      => '360',
-						'target_type' => 'products',
-					);
-
-					$html .= sprintf('<div class="wu-inline-block wu-ml-4">
-										<a href="%s" title="%s" class="wubox"><span class="wu-pl-2 wu-uppercase wu-text-xs wu-font-bold"> %s %s</span></a></div>', wu_get_form_url('view_broadcast_targets', $modal_atts), __('Targets', 'wp-ultimo'), $targets_count, __('Targets', 'wp-ultimo'));
-
-					$html .= '</div>';
-
-					return $html;
-
-				} // end if;
-
-				$modal_atts = array(
-					'action'      => 'wu_modal_targets_display',
-					'object_id'   => $item->get_id(),
-					'width'       => '400',
-					'height'      => '360',
-					'target_type' => 'products',
-				);
-
-				$html .= sprintf('<div class="wu-inline-block wu-ml-4"><a href="%s" title="%s" class="wubox"><span class="wu-pl-2 wu-uppercase wu-text-xs wu-font-bold"> %s %s</span></a></div>', wu_get_form_url('view_broadcast_targets', $modal_atts), __('Targets', 'wp-ultimo'), $targets_count, __('Targets', 'wp-ultimo'));
-
-				$html .= '</div>';
-
-				return $html;
-
-			break;
+						{$image}
+						<div class='wu-pl-2'>
+								<strong class='wu-block'>{$name} <small class='wu-font-normal'>(#{$id})</small></strong>
+								<small>{$description}</small>
+						</div>
+				</a>";
+				break;
 
 		} // end switch;
+
+		if ($html) {
+
+			return $html;
+
+		} // end if;
+
+		$html = '<div class="wu-p-2 wu-mr-1 wu-flex wu-rounded wu-items-center wu-border wu-border-solid wu-border-gray-300 wu-bg-gray-100 wu-relative wu-overflow-hidden">';
+
+		foreach ($products as $product) {
+
+			$url_atts = array(
+				'id' => $product->get_id(),
+			);
+
+			$product_link = wu_network_admin_url('wp-ultimo-edit-product', $url_atts);
+
+			$product_name = $product->get_name();
+
+			$image = $product->get_featured_image('thumbnail');
+
+			if ($image) {
+
+				$image = sprintf('<img class="wu-w-7 wu-h-7 wu-bg-gray-200 wu-rounded-full wu-text-gray-600 wu-flex wu-items-center wu-justify-center wu-border-solid wu-border-1 wu-border-white hover:wu-border-gray-400" src="%s">', esc_attr($image));
+
+			} else {
+
+				$image = '<div class="wu-w-7 wu-h-7 wu-bg-gray-200 wu-rounded-full wu-text-gray-600 wu-flex wu-items-center wu-justify-center wu-border-solid wu-border-1 wu-border-white hover:wu-border-gray-400">
+				<span class="dashicons-wu-image wu-p-1 wu-rounded-full"></span>
+		</div>';
+
+			} // end if;
+
+			$html .= "<div class='wu-flex wu--mr-4'><a role='tooltip' aria-label='{$product_name}' href='{$product_link}'>{$image}</a></div>";
+
+		} // end foreach;
+
+		if ($product_count > 1 && $product_count < 5) {
+
+			$modal_atts = array(
+				'action'      => 'wu_modal_targets_display',
+				'object_id'   => $item->get_id(),
+				'width'       => '400',
+				'height'      => '360',
+				'target_type' => 'products',
+			);
+
+			$html .= sprintf('<div class="wu-inline-block wu-ml-4">
+			<a href="%s" title="%s" class="wubox"><span class="wu-pl-2 wu-uppercase wu-text-xs wu-font-bold"> %s %s</span></a></div>', wu_get_form_url('view_broadcast_targets', $modal_atts), __('Targets', 'wp-ultimo'), $product_count, __('Targets', 'wp-ultimo'));
+
+			$html .= '</div>';
+
+			return $html;
+
+		} // end if;
+
+		$modal_atts = array(
+			'action'      => 'wu_modal_targets_display',
+			'object_id'   => $item->get_id(),
+			'width'       => '400',
+			'height'      => '360',
+			'target_type' => 'products',
+		);
+
+		$html .= sprintf('<div class="wu-inline-block wu-ml-4"><a href="%s" title="%s" class="wubox"><span class="wu-pl-2 wu-uppercase wu-text-xs wu-font-bold"> %s %s</span></a></div>', wu_get_form_url('view_broadcast_targets', $modal_atts), __('Targets', 'wp-ultimo'), $product_count, __('Targets', 'wp-ultimo'));
+
+		$html .= '</div>';
+
+		return $html;
 
 	} // end column_target_products;
 

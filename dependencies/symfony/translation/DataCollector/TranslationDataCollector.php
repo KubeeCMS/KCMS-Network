@@ -21,10 +21,10 @@ use WP_Ultimo\Dependencies\Symfony\Component\VarDumper\Cloner\Data;
  *
  * @final
  */
-class TranslationDataCollector extends \WP_Ultimo\Dependencies\Symfony\Component\HttpKernel\DataCollector\DataCollector implements \WP_Ultimo\Dependencies\Symfony\Component\HttpKernel\DataCollector\LateDataCollectorInterface
+class TranslationDataCollector extends DataCollector implements LateDataCollectorInterface
 {
     private $translator;
-    public function __construct(\Symfony\Component\Translation\DataCollectorTranslator $translator)
+    public function __construct(DataCollectorTranslator $translator)
     {
         $this->translator = $translator;
     }
@@ -41,7 +41,7 @@ class TranslationDataCollector extends \WP_Ultimo\Dependencies\Symfony\Component
     /**
      * {@inheritdoc}
      */
-    public function collect(\WP_Ultimo\Dependencies\Symfony\Component\HttpFoundation\Request $request, \WP_Ultimo\Dependencies\Symfony\Component\HttpFoundation\Response $response, \Throwable $exception = null)
+    public function collect(Request $request, Response $response, \Throwable $exception = null)
     {
         $this->data['locale'] = $this->translator->getLocale();
         $this->data['fallback_locales'] = $this->translator->getFallbackLocales();
@@ -58,28 +58,19 @@ class TranslationDataCollector extends \WP_Ultimo\Dependencies\Symfony\Component
      */
     public function getMessages()
     {
-        return isset($this->data['messages']) ? $this->data['messages'] : [];
+        return $this->data['messages'] ?? [];
     }
-    /**
-     * @return int
-     */
-    public function getCountMissings()
+    public function getCountMissings() : int
     {
-        return isset($this->data[\Symfony\Component\Translation\DataCollectorTranslator::MESSAGE_MISSING]) ? $this->data[\Symfony\Component\Translation\DataCollectorTranslator::MESSAGE_MISSING] : 0;
+        return $this->data[DataCollectorTranslator::MESSAGE_MISSING] ?? 0;
     }
-    /**
-     * @return int
-     */
-    public function getCountFallbacks()
+    public function getCountFallbacks() : int
     {
-        return isset($this->data[\Symfony\Component\Translation\DataCollectorTranslator::MESSAGE_EQUALS_FALLBACK]) ? $this->data[\Symfony\Component\Translation\DataCollectorTranslator::MESSAGE_EQUALS_FALLBACK] : 0;
+        return $this->data[DataCollectorTranslator::MESSAGE_EQUALS_FALLBACK] ?? 0;
     }
-    /**
-     * @return int
-     */
-    public function getCountDefines()
+    public function getCountDefines() : int
     {
-        return isset($this->data[\Symfony\Component\Translation\DataCollectorTranslator::MESSAGE_DEFINED]) ? $this->data[\Symfony\Component\Translation\DataCollectorTranslator::MESSAGE_DEFINED] : 0;
+        return $this->data[DataCollectorTranslator::MESSAGE_DEFINED] ?? 0;
     }
     public function getLocale()
     {
@@ -95,7 +86,7 @@ class TranslationDataCollector extends \WP_Ultimo\Dependencies\Symfony\Component
     /**
      * {@inheritdoc}
      */
-    public function getName()
+    public function getName() : string
     {
         return 'translation';
     }
@@ -121,7 +112,7 @@ class TranslationDataCollector extends \WP_Ultimo\Dependencies\Symfony\Component
     }
     private function computeCount(array $messages)
     {
-        $count = [\Symfony\Component\Translation\DataCollectorTranslator::MESSAGE_DEFINED => 0, \Symfony\Component\Translation\DataCollectorTranslator::MESSAGE_MISSING => 0, \Symfony\Component\Translation\DataCollectorTranslator::MESSAGE_EQUALS_FALLBACK => 0];
+        $count = [DataCollectorTranslator::MESSAGE_DEFINED => 0, DataCollectorTranslator::MESSAGE_MISSING => 0, DataCollectorTranslator::MESSAGE_EQUALS_FALLBACK => 0];
         foreach ($messages as $message) {
             ++$count[$message['state']];
         }

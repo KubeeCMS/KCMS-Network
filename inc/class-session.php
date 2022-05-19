@@ -60,13 +60,29 @@ class Session {
 	 */
 	public function __construct($realm_name) {
 
-		$session_factory = new \WP_Ultimo\Dependencies\Aura\Session\SessionFactory;
+		if ($this->can_use_sessions()) {
 
-		$this->session_manager = $session_factory->newInstance($_COOKIE);
+			$session_factory = new \WP_Ultimo\Dependencies\Aura\Session\SessionFactory;
 
-		$this->segment = $this->session_manager->getSegment($realm_name);
+			$this->session_manager = $session_factory->newInstance($_COOKIE);
+
+			$this->segment = $this->session_manager->getSegment($realm_name);
+
+		} // end if;
 
 	} // end __construct;
+
+	/**
+	 * Checks if headers were sent already.
+	 *
+	 * @since 2.0.0
+	 * @return boolean
+	 */
+	protected function can_use_sessions() {
+
+		return headers_sent() === false;
+
+	} // end can_use_sessions;
 
 	/**
 	 * Gets the value of a session key.
@@ -77,6 +93,12 @@ class Session {
 	 * @return mixed
 	 */
 	public function get($key) {
+
+		if ($this->can_use_sessions() === false) {
+
+			return null;
+
+		} // end if;
 
 		return $this->segment->get($key);
 
@@ -93,6 +115,12 @@ class Session {
 	 */
 	public function set($key, $value) {
 
+		if ($this->can_use_sessions() === false) {
+
+			return;
+
+		} // end if;
+
 		return $this->segment->set($key, $value);
 
 	} // end set;
@@ -107,6 +135,12 @@ class Session {
 	 * @return bool
 	 */
 	public function add_values($key, $values) {
+
+		if ($this->can_use_sessions() === false) {
+
+			return;
+
+		} // end if;
 
 		$current_values = (array) $this->segment->get($key);
 
@@ -128,6 +162,12 @@ class Session {
 	 */
 	public function set_flash($key, $value) {
 
+		if ($this->can_use_sessions() === false) {
+
+			return;
+
+		} // end if;
+
 		return $this->segment->setFlashNow($key, $value);
 
 	} // end set_flash;
@@ -141,17 +181,47 @@ class Session {
 	 */
 	public function get_flash($key) {
 
+		if ($this->can_use_sessions() === false) {
+
+			return null;
+
+		} // end if;
+
 		return $this->segment->getFlash($key);
 
 	} // end get_flash;
 
 	/**
-	 * Writes to the session and closes the connection.
+	 * Forces the start of the session.
 	 *
 	 * @since 2.0.0
 	 * @return bool
 	 */
+	public function start() {
+
+		if ($this->can_use_sessions() === false) {
+
+			return;
+
+		} // end if;
+
+		return $this->session_manager->start();
+
+	} // end start;
+
+	/**
+	 * Writes to the session and closes the connection.
+	 *
+	 * @since 2.0.0
+	 * @return null
+	 */
 	public function commit() {
+
+		if ($this->can_use_sessions() === false) {
+
+			return;
+
+		} // end if;
 
 		return $this->session_manager->commit();
 
@@ -161,9 +231,15 @@ class Session {
 	 * Clears the current session.
 	 *
 	 * @since 2.0.0
-	 * @return bool
+	 * @return null
 	 */
 	public function clear() {
+
+		if ($this->can_use_sessions() === false) {
+
+			return;
+
+		} // end if;
 
 		return $this->session_manager->clear();
 
@@ -176,6 +252,12 @@ class Session {
 	 * @return bool
 	 */
 	public function destroy() {
+
+		if ($this->can_use_sessions() === false) {
+
+			return;
+
+		} // end if;
 
 		return $this->session_manager->destroy();
 

@@ -55,7 +55,7 @@ class Toolbox {
 
 		} // end if;
 
-		return apply_filters('wu_is_toolbox_enabled', License::get_instance()->allowed() && $can_see_toolbox && !is_network_admin());
+		return apply_filters('wu_is_toolbox_enabled', wu_get_setting('enable_jumper', true) && License::get_instance()->allowed() && $can_see_toolbox && !is_network_admin());
 
 	} // end is_toolbox_enabled;
 
@@ -101,7 +101,7 @@ class Toolbox {
 
 		$current_site = wu_get_current_site();
 
-		WP_Ultimo()->helper->render('ui/toolbox', array(
+		wu_get_template('ui/toolbox', array(
 			'toolbox'      => $this,
 			'current_site' => $current_site,
 			'customer'     => $current_site ? $current_site->get_customer() : false,

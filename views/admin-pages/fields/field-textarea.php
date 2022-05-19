@@ -5,34 +5,36 @@
  * @since 2.0.0
  */
 ?>
-<li class="<?php echo esc_attr($field->wrapper_classes); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
+<li class="<?php echo esc_attr(trim($field->wrapper_classes)); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
-  <span class="wu-block wu-w-full">
+  <div class="wu-block wu-w-full">
 
-    <h3 class="wu-my-1 wu-text-2xs wu-uppercase">
+    <?php
 
-      <?php echo $field->title; ?>
+    /**
+     * Adds the partial title template.
+     * @since 2.0.0
+     */
+    wu_get_template('admin-pages/fields/partials/field-title', array(
+      'field' => $field,
+    ));
 
-      <?php if ($field->tooltip) : ?>
+    ?>
 
-        <?php echo wu_tooltip($field->tooltip); ?>
+    <textarea class="form-control wu-w-full wu-my-1 <?php echo esc_attr(trim($field->classes)); ?>" name="<?php echo esc_attr($field->id); ?>" placeholder="<?php echo esc_attr($field->placeholder); ?>" <?php echo $field->get_html_attributes(); ?>><?php echo esc_attr($field->value); ?></textarea>
 
-      <?php endif; ?>
+    <?php
 
-    </h3>
+    /**
+     * Adds the partial title template.
+     * @since 2.0.0
+     */
+    wu_get_template('admin-pages/fields/partials/field-description', array(
+      'field' => $field,
+    ));
 
-    <textarea class="form-control wu-w-full wu-my-1 <?php echo esc_attr($field->classes); ?>" name="<?php echo esc_attr($field->id); ?>" placeholder="<?php echo esc_attr($field->placeholder); ?>" <?php echo $field->get_html_attributes(); ?>><?php echo esc_attr($field->value); ?></textarea>
+    ?>
 
-    <?php if ($field->desc) : ?>
-
-      <p class="description" id="<?php echo $field->id; ?>-desc">
-
-        <?php echo $field->desc; ?>
-
-      </p>
-
-    <?php endif; ?>
-
-  </span>
+  </div>
 
 </li>

@@ -23,6 +23,6 @@ use \WP_Meta_Query;
  *
  * @since 1.1.0
  */
-class Meta extends \WP_Meta_Query
+class Meta extends WP_Meta_Query
 {
 }

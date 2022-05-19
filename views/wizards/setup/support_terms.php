@@ -5,8 +5,8 @@
  * @since 2.0.0
  */
 ?>
-<div>
-  <p><?php _e('This plugin comes with support for issues you may have. Item Support can be requested via email on <a class="wu-no-underline" href="mailto:support@wpultimo.com" target="_blank">support@wpultimo.com</a> and includes:', 'wp-ultimo'); ?></p>
+<div class="wu--mt-7">
+  <p><?php _e('This plugin comes with support for issues you may have. Support can be requested via email on <a class="wu-no-underline" href="mailto:support@wpultimo.com" target="_blank">support@wpultimo.com</a> and includes:', 'wp-ultimo'); ?></p>
 
   <ul class="support-available">
     <li class="wu-text-green-700">
@@ -23,20 +23,20 @@
     </li>
   </ul>
 
-  <p><?php _e('Item Support <strong>DOES NOT</strong> Include:', 'wp-ultimo'); ?></p>
+  <p><?php _e('Support <strong>DOES NOT</strong> Include:', 'wp-ultimo'); ?></p>
 
   <ul class="support-unavailable">
-    <li class="wu-text-red-400">
+    <li class="wu-text-red-500">
       <span class="dashicons-wu-circle-with-cross wu-align-middle"></span>
       <?php _e('Customization services', 'wp-ultimo'); ?>
     </li>
-    <li class="wu-text-red-400">
+    <li class="wu-text-red-500">
       <span class="dashicons-wu-circle-with-cross wu-align-middle"></span>
       <?php _e('Installation services', 'wp-ultimo'); ?>
     </li>
-    <li class="wu-text-red-400">
+    <li class="wu-text-red-500">
       <span class="dashicons-wu-circle-with-cross wu-align-middle"></span>
-      <?php _e('Help and Support for 3rd party plugins (i.e. plugins you install yourself later on)', 'wp-ultimo'); ?>
+      <?php _e('Support for 3rd party plugins (i.e. plugins you install yourself later on)', 'wp-ultimo'); ?>
     </li>
   </ul>
 

@@ -30,7 +30,7 @@ class Ajax {
 		/*
 		 * Load search endpoints.
 		 */
-		add_action('wp_ajax_wu_search', array($this, 'search_models'));
+		add_action('wu_ajax_wu_search', array($this, 'search_models'));
 
 		/*
 		 * Adds the Selectize templates to the admin_footer.
@@ -92,6 +92,13 @@ class Ajax {
 	 */
 	public function search_models() {
 
+		/**
+		 * Fires before the processing of the search request.
+		 *
+		 * @since 2.0.0
+		 */
+		do_action('wu_before_search_models');
+
 		if (wu_request('model') === 'all') {
 
 			$this->search_all_models();
@@ -112,15 +119,52 @@ class Ajax {
 
 		if ($args['exclude']) {
 
+			if (is_string($args['exclude'])) {
+
+				$args['exclude'] = explode(',', $args['exclude']);
+
+				$args['exclude'] = array_map('trim', $args['exclude']);
+
+			} // end if;
+
 			$query['id__not_in'] = $args['exclude'];
 
 		} // end if;
 
-		$include = wu_get_isset($args, 'include');
+		if (wu_get_isset($args, 'include')) {
 
-		if (is_array($include)) {
+			if (is_string($args['include'])) {
 
-			$query = array_merge($query, $include);
+				$args['include'] = explode(',', $args['include']);
+
+				$args['include'] = array_map('trim', $args['include']);
+
+			} // end if;
+
+			$query['id__in'] = $args['include'];
+
+		} // end if;
+
+		/*
+		 * Deal with site
+		 */
+		if ($args['model'] === 'site') {
+
+			if (wu_get_isset($query, 'id__in')) {
+
+				$query['blog_id__in'] = $query['id__in'];
+
+				unset($query['id__in']);
+
+			} // end if;
+
+			if (wu_get_isset($query, 'id__not_in')) {
+
+				$query['blog_id__not_in'] = $query['id__not_in'];
+
+				unset($query['id__not_in']);
+
+			} // end if;
 
 		} // end if;
 
@@ -143,11 +187,26 @@ class Ajax {
 
 		} else {
 
-			$model_func = 'wu_get_' . ucfirst($args['model']) . 's';
+			$model_func = 'wu_get_' . strtolower($args['model']) . 's';
 
 			if (function_exists($model_func)) {
 
 				$results = $model_func($query);
+
+			} // end if;
+
+		} // end if;
+
+		// Try search by hash if do not have any result
+		if (empty($results)) {
+
+			$model_func = 'wu_get_' . strtolower($args['model']) . '_by_hash';
+
+			if (function_exists($model_func)) {
+
+				$result = $model_func(trim($query['search'], '*'));
+
+				$results = $result ? array($result) : array();
 
 			} // end if;
 
@@ -274,7 +333,7 @@ class Ajax {
 
 				$item['section'] = $section_slug;
 
-				$item['section_title'] = $section['title'];
+				$item['section_title'] = wu_get_isset($section, 'title', '');
 
 				$item['url'] = wu_network_admin_url('wp-ultimo-settings', array(
 					'tab' => $section_slug,
@@ -343,7 +402,7 @@ class Ajax {
 	 */
 	public function render_selectize_templates() {
 
-		if (current_user_can('wu-jumper')) {
+		if (current_user_can('manage_network')) {
 
 			wu_get_template('ui/selectize-templates');
 

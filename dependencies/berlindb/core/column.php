@@ -20,7 +20,7 @@ namespace WP_Ultimo\Dependencies\BerlinDB\Database;
  *
  * @see Column::__construct() for accepted arguments.
  */
-class Column extends \WP_Ultimo\Dependencies\BerlinDB\Database\Base
+class Column extends Base
 {
     /** Table Attributes ******************************************************/
     /**

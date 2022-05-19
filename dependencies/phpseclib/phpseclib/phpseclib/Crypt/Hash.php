@@ -21,8 +21,6 @@
  * ?>
  * </code>
  *
- * @category  Crypt
- * @package   Hash
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2015 Jim Wigginton
  * @author    Andreas Fischer <bantu@phpbb.com>
@@ -32,36 +30,30 @@
  */
 namespace phpseclib3\Crypt;
 
-use phpseclib3\Math\BigInteger;
-use phpseclib3\Exception\UnsupportedAlgorithmException;
-use phpseclib3\Exception\InsufficientSetupException;
 use phpseclib3\Common\Functions\Strings;
-use phpseclib3\Crypt\AES;
+use phpseclib3\Exception\InsufficientSetupException;
+use phpseclib3\Exception\UnsupportedAlgorithmException;
+use phpseclib3\Math\BigInteger;
 use phpseclib3\Math\PrimeField;
 /**
- * @package Hash
  * @author  Jim Wigginton <terrafrost@php.net>
  * @author  Andreas Fischer <bantu@phpbb.com>
- * @access  public
  */
 class Hash
 {
     /**
      * Padding Types
      *
-     * @access private
      */
-    //const PADDING_KECCAK = 1;
+    const PADDING_KECCAK = 1;
     /**
      * Padding Types
      *
-     * @access private
      */
     const PADDING_SHA3 = 2;
     /**
      * Padding Types
      *
-     * @access private
      */
     const PADDING_SHAKE = 3;
     /**
@@ -70,7 +62,6 @@ class Hash
      * Only used by SHA3
      *
      * @var int
-     * @access private
      */
     private $paddingType = 0;
     /**
@@ -78,7 +69,6 @@ class Hash
      *
      * @see self::setHash()
      * @var int
-     * @access private
      */
     private $hashParam;
     /**
@@ -86,7 +76,6 @@ class Hash
      *
      * @see self::setHash()
      * @var int
-     * @access private
      */
     private $length;
     /**
@@ -94,7 +83,6 @@ class Hash
      *
      * @see self::setHash()
      * @var string
-     * @access private
      */
     private $algo;
     /**
@@ -102,7 +90,6 @@ class Hash
      *
      * @see self::setKey()
      * @var string
-     * @access private
      */
     private $key = \false;
     /**
@@ -110,14 +97,12 @@ class Hash
      *
      * @see self::setNonce()
      * @var string
-     * @access private
      */
     private $nonce = \false;
     /**
      * Hash Parameters
      *
      * @var array
-     * @access private
      */
     private $parameters = [];
     /**
@@ -125,7 +110,6 @@ class Hash
      *
      * @see self::_computeKey()
      * @var string
-     * @access private
      */
     private $computedKey = \false;
     /**
@@ -135,7 +119,6 @@ class Hash
      *
      * @see self::hash()
      * @var string
-     * @access private
      */
     private $opad;
     /**
@@ -145,7 +128,6 @@ class Hash
      *
      * @see self::hash()
      * @var string
-     * @access private
      */
     private $ipad;
     /**
@@ -155,7 +137,6 @@ class Hash
      *
      * @see self::hash()
      * @var boolean
-     * @access private
      */
     private $recomputeAESKey;
     /**
@@ -163,7 +144,6 @@ class Hash
      *
      * @see self::hash()
      * @var \phpseclib3\Crypt\AES
-     * @access private
      */
     private $c;
     /**
@@ -171,7 +151,6 @@ class Hash
      *
      * @see self::hash()
      * @var string
-     * @access private
      */
     private $pad;
     /**#@+
@@ -193,7 +172,6 @@ class Hash
      * Default Constructor.
      *
      * @param string $hash
-     * @access public
      */
     public function __construct($hash = 'sha256')
     {
@@ -204,7 +182,6 @@ class Hash
      *
      * Keys can be of any length.
      *
-     * @access public
      * @param string $key
      */
     public function setKey($key = \false)
@@ -218,7 +195,6 @@ class Hash
      *
      * Keys can be of any length.
      *
-     * @access public
      * @param string $nonce
      */
     public function setNonce($nonce = \false)
@@ -242,7 +218,6 @@ class Hash
      * when doing an HMAC multiple times it's faster to compute the hash once instead of computing it during
      * every call
      *
-     * @access private
      */
     private function computeKey()
     {
@@ -261,7 +236,6 @@ class Hash
      *
      * As set by the constructor or by the setHash() method.
      *
-     * @access public
      * @return string
      */
     public function getHash()
@@ -271,7 +245,6 @@ class Hash
     /**
      * Sets the hash function.
      *
-     * @access public
      * @param string $hash
      */
     public function setHash($hash)
@@ -311,6 +284,9 @@ class Hash
             case 'sha3-224':
                 $this->length = 28;
                 break;
+            case 'keccak256':
+                $this->paddingType = self::PADDING_KECCAK;
+            // fall-through
             case 'sha256':
             case 'sha512/256':
             case 'sha3-256':
@@ -330,7 +306,7 @@ class Hash
                     $hash = $matches[1];
                     $this->length = $matches[2] >> 3;
                 } else {
-                    throw new \phpseclib3\Exception\UnsupportedAlgorithmException("{$hash} is not a supported algorithm");
+                    throw new UnsupportedAlgorithmException("{$hash} is not a supported algorithm");
                 }
         }
         switch ($hash) {
@@ -354,6 +330,7 @@ class Hash
                 break;
             case 'sha3-256':
             case 'shake256':
+            case 'keccak256':
                 $this->blockSize = 1088;
                 // 1600 - 2*256
                 break;
@@ -372,10 +349,10 @@ class Hash
             default:
                 $this->blockSize = 1024;
         }
-        if (\in_array(\substr($hash, 0, 5), ['sha3-', 'shake'])) {
+        if (\in_array(\substr($hash, 0, 5), ['sha3-', 'shake', 'kecca'])) {
             // PHP 7.1.0 introduced support for "SHA3 fixed mode algorithms":
             // http://php.net/ChangeLog-7.php#7.1.0
-            if (\version_compare(\PHP_VERSION, '7.1.0') < 0 || \substr($hash, 0, 5) == 'shake') {
+            if (\version_compare(\PHP_VERSION, '7.1.0') < 0 || \substr($hash, 0, 5) != 'sha3-') {
                 //preg_match('#(\d+)$#', $hash, $matches);
                 //$this->parameters['capacity'] = 2 * $matches[1]; // 1600 - $this->blockSize
                 //$this->parameters['rate'] = 1600 - $this->parameters['capacity']; // == $this->blockSize
@@ -393,7 +370,7 @@ class Hash
                 // from http://csrc.nist.gov/publications/fips/fips180-4/fips-180-4.pdf#page=24
                 $initial = $hash == 'sha512/256' ? ['22312194FC2BF72C', '9F555FA3C84C64C2', '2393B86B6F53B151', '963877195940EABD', '96283EE2A88EFFE3', 'BE5E1E2553863992', '2B0199FC2C85B8AA', '0EB72DDC81C52CA2'] : ['8C3D37C819544DA2', '73E1996689DCD4D6', '1DFAB7AE32FF9C82', '679DD514582F9FCF', '0F6D2B697BD44DA8', '77E36F7304C48942', '3F9D85A86A1D36C8', '1112E6AD91D692A1'];
                 for ($i = 0; $i < 8; $i++) {
-                    $initial[$i] = new \phpseclib3\Math\BigInteger($initial[$i], 16);
+                    $initial[$i] = new BigInteger($initial[$i], 16);
                     $initial[$i]->setPrecision(64);
                 }
                 $this->parameters = \compact('initial');
@@ -518,7 +495,7 @@ class Hash
         // For each chunk, except the last: endian-adjust, NH hash
         // and add bit-length.  Use results to build Y.
         //
-        $length = new \phpseclib3\Math\BigInteger(1024 * 8);
+        $length = new BigInteger(1024 * 8);
         $y = '';
         for ($i = 0; $i < \count($m) - 1; $i++) {
             $m[$i] = \pack('N*', ...\unpack('V*', $m[$i]));
@@ -536,7 +513,7 @@ class Hash
         // zeropad
         $m[$i] = \pack('N*', ...\unpack('V*', $m[$i]));
         // ENDIAN-SWAP
-        $y .= static::nh($k, $m[$i], new \phpseclib3\Math\BigInteger($length * 8));
+        $y .= static::nh($k, $m[$i], new BigInteger($length * 8));
         return $y;
     }
     /**
@@ -549,7 +526,7 @@ class Hash
     private static function nh($k, $m, $length)
     {
         $toUInt32 = function ($x) {
-            $x = new \phpseclib3\Math\BigInteger($x, 256);
+            $x = new BigInteger($x, 256);
             $x->setPrecision(32);
             return $x;
         };
@@ -567,7 +544,7 @@ class Hash
         // Perform NH hash on the chunks, pairing words for multiplication
         // which are 4 apart to accommodate vector-parallelism.
         //
-        $y = new \phpseclib3\Math\BigInteger();
+        $y = new BigInteger();
         $y->setPrecision(64);
         $i = 0;
         while ($i < $t) {
@@ -612,9 +589,9 @@ class Hash
         //  Extract keys and restrict to special key-sets
         //
         $k64 = $k & "\1ÿÿÿ\1ÿÿÿ";
-        $k64 = new \phpseclib3\Math\BigInteger($k64, 256);
+        $k64 = new BigInteger($k64, 256);
         $k128 = \substr($k, 8) & "\1ÿÿÿ\1ÿÿÿ\1ÿÿÿ\1ÿÿÿ";
-        $k128 = new \phpseclib3\Math\BigInteger($k128, 256);
+        $k128 = new BigInteger($k128, 256);
         //
         // If M is no more than 2^17 bytes, hash under 64-bit prime,
         // otherwise, hash first 2^17 bytes under 64-bit prime and
@@ -671,9 +648,9 @@ class Hash
         // Each input word m is compared with maxwordrange.  If not smaller
         // then 'marker' and (m - offset), both in range, are hashed.
         //
-        $y = $factory->newInteger(new \phpseclib3\Math\BigInteger(1));
+        $y = $factory->newInteger(new BigInteger(1));
         foreach ($m_i as $m) {
-            $m = $factory->newInteger(new \phpseclib3\Math\BigInteger($m, 256));
+            $m = $factory->newInteger(new BigInteger($m, 256));
             if ($m->compare($maxwordrange) >= 0) {
                 $y = $k->multiply($y)->add($marker);
                 $y = $k->multiply($y)->add($m->subtract($offset));
@@ -697,10 +674,10 @@ class Hash
     private static function L3Hash($k1, $k2, $m)
     {
         $factory = self::$factory36;
-        $y = $factory->newInteger(new \phpseclib3\Math\BigInteger());
+        $y = $factory->newInteger(new BigInteger());
         for ($i = 0; $i < 8; $i++) {
-            $m_i = $factory->newInteger(new \phpseclib3\Math\BigInteger(\substr($m, 2 * $i, 2), 256));
-            $k_i = $factory->newInteger(new \phpseclib3\Math\BigInteger(\substr($k1, 8 * $i, 8), 256));
+            $m_i = $factory->newInteger(new BigInteger(\substr($m, 2 * $i, 2), 256));
+            $k_i = $factory->newInteger(new BigInteger(\substr($k1, 8 * $i, 8), 256));
             $y = $y->add($m_i->multiply($k_i));
         }
         $y = \str_pad(\substr($y->toBytes(), -4), 4, "\0", \STR_PAD_LEFT);
@@ -710,7 +687,6 @@ class Hash
     /**
      * Compute the Hash / HMAC / UMAC.
      *
-     * @access public
      * @param string $text
      * @return string
      */
@@ -720,25 +696,25 @@ class Hash
         if ($algo == 'umac') {
             if ($this->recomputeAESKey) {
                 if (!\is_string($this->nonce)) {
-                    throw new \phpseclib3\Exception\InsufficientSetupException('No nonce has been set');
+                    throw new InsufficientSetupException('No nonce has been set');
                 }
                 if (!\is_string($this->key)) {
-                    throw new \phpseclib3\Exception\InsufficientSetupException('No key has been set');
+                    throw new InsufficientSetupException('No key has been set');
                 }
                 if (\strlen($this->key) != 16) {
                     throw new \LengthException('Key must be 16 bytes long');
                 }
                 if (!isset(self::$maxwordrange64)) {
-                    $one = new \phpseclib3\Math\BigInteger(1);
-                    $prime36 = new \phpseclib3\Math\BigInteger("\0\0\0\17ÿÿÿû", 256);
-                    self::$factory36 = new \phpseclib3\Math\PrimeField($prime36);
-                    $prime64 = new \phpseclib3\Math\BigInteger("ÿÿÿÿÿÿÿÅ", 256);
-                    self::$factory64 = new \phpseclib3\Math\PrimeField($prime64);
-                    $prime128 = new \phpseclib3\Math\BigInteger("ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿa", 256);
-                    self::$factory128 = new \phpseclib3\Math\PrimeField($prime128);
-                    self::$offset64 = new \phpseclib3\Math\BigInteger("\1\0\0\0\0\0\0\0\0", 256);
+                    $one = new BigInteger(1);
+                    $prime36 = new BigInteger("\0\0\0\17ÿÿÿû", 256);
+                    self::$factory36 = new PrimeField($prime36);
+                    $prime64 = new BigInteger("ÿÿÿÿÿÿÿÅ", 256);
+                    self::$factory64 = new PrimeField($prime64);
+                    $prime128 = new BigInteger("ÿÿÿÿÿÿÿÿÿÿÿÿÿÿÿa", 256);
+                    self::$factory128 = new PrimeField($prime128);
+                    self::$offset64 = new BigInteger("\1\0\0\0\0\0\0\0\0", 256);
                     self::$offset64 = self::$factory64->newInteger(self::$offset64->subtract($prime64));
-                    self::$offset128 = new \phpseclib3\Math\BigInteger("\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 256);
+                    self::$offset128 = new BigInteger("\1\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 256);
                     self::$offset128 = self::$factory128->newInteger(self::$offset128->subtract($prime128));
                     self::$marker64 = self::$factory64->newInteger($prime64->subtract($one));
                     self::$marker128 = self::$factory128->newInteger($prime128->subtract($one));
@@ -776,7 +752,6 @@ class Hash
     /**
      * Returns the hash length (in bits)
      *
-     * @access public
      * @return int
      */
     public function getLength()
@@ -786,7 +761,6 @@ class Hash
     /**
      * Returns the hash length (in bytes)
      *
-     * @access public
      * @return int
      */
     public function getLengthInBytes()
@@ -796,7 +770,6 @@ class Hash
     /**
      * Returns the block length (in bits)
      *
-     * @access public
      * @return int
      */
     public function getBlockLength()
@@ -806,7 +779,6 @@ class Hash
     /**
      * Returns the block length (in bytes)
      *
-     * @access public
      * @return int
      */
     public function getBlockLengthInBytes()
@@ -816,7 +788,6 @@ class Hash
     /**
      * Pads SHA3 based on the mode
      *
-     * @access private
      * @param int $padLength
      * @param int $padType
      * @return string
@@ -824,10 +795,10 @@ class Hash
     private static function sha3_pad($padLength, $padType)
     {
         switch ($padType) {
-            //case self::PADDING_KECCAK:
-            //    $temp = chr(0x06) . str_repeat("\0", $padLength - 1);
-            //    $temp[$padLength - 1] = $temp[$padLength - 1] | chr(0x80);
-            //    return $temp
+            case self::PADDING_KECCAK:
+                $temp = \chr(0x1) . \str_repeat("\0", $padLength - 1);
+                $temp[$padLength - 1] = $temp[$padLength - 1] | \chr(0x80);
+                return $temp;
             case self::PADDING_SHAKE:
                 $temp = \chr(0x1f) . \str_repeat("\0", $padLength - 1);
                 $temp[$padLength - 1] = $temp[$padLength - 1] | \chr(0x80);
@@ -858,7 +829,6 @@ class Hash
      * capacity c". This is relevant because, altho the KECCAK standard defines a mode
      * (KECCAK-f[800]) designed for 32-bit machines that mode is incompatible with SHA3
      *
-     * @access private
      * @param string $p
      * @param int $c
      * @param int $r
@@ -906,7 +876,6 @@ class Hash
     /**
      * 32-bit block processing method for SHA3
      *
-     * @access private
      * @param array $s
      */
     private static function processSHA3Block32(&$s)
@@ -953,7 +922,6 @@ class Hash
     /**
      * Rotate 32-bit int
      *
-     * @access private
      * @param array $x
      * @param int $shift
      */
@@ -970,7 +938,6 @@ class Hash
     /**
      * Pure-PHP 64-bit implementation of SHA3
      *
-     * @access private
      * @param string $p
      * @param int $c
      * @param int $r
@@ -1017,7 +984,6 @@ class Hash
     /**
      * 64-bit block processing method for SHA3
      *
-     * @access private
      * @param array $s
      */
     private static function processSHA3Block64(&$s)
@@ -1054,7 +1020,6 @@ class Hash
     /**
      * Rotate 64-bit int
      *
-     * @access private
      * @param int $x
      * @param int $shift
      */
@@ -1065,7 +1030,6 @@ class Hash
     /**
      * Pure-PHP implementation of SHA512
      *
-     * @access private
      * @param string $m
      * @param array $hash
      * @return string
@@ -1078,7 +1042,7 @@ class Hash
             // (first 64 bits of the fractional parts of the cube roots of the first 80 primes 2..409)
             $k = ['428a2f98d728ae22', '7137449123ef65cd', 'b5c0fbcfec4d3b2f', 'e9b5dba58189dbbc', '3956c25bf348b538', '59f111f1b605d019', '923f82a4af194f9b', 'ab1c5ed5da6d8118', 'd807aa98a3030242', '12835b0145706fbe', '243185be4ee4b28c', '550c7dc3d5ffb4e2', '72be5d74f27b896f', '80deb1fe3b1696b1', '9bdc06a725c71235', 'c19bf174cf692694', 'e49b69c19ef14ad2', 'efbe4786384f25e3', '0fc19dc68b8cd5b5', '240ca1cc77ac9c65', '2de92c6f592b0275', '4a7484aa6ea6e483', '5cb0a9dcbd41fbd4', '76f988da831153b5', '983e5152ee66dfab', 'a831c66d2db43210', 'b00327c898fb213f', 'bf597fc7beef0ee4', 'c6e00bf33da88fc2', 'd5a79147930aa725', '06ca6351e003826f', '142929670a0e6e70', '27b70a8546d22ffc', '2e1b21385c26c926', '4d2c6dfc5ac42aed', '53380d139d95b3df', '650a73548baf63de', '766a0abb3c77b2a8', '81c2c92e47edaee6', '92722c851482353b', 'a2bfe8a14cf10364', 'a81a664bbc423001', 'c24b8b70d0f89791', 'c76c51a30654be30', 'd192e819d6ef5218', 'd69906245565a910', 'f40e35855771202a', '106aa07032bbd1b8', '19a4c116b8d2d0c8', '1e376c085141ab53', '2748774cdf8eeb99', '34b0bcb5e19b48a8', '391c0cb3c5c95a63', '4ed8aa4ae3418acb', '5b9cca4f7763e373', '682e6ff3d6b2b8a3', '748f82ee5defb2fc', '78a5636f43172f60', '84c87814a1f0ab72', '8cc702081a6439ec', '90befffa23631e28', 'a4506cebde82bde9', 'bef9a3f7b2c67915', 'c67178f2e372532b', 'ca273eceea26619c', 'd186b8c721c0c207', 'eada7dd6cde0eb1e', 'f57d4f7fee6ed178', '06f067aa72176fba', '0a637dc5a2c898a6', '113f9804bef90dae', '1b710b35131c471b', '28db77f523047d84', '32caab7b40c72493', '3c9ebe0a15c9bebc', '431d67c49c100d4c', '4cc5d4becb3e42b6', '597f299cfc657e2a', '5fcb6fab3ad6faec', '6c44198c4a475817'];
             for ($i = 0; $i < 80; $i++) {
-                $k[$i] = new \phpseclib3\Math\BigInteger($k[$i], 16);
+                $k[$i] = new BigInteger($k[$i], 16);
             }
         }
         // Pre-processing
@@ -1093,7 +1057,7 @@ class Hash
         foreach ($chunks as $chunk) {
             $w = [];
             for ($i = 0; $i < 16; $i++) {
-                $temp = new \phpseclib3\Math\BigInteger(\phpseclib3\Common\Functions\Strings::shift($chunk, 8), 256);
+                $temp = new BigInteger(Strings::shift($chunk, 8), 256);
                 $temp->setPrecision(64);
                 $w[] = $temp;
             }

@@ -6,18 +6,18 @@ use Exception;
 use WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\CouldNotDownloadCertificate\HostDoesNotExist;
 use WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\CouldNotDownloadCertificate\NoCertificateInstalled;
 use WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\CouldNotDownloadCertificate\UnknownError;
-class CouldNotDownloadCertificate extends \Exception
+class CouldNotDownloadCertificate extends Exception
 {
     public static function hostDoesNotExist(string $hostName) : self
     {
-        return new \WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\CouldNotDownloadCertificate\HostDoesNotExist($hostName);
+        return new HostDoesNotExist($hostName);
     }
     public static function noCertificateInstalled(string $hostName) : self
     {
-        return new \WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\CouldNotDownloadCertificate\NoCertificateInstalled($hostName);
+        return new NoCertificateInstalled($hostName);
     }
     public static function unknownError(string $hostName, string $errorMessage) : self
     {
-        return new \WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\CouldNotDownloadCertificate\UnknownError($hostName, $errorMessage);
+        return new UnknownError($hostName, $errorMessage);
     }
 }

@@ -16,7 +16,7 @@ namespace WP_Ultimo\Dependencies\ScssPhp\ScssPhp;
  *
  * @author Leaf Corcoran <leafot@gmail.com>
  */
-class Version
+final class Version
 {
-    const VERSION = '1.4.0';
+    const VERSION = '1.10.2';
 }

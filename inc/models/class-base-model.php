@@ -81,7 +81,7 @@ abstract class Base_Model implements \JsonSerializable {
 	public $meta = array();
 
 	/**
-	 * The id of the original 1.X model that was used to generate this item on migration.
+	 * The ID of the original 1.X model that was used to generate this item on migration.
 	 *
 	 * @since 2.0.0
 	 * @var int
@@ -103,6 +103,14 @@ abstract class Base_Model implements \JsonSerializable {
 	 * @var Base_Model
 	 */
 	protected $_original;
+
+	/**
+	 * Map setters to other parameters.
+	 *
+	 * @since 2.0.0
+	 * @var array
+	 */
+	protected $_mappings = array();
 
 	/**
 	 * Mocked status. Used to suppress errors.
@@ -229,13 +237,21 @@ abstract class Base_Model implements \JsonSerializable {
 
 			if ($key === 'meta' && is_array($value)) {
 
-				$this->meta = $value;
+				$this->meta = is_array($this->meta) ? array_merge($this->meta, $value) : $value;
 
 			} // end if;
 
 			if (method_exists($this, "set_$key")) {
 
 				call_user_func(array($this, "set_$key"), $value);
+
+			} // end if;
+
+			$mapping = wu_get_isset($this->_mappings, $key);
+
+			if ($mapping && method_exists($this, "set_$mapping")) {
+
+				call_user_func(array($this, "set_$mapping"), $value);
 
 			} // end if;
 
@@ -411,7 +427,7 @@ abstract class Base_Model implements \JsonSerializable {
 	 */
 	public function get_id() {
 
-		return abs($this->id);
+		return absint($this->id);
 
 	} // end get_id;
 
@@ -487,6 +503,12 @@ abstract class Base_Model implements \JsonSerializable {
 
 		} // end if;
 
+		foreach ($validator->get_validation()->getValidData() as $key => $value) {
+
+			$this->{$key} = $value;
+
+		} // end foreach;
+
 		return true;
 
 	} // end validate;
@@ -496,7 +518,7 @@ abstract class Base_Model implements \JsonSerializable {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @return bool
+	 * @return bool|\WP_Error
 	 */
 	public function save() {
 
@@ -510,6 +532,17 @@ abstract class Base_Model implements \JsonSerializable {
 
 		$meta = wu_get_isset($data, 'meta', array());
 
+		/**
+		 * Filters the data meta before it is serialized to be stored into the database.
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param array      $meta The meta data that will be stored, unserializedserialized.
+		 * @param array      $data_unserialized The object data that will be stored.
+		 * @param Base_Model $this The object instance.
+		 */
+		$meta = apply_filters("wu_{$this->model}_meta_pre_save", $meta, $data_unserialized, $this);
+
 		$blocked_attributes = array(
 			'query_class',
 			'meta',
@@ -520,6 +553,8 @@ abstract class Base_Model implements \JsonSerializable {
 			unset($data[$attribute]);
 
 		} // end foreach;
+
+		$this->validate();
 
 		$data = array_map('maybe_serialize', $data);
 
@@ -577,6 +612,8 @@ abstract class Base_Model implements \JsonSerializable {
 		if (!empty($meta)) {
 
 			$this->update_meta_batch($meta);
+
+			$saved = true;
 
 		} // end if;
 
@@ -773,11 +810,7 @@ abstract class Base_Model implements \JsonSerializable {
 
 		foreach ($meta as $key => $value) {
 
-			$success = update_metadata($meta_type, $this->get_id(), $key, $value);
-
-			if (!$success) {
-				// break;
-			} // end if;
+			update_metadata($meta_type, $this->get_id(), $key, $value);
 
 		} // end foreach;
 
@@ -866,6 +899,7 @@ abstract class Base_Model implements \JsonSerializable {
 		unset($array['meta']);
 		unset($array['meta_fields']);
 		unset($array['_original']);
+		unset($array['_mappings']);
 		unset($array['_mocked']);
 
 		foreach ($array as $key => $value) {
@@ -948,7 +982,7 @@ abstract class Base_Model implements \JsonSerializable {
 
 		if (!wu_validate_date($this->date_created)) {
 
-			return current_time('mysql');
+			return wu_get_current_time('mysql');
 
 		} // end if;
 
@@ -966,7 +1000,7 @@ abstract class Base_Model implements \JsonSerializable {
 
 		if (!wu_validate_date($this->date_modified)) {
 
-			return current_time('mysql');
+			return wu_get_current_time('mysql');
 
 		} // end if;
 
@@ -1001,7 +1035,7 @@ abstract class Base_Model implements \JsonSerializable {
 	} // end set_date_modified;
 
 	/**
-	 * Get the id of the original 1.X model that was used to generate this item on migration..
+	 * Get the id of the original 1.X model that was used to generate this item on migration.
 	 *
 	 * @since 2.0.0
 	 * @return int
@@ -1013,15 +1047,15 @@ abstract class Base_Model implements \JsonSerializable {
 	} // end get_migrated_from_id;
 
 	/**
-	 * Set the id of the original 1.X model that was used to generate this item on migration..
+	 * Set the id of the original 1.X model that was used to generate this item on migration.
 	 *
 	 * @since 2.0.0
-	 * @param int $migrated_from_id The id of the original 1.X model that was used to generate this item on migration.
+	 * @param int $migrated_from_id The ID of the original 1.X model that was used to generate this item on migration.
 	 * @return void
 	 */
 	public function set_migrated_from_id($migrated_from_id) {
 
-		$this->migrated_from_id = $migrated_from_id;
+		$this->migrated_from_id = absint($migrated_from_id);
 
 	} // end set_migrated_from_id;
 
@@ -1036,6 +1070,56 @@ abstract class Base_Model implements \JsonSerializable {
 		return !empty($this->get_migrated_from_id());
 
 	} // end is_migrated;
+
+	/**
+	 * Helper method to return formatted values.
+	 *
+	 * Deals with:
+	 * - currency values;
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $key The key to return.
+	 * @return mixed
+	 */
+	public function get_formatted_amount($key = 'amount') {
+
+		$value = (float) $this->{"get_{$key}"}();
+
+		if (is_numeric($value)) {
+
+			return wu_format_currency($value);
+
+		} // end if;
+
+		return $value;
+
+	} // end get_formatted_amount;
+
+	/**
+	 * Helper method to return formatted dates.
+	 *
+	 * Deals with:
+	 * - dates
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $key The key to return.
+	 * @return mixed
+	 */
+	public function get_formatted_date($key = 'date_created') {
+
+		$value = $this->{"get_{$key}"}();
+
+		if (wu_validate_date($value)) {
+
+			return date_i18n(get_option('date_format'), wu_date($value)->format('U'));
+
+		} // end if;
+
+		return $value;
+
+	} // end get_formatted_date;
 
 	/**
 	 * Get all items.
@@ -1065,13 +1149,15 @@ abstract class Base_Model implements \JsonSerializable {
 	 */
 	public function duplicate() {
 
+		$this->hydrate();
+
 		$clone = clone $this;
 
 		$clone->set_id(0);
 
 		if (method_exists($clone, 'set_date_created')) {
 
-			$clone->set_date_created(current_time('mysql'));
+			$clone->set_date_created(wu_get_current_time('mysql'));
 
 		} // end if;
 
@@ -1080,10 +1166,53 @@ abstract class Base_Model implements \JsonSerializable {
 	} // end duplicate;
 
 	/**
+	 * Populate the data the resides on meta tables.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function hydrate() {
+
+		$attributes = get_object_vars($this);
+
+		foreach ($attributes as $attribute => $maybe_null) {
+
+			if ($maybe_null === null) {
+
+				$possible_setters = array(
+					"get_{$attribute}",
+					"is_{$attribute}",
+				);
+
+				foreach ($possible_setters as $setter) {
+
+					if (method_exists($this, $setter)) {
+
+						$value = $this->{$setter}();
+
+						if (method_exists($this, "set_{$attribute}")) {
+
+							$this->{"set_{$attribute}"}($value);
+
+						} // end if;
+
+						continue;
+
+					} // end if;
+
+				} // end foreach;
+
+			} // end if;
+
+		} // end foreach;
+
+	} // end hydrate;
+
+	/**
 	 * Set set this to true to skip validations when saving..
 	 *
 	 * @since 2.0.0
-	 * @param boolean $skip_validation Set this to true to skip validations when saving.
+	 * @param boolean $skip_validation Set true to have field information validation bypassed when saving this event.
 	 * @return void
 	 */
 	public function set_skip_validation($skip_validation = false) {
@@ -1105,95 +1234,39 @@ abstract class Base_Model implements \JsonSerializable {
 	} // end _get_original;
 
 	/**
-	 * Return arguments schema for the rest api.
-	 *
-	 * This function gets the information from the model and
-	 * the database schema to automatic generate the arguments
-	 * schema for the rest api.
+	 * Locks this model.
 	 *
 	 * @since 2.0.0
-	 *
-	 * @param bool $edit Context. In edit, some fields, like ids, are not mandatory.
-	 * @return array The arguments for an endpoint.
+	 * @return bool
 	 */
-	public static function get_arguments_for_rest($edit = false) {
-		/*
-		 * Check if validations rules are present.
-		 */
-		$required_fields = array();
+	public function lock() {
 
-		if (method_exists(static::class, 'validation_rules') && !$edit) {
+		return $this->update_meta('wu_lock', true);
 
-			$validation_rules = (new static)->validation_rules();
+	} // end lock;
 
-			foreach ($validation_rules as $field => $validation_rule) {
+	/**
+	 * Check ths lock status of the model.
+	 *
+	 * @since 2.0.0
+	 * @return boolean
+	 */
+	public function is_locked() {
 
-				if (strpos($validation_rule, 'required|') !== false || $validation_rule === 'required') {
+		return $this->get_meta('wu_lock', false);
 
-					$required_fields[] = $field;
+	} // end is_locked;
 
-				} // end if;
+	/**
+	 * Unlocks the model.
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	public function unlock() {
 
-			} // end foreach;
+		return $this->delete_meta('wu_lock');
 
-		} // end if;
-
-		$set_methods = array_filter(get_class_methods(static::class), function($method_name) {
-
-			return preg_match('/^set_/', $method_name);
-
-		});
-
-		$name_methods_without_prefix_set = array_map(function($method_name) {
-
-			return str_replace('set_', '', $method_name);
-
-		}, $set_methods);
-
-		$schema = array_filter(static::get_schema(), function($column) use ($name_methods_without_prefix_set) {
-
-			return in_array($column['name'], $name_methods_without_prefix_set, true);
-
-		});
-
-		$reflector = new \ReflectionClass(static::class);
-
-		$doc_block_factory = \WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlockFactory::createInstance();
-
-		$arguments = array();
-
-		foreach ($schema as $column) {
-
-			$doc_block = $doc_block_factory->create($reflector->getMethod("set_{$column['name']}")->getDocComment());
-
-			$param = $doc_block->getTagsByName('param');
-
-			if (isset($param[0]) && is_object($param[0])) {
-
-				$arguments[$column['name']] = array(
-					'description' => (string) $param[0]->getDescription(),
-					'type'        => (string) $param[0]->getType(),
-					'required'    => in_array($column['name'], $required_fields, true),
-				);
-
-				if (preg_match( '/^ENUM/', $column['type'])) {
-
-					preg_match_all("/'(.*?)'/", $column['type'], $matches);
-
-					if (isset($matches[1])) {
-
-						$arguments[$column['name']]['enum'] = array_map('strtolower', $matches[1]);
-
-					} // end if;
-
-				} // end if;
-
-			} // end if;
-
-		} // end foreach;
-
-		return $arguments;
-
-	} // end get_arguments_for_rest;
+	} // end unlock;
 
 } // end class Base_Model;

@@ -21,13 +21,13 @@ class JsonFileLoader extends \Symfony\Component\Translation\Loader\FileLoader
     /**
      * {@inheritdoc}
      */
-    protected function loadResource($resource)
+    protected function loadResource(string $resource)
     {
         $messages = [];
         if ($data = \file_get_contents($resource)) {
             $messages = \json_decode($data, \true);
             if (0 < ($errorCode = \json_last_error())) {
-                throw new \Symfony\Component\Translation\Exception\InvalidResourceException('Error parsing JSON: ' . $this->getJSONErrorMessage($errorCode));
+                throw new InvalidResourceException('Error parsing JSON: ' . $this->getJSONErrorMessage($errorCode));
             }
         }
         return $messages;

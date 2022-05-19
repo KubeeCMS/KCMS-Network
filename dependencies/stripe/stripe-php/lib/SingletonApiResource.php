@@ -5,11 +5,11 @@ namespace WP_Ultimo\Dependencies\Stripe;
 /**
  * Class SingletonApiResource.
  */
-abstract class SingletonApiResource extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+abstract class SingletonApiResource extends ApiResource
 {
     protected static function _singletonRetrieve($options = null)
     {
-        $opts = \WP_Ultimo\Dependencies\Stripe\Util\RequestOptions::parse($options);
+        $opts = Util\RequestOptions::parse($options);
         $instance = new static(null, $opts);
         $instance->refresh();
         return $instance;
@@ -21,6 +21,7 @@ abstract class SingletonApiResource extends \WP_Ultimo\Dependencies\Stripe\ApiRe
     {
         // Replace dots with slashes for namespaced resources, e.g. if the object's name is
         // "foo.bar", then its URL will be "/v1/foo/bar".
+        /** @phpstan-ignore-next-line */
         $base = \str_replace('.', '/', static::OBJECT_NAME);
         return "/v1/{$base}";
     }

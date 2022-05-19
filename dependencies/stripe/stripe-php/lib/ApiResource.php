@@ -5,7 +5,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
 /**
  * Class ApiResource.
  */
-abstract class ApiResource extends \WP_Ultimo\Dependencies\Stripe\StripeObject
+abstract class ApiResource extends StripeObject
 {
     use ApiOperations\Request;
     /**
@@ -19,7 +19,7 @@ abstract class ApiResource extends \WP_Ultimo\Dependencies\Stripe\StripeObject
     {
         static $savedNestedResources = null;
         if (null === $savedNestedResources) {
-            $savedNestedResources = new \WP_Ultimo\Dependencies\Stripe\Util\Set();
+            $savedNestedResources = new Util\Set();
         }
         return $savedNestedResources;
     }
@@ -35,7 +35,7 @@ abstract class ApiResource extends \WP_Ultimo\Dependencies\Stripe\StripeObject
     {
         parent::__set($k, $v);
         $v = $this->{$k};
-        if (static::getSavedNestedResources()->includes($k) && $v instanceof \WP_Ultimo\Dependencies\Stripe\ApiResource) {
+        if (static::getSavedNestedResources()->includes($k) && $v instanceof ApiResource) {
             $v->saveWithParent = \true;
         }
     }
@@ -46,7 +46,7 @@ abstract class ApiResource extends \WP_Ultimo\Dependencies\Stripe\StripeObject
      */
     public function refresh()
     {
-        $requestor = new \WP_Ultimo\Dependencies\Stripe\ApiRequestor($this->_opts->apiKey, static::baseUrl());
+        $requestor = new ApiRequestor($this->_opts->apiKey, static::baseUrl());
         $url = $this->instanceUrl();
         list($response, $this->_opts->apiKey) = $requestor->request('get', $url, $this->_retrieveOptions, $this->_opts->headers);
         $this->setLastResponse($response);
@@ -58,7 +58,7 @@ abstract class ApiResource extends \WP_Ultimo\Dependencies\Stripe\StripeObject
      */
     public static function baseUrl()
     {
-        return \WP_Ultimo\Dependencies\Stripe\Stripe::$apiBase;
+        return Stripe::$apiBase;
     }
     /**
      * @return string the endpoint URL for the given class
@@ -67,6 +67,7 @@ abstract class ApiResource extends \WP_Ultimo\Dependencies\Stripe\StripeObject
     {
         // Replace dots with slashes for namespaced resources, e.g. if the object's name is
         // "foo.bar", then its URL will be "/v1/foo/bars".
+        /** @phpstan-ignore-next-line */
         $base = \str_replace('.', '/', static::OBJECT_NAME);
         return "/v1/{$base}s";
     }
@@ -82,9 +83,9 @@ abstract class ApiResource extends \WP_Ultimo\Dependencies\Stripe\StripeObject
         if (null === $id) {
             $class = static::class;
             $message = 'Could not determine which URL to request: ' . "{$class} instance has invalid ID: {$id}";
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException($message);
+            throw new Exception\UnexpectedValueException($message);
         }
-        $id = \WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($id);
+        $id = Util\Util::utf8($id);
         $base = static::classUrl();
         $extn = \urlencode($id);
         return "{$base}/{$extn}";

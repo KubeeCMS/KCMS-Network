@@ -94,7 +94,7 @@ class Event_View_Admin_Page extends Edit_Admin_Page {
 
 		wp_enqueue_script('wu-event-view');
 
-		wp_enqueue_script('wu-clipboard');
+		wp_enqueue_script('clipboard');
 
 		wp_enqueue_script('wu-vue');
 

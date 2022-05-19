@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class AlphaNum extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class AlphaNum extends Rule
 {
     /** @var string */
     protected $message = "The :attribute only allows alphabet and numeric";

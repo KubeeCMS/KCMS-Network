@@ -50,7 +50,7 @@ class API {
 		 *
 		 * @since 1.7.4
 		 */
-		add_filter('init', array($this, 'add_settings'));
+		add_action('init', array($this, 'add_settings'));
 
 		/**
 		 * Refreshing API credentials
@@ -66,7 +66,14 @@ class API {
 		 */
 		add_action('rest_api_init', array($this, 'register_routes'));
 
-	}  // end __construct;
+		/**
+		 * Log API errors
+		 *
+		 * @since 2.0.0
+		 */
+		add_action('rest_request_after_callbacks', array($this, 'log_api_errors'), 10, 3);
+
+	} // end __construct;
 
 	/**
 	 * Allow admins to refresh their API credentials.
@@ -77,6 +84,8 @@ class API {
 	public function refresh_API_credentials() { // phpcs:ignore
 
 		if (wu_request('submit_button') === 'refresh_api_credentials') {
+
+			wu_save_setting('api_url', network_site_url());
 
 			wu_save_setting('api_key', wp_generate_password(24, false));
 
@@ -104,7 +113,7 @@ class API {
 			'title' => __('API & Webhooks', 'wp-ultimo'),
 			'desc'  => __('API & Webhooks', 'wp-ultimo'),
 			'icon'  => 'dashicons-wu-paper-plane',
-			'order' => 85,
+			'order' => 95,
 		));
 
 		wu_register_settings_field('api', 'api_header', array(
@@ -128,9 +137,21 @@ class API {
 
 		} // end if;
 
+		wu_register_settings_field('api', 'api_url', array(
+			'title'   => __('API URL', 'wp-ultimo'),
+			'desc'    => '',
+			'tooltip' => '',
+			'copy'    => true,
+			'type'    => 'text-display',
+			'default' => network_site_url(),
+			'require' => array(
+				'enable_api' => true,
+			),
+		));
+
 		wu_register_settings_field('api', 'api_key', array(
 			'title'           => __('API Key', 'wp-ultimo') . $refreshed_tag,
-			'desc'            => __('This is your API Key. You cannot change it directly. To reset the API key and secret, use the button "Refresh API credentials" below.', 'wp-ultimo'),
+			'desc'            => '',
 			'tooltip'         => '',
 			'type'            => 'text-display',
 			'copy'            => true,
@@ -153,11 +174,21 @@ class API {
 			),
 		));
 
+		wu_register_settings_field('api', 'api_note', array(
+			'desc'            => __('This is your API Key. You cannot change it directly. To reset the API key and secret, use the button "Refresh API credentials" below.', 'wp-ultimo'),
+			'type'            => 'note',
+			'classes'         => 'wu-text-gray-700 wu-text-xs',
+			'wrapper_classes' => 'wu-bg-white sm:wu-border-t-0 sm:wu-mt-0 sm:wu-pt-0',
+			'require'         => array(
+				'enable_api' => 1,
+			),
+		));
+
 		wu_register_settings_field('api', 'refresh_api_credentials', array(
 			'title'           => __('Refresh API Credentials', 'wp-ultimo'),
 			'type'            => 'submit',
 			'classes'         => 'button wu-ml-auto',
-			'wrapper_classes' => 'wu-bg-white wu-flex wu-justify-end',
+			'wrapper_classes' => 'wu-bg-white sm:wu-border-t-0 sm:wu-mt-0 sm:wu-pt-0',
 			'require'         => array(
 				'enable_api' => 1,
 			),
@@ -230,6 +261,18 @@ class API {
 	} // end validate_credentials;
 
 	/**
+	 * Check if we can log api calls.
+	 *
+	 * @since 2.0.0
+	 * @return boolean
+	 */
+	public function should_log_api_calls() {
+
+		return apply_filters('wu_should_log_api_calls', wu_get_setting('api_log_calls', false));
+
+	} // end should_log_api_calls;
+
+	/**
 	 * Checks if we should log api calls or not, and if we should, log them.
 	 *
 	 * @since 2.0.0
@@ -238,7 +281,7 @@ class API {
 	 */
 	public function maybe_log_api_call($request) {
 
-		if (apply_filters('wu_should_log_api_calls', wu_get_setting('api_log_calls', false))) {
+		if ($this->should_log_api_calls()) {
 
 			$payload = array(
 				'route'       => $request->get_route(),
@@ -247,11 +290,48 @@ class API {
 				'body_params' => $request->get_body()
 			);
 
-			wu_log_add('api-calls', json_encode($payload));
+			wu_log_add('api-calls', json_encode($payload, JSON_PRETTY_PRINT));
 
 		} // end if;
 
 	} // end maybe_log_api_call;
+
+	/**
+	 * Log api errors.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param mixed            $result The result of the REST API call.
+	 * @param string|array     $handler The callback.
+	 * @param \WP_REST_Request $request The request object.
+	 * @return mixed
+	 */
+	public function log_api_errors($result, $handler, $request) {
+
+		if (is_wp_error($result) && strpos($request->get_route(), '/wu') === 0) {
+			/*
+			 * Log API call here if we didn't log it before.
+			 */
+			if (!$this->should_log_api_calls()) {
+
+				$payload = array(
+					'route'       => $request->get_route(),
+					'method'      => $request->get_method(),
+					'url_params'  => $request->get_url_params(),
+					'body_params' => $request->get_body()
+				);
+
+				wu_log_add('api-errors', json_encode($payload, JSON_PRETTY_PRINT));
+
+			} // end if;
+
+			wu_log_add('api-errors', $result);
+
+		} // end if;
+
+		return $result;
+
+	} // end log_api_errors;
 
 	/**
 	 * Tries to validate the API key and secret from the request
@@ -261,8 +341,6 @@ class API {
 	 * @return boolean
 	 */
 	public function check_authorization($request) {
-
-		$this->maybe_log_api_call($request);
 
 		if (isset($_SERVER['PHP_AUTH_USER']) && $_SERVER['PHP_AUTH_USER']) {
 
@@ -327,6 +405,16 @@ class API {
 			'callback'            => array($this, 'auth'),
 			'permission_callback' => array($this, 'check_authorization'),
 		));
+
+		/**
+		 * Allow additional routes to be registered.
+		 *
+		 * This is used by our /register endpoint.
+		 *
+		 * @since 2.0.0
+		 * @param self $this The current API instance.
+		 */
+		do_action('wu_register_rest_routes', $this);
 
 	} // end register_routes;
 

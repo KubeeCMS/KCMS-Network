@@ -10,7 +10,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property string $domain_name
  * @property bool $livemode Has the value <code>true</code> if the object exists in live mode or the value <code>false</code> if the object exists in test mode.
  */
-class ApplePayDomain extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class ApplePayDomain extends ApiResource
 {
     const OBJECT_NAME = 'apple_pay_domain';
     use ApiOperations\All;

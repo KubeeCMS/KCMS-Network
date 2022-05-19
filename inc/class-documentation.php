@@ -80,6 +80,9 @@ class Documentation {
 		$links['installation-errors'] = 'https://help.wpultimo.com/en/articles/4829568-installation-errors';
 		$links['migration-errors']    = 'https://help.wpultimo.com/en/articles/4829587-migration-errors';
 
+		// Multiple Accounts
+		$links['multiple-accounts'] = 'https://help.wpultimo.com/article/303-accounts-taken-care-of-with-wp-ultimo-multiple-accounts';
+
 		$this->links = apply_filters('wu_documentation_links_list', $links);
 
 	} // end init;

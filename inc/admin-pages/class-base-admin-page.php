@@ -14,8 +14,6 @@
 
 namespace WP_Ultimo\Admin_Pages;
 
-use \WP_Ultimo\Documentation;
-
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
@@ -185,7 +183,7 @@ abstract class Base_Admin_Page {
 		/*
 		 * Add forms
 		 */
-		add_action('admin_init', array($this, 'register_forms'));
+		add_action('plugins_loaded', array($this, 'register_forms'));
 
 		/**
 		 * Allow plugin developers to run additional things when pages are registered.
@@ -195,7 +193,7 @@ abstract class Base_Admin_Page {
 		 * being added using WP Ultimo code.
 		 *
 		 * @since 2.0.0
-		 * @param string $this->id The ID of this page.
+		 * @param string $page_id The ID of this page.
 		 * @return void
 		 */
 		do_action('wu_page_added', $this->id, $this->page_hook);
@@ -294,19 +292,29 @@ abstract class Base_Admin_Page {
 		 * Allow plugin developers to add additional hooks to our pages.
 		 *
 		 * @since 1.8.2
-		 * @param string $this->id The ID of this page.
+		 * @since 2.0.4 Added third parameter: the page instance.
+		 *
+		 * @param string $id The ID of this page.
+		 * @param string $page_hook The page hook of this page.
+		 * @param self   $admin_page TThe page instance.
+		 *
 		 * @return void
 		 */
-		do_action('wu_page_load', $this->id, $this->page_hook);
+		do_action('wu_page_load', $this->id, $this->page_hook, $this);
 
 		/**
 		 * Allow plugin developers to add additional hooks to our pages.
 		 *
 		 * @since 1.8.2
-		 * @param string $this->id The ID of this page.
+		 * @since 2.0.4 Added third parameter: the page instance.
+		 *
+		 * @param string $id The ID of this page.
+		 * @param string $page_hook The page hook of this page.
+		 * @param self   $admin_page TThe page instance.
+		 *
 		 * @return void
 		 */
-		do_action("wu_page_{$this->id}_load", $this->id, $this->page_hook);
+		do_action("wu_page_{$this->id}_load", $this->id, $this->page_hook, $this);
 
 		/**
 		 * Fixes menu highlights when necessary.
@@ -325,7 +333,7 @@ abstract class Base_Admin_Page {
 	 */
 	public function get_badge() {
 
-		$markup = '<span class="update-plugins count-%s">
+		$markup = '&nbsp;<span class="update-plugins count-%s">
       <span class="update-count">%s</span>
     </span>';
 
@@ -342,7 +350,7 @@ abstract class Base_Admin_Page {
 	final public function display() {
 
 		/**
-		 * 'Hacky' solution for the customer facing title problem... but good enough for now.
+		 * 'Hack-y' solution for the customer facing title problem... but good enough for now.
 		 *
 		 * @todo review when possible.
 		 */
@@ -405,7 +413,7 @@ abstract class Base_Admin_Page {
 	 */
 	public function get_menu_label() {
 
-		return $this->get_menu_title() . '&nbsp;' . $this->get_badge();
+		return $this->get_menu_title() . $this->get_badge();
 
 	} // end get_menu_label;
 
@@ -488,15 +496,35 @@ abstract class Base_Admin_Page {
 	 */
 	public function add_branding() {
 
-		add_action('in_admin_header', array($this, 'brand_header'));
+		if (apply_filters('wp_ultimo_remove_branding', false) === false) {
 
-		add_action('in_admin_footer', array($this, 'brand_footer'));
+			add_action('in_admin_header', array($this, 'brand_header'));
 
-		add_filter('admin_footer_text', '__return_empty_string', 1000);
+			add_action('wu_header_right', array($this, 'add_container_toggle'));
 
-		add_filter('update_footer', '__return_empty_string', 1000);
+			add_action('in_admin_footer', array($this, 'brand_footer'));
+
+			add_filter('admin_footer_text', '__return_empty_string', 1000);
+
+			add_filter('update_footer', '__return_empty_string', 1000);
+
+		} // end if;
 
 	} // end add_branding;
+
+	/**
+	 * Adds the Jumper trigger to the admin top pages.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function add_container_toggle() {
+
+		wu_get_template('ui/container-toggle', array(
+			'page' => $this,
+		));
+
+	} // end add_container_toggle;
 
 	/**
 	 * Adds the WP Ultimo branding header.

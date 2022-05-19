@@ -7,6 +7,7 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\PdfParser\Type;
 
 use setasign\Fpdi\PdfParser\CrossReference\CrossReferenceException;
@@ -19,10 +20,11 @@ use setasign\Fpdi\PdfParser\PdfParser;
 use setasign\Fpdi\PdfParser\PdfParserException;
 use setasign\Fpdi\PdfParser\StreamReader;
 use setasign\FpdiPdfParser\PdfParser\Filter\Predictor;
+
 /**
  * Class representing a PDF stream object
  */
-class PdfStream extends \setasign\Fpdi\PdfParser\Type\PdfType
+class PdfStream extends PdfType
 {
     /**
      * Parses a stream from a stream reader.
@@ -33,36 +35,47 @@ class PdfStream extends \setasign\Fpdi\PdfParser\Type\PdfType
      * @return self
      * @throws PdfTypeException
      */
-    public static function parse(\setasign\Fpdi\PdfParser\Type\PdfDictionary $dictionary, \setasign\Fpdi\PdfParser\StreamReader $reader, \setasign\Fpdi\PdfParser\PdfParser $parser = null)
+    public static function parse(PdfDictionary $dictionary, StreamReader $reader, PdfParser $parser = null)
     {
         $v = new self();
         $v->value = $dictionary;
         $v->reader = $reader;
         $v->parser = $parser;
+
         $offset = $reader->getOffset();
+
         // Find the first "newline"
-        while (($firstByte = $reader->getByte($offset)) !== \false) {
+        while (($firstByte = $reader->getByte($offset)) !== false) {
             if ($firstByte !== "\n" && $firstByte !== "\r") {
                 $offset++;
             } else {
                 break;
             }
         }
-        if ($firstByte === \false) {
-            throw new \setasign\Fpdi\PdfParser\Type\PdfTypeException('Unable to parse stream data. No newline after the stream keyword found.', \setasign\Fpdi\PdfParser\Type\PdfTypeException::NO_NEWLINE_AFTER_STREAM_KEYWORD);
+
+        if ($firstByte === false) {
+            throw new PdfTypeException(
+                'Unable to parse stream data. No newline after the stream keyword found.',
+                PdfTypeException::NO_NEWLINE_AFTER_STREAM_KEYWORD
+            );
         }
+
         $sndByte = $reader->getByte($offset + 1);
         if ($firstByte === "\n" || $firstByte === "\r") {
             $offset++;
         }
+
         if ($sndByte === "\n" && $firstByte !== "\n") {
             $offset++;
         }
+
         $reader->setOffset($offset);
         // let's only save the byte-offset and read the stream only when needed
         $v->stream = $reader->getPosition() + $reader->getOffset();
+
         return $v;
     }
+
     /**
      * Helper method to create an instance.
      *
@@ -70,13 +83,15 @@ class PdfStream extends \setasign\Fpdi\PdfParser\Type\PdfType
      * @param string $stream
      * @return self
      */
-    public static function create(\setasign\Fpdi\PdfParser\Type\PdfDictionary $dictionary, $stream)
+    public static function create(PdfDictionary $dictionary, $stream)
     {
         $v = new self();
         $v->value = $dictionary;
         $v->stream = (string) $stream;
+
         return $v;
     }
+
     /**
      * Ensures that the passed value is a PdfStream instance.
      *
@@ -86,26 +101,30 @@ class PdfStream extends \setasign\Fpdi\PdfParser\Type\PdfType
      */
     public static function ensure($stream)
     {
-        return \setasign\Fpdi\PdfParser\Type\PdfType::ensureType(self::class, $stream, 'Stream value expected.');
+        return PdfType::ensureType(self::class, $stream, 'Stream value expected.');
     }
+
     /**
      * The stream or its byte-offset position.
      *
      * @var int|string
      */
     protected $stream;
+
     /**
      * The stream reader instance.
      *
      * @var StreamReader|null
      */
     protected $reader;
+
     /**
      * The PDF parser instance.
      *
      * @var PdfParser
      */
     protected $parser;
+
     /**
      * Get the stream data.
      *
@@ -115,38 +134,43 @@ class PdfStream extends \setasign\Fpdi\PdfParser\Type\PdfType
      * @throws CrossReferenceException
      * @throws PdfParserException
      */
-    public function getStream($cache = \false)
+    public function getStream($cache = false)
     {
         if (\is_int($this->stream)) {
-            $length = \setasign\Fpdi\PdfParser\Type\PdfDictionary::get($this->value, 'Length');
+            $length = PdfDictionary::get($this->value, 'Length');
             if ($this->parser !== null) {
-                $length = \setasign\Fpdi\PdfParser\Type\PdfType::resolve($length, $this->parser);
+                $length = PdfType::resolve($length, $this->parser);
             }
-            if (!$length instanceof \setasign\Fpdi\PdfParser\Type\PdfNumeric || $length->value === 0) {
+
+            if (!($length instanceof PdfNumeric) || $length->value === 0) {
                 $this->reader->reset($this->stream, 100000);
                 $buffer = $this->extractStream();
             } else {
                 $this->reader->reset($this->stream, $length->value);
-                $buffer = $this->reader->getBuffer(\false);
+                $buffer = $this->reader->getBuffer(false);
                 if ($this->parser !== null) {
-                    $this->reader->reset($this->stream + \strlen($buffer));
+                    $this->reader->reset($this->stream + strlen($buffer));
                     $this->parser->getTokenizer()->clearStack();
                     $token = $this->parser->readValue();
-                    if ($token === \false || !$token instanceof \setasign\Fpdi\PdfParser\Type\PdfToken || $token->value !== 'endstream') {
+                    if ($token === false || !($token instanceof PdfToken) || $token->value !== 'endstream') {
                         $this->reader->reset($this->stream, 100000);
                         $buffer = $this->extractStream();
-                        $this->reader->reset($this->stream + \strlen($buffer));
+                        $this->reader->reset($this->stream + strlen($buffer));
                     }
                 }
             }
-            if ($cache === \false) {
+
+            if ($cache === false) {
                 return $buffer;
             }
+
             $this->stream = $buffer;
             $this->reader = null;
         }
+
         return $this->stream;
     }
+
     /**
      * Extract the stream "manually".
      *
@@ -155,38 +179,44 @@ class PdfStream extends \setasign\Fpdi\PdfParser\Type\PdfType
      */
     protected function extractStream()
     {
-        while (\true) {
-            $buffer = $this->reader->getBuffer(\false);
+        while (true) {
+            $buffer = $this->reader->getBuffer(false);
             $length = \strpos($buffer, 'endstream');
-            if ($length === \false) {
+            if ($length === false) {
                 if (!$this->reader->increaseLength(100000)) {
-                    throw new \setasign\Fpdi\PdfParser\Type\PdfTypeException('Cannot extract stream.');
+                    throw new PdfTypeException('Cannot extract stream.');
                 }
                 continue;
             }
             break;
         }
+
         $buffer = \substr($buffer, 0, $length);
         $lastByte = \substr($buffer, -1);
+
         /* Check for EOL marker =
          *   CARRIAGE RETURN (\r) and a LINE FEED (\n) or just a LINE FEED (\n},
          *   and not by a CARRIAGE RETURN (\r) alone
          */
         if ($lastByte === "\n") {
             $buffer = \substr($buffer, 0, -1);
+
             $lastByte = \substr($buffer, -1);
             if ($lastByte === "\r") {
                 $buffer = \substr($buffer, 0, -1);
             }
         }
+
         // There are streams in the wild, which have only white signs in them but need to be parsed manually due
         // to a problem encountered before (e.g. Length === 0). We should set them to empty streams to avoid problems
         // in further processing (e.g. applying of filters).
-        if (\trim($buffer) === '') {
+        if (trim($buffer) === '') {
             $buffer = '';
         }
+
         return $buffer;
     }
+
     /**
      * Get the unfiltered stream data.
      *
@@ -197,68 +227,100 @@ class PdfStream extends \setasign\Fpdi\PdfParser\Type\PdfType
     public function getUnfilteredStream()
     {
         $stream = $this->getStream();
-        $filters = \setasign\Fpdi\PdfParser\Type\PdfDictionary::get($this->value, 'Filter');
-        if ($filters instanceof \setasign\Fpdi\PdfParser\Type\PdfNull) {
+        $filters = PdfDictionary::get($this->value, 'Filter');
+        if ($filters instanceof PdfNull) {
             return $stream;
         }
-        if ($filters instanceof \setasign\Fpdi\PdfParser\Type\PdfArray) {
+
+        if ($filters instanceof PdfArray) {
             $filters = $filters->value;
         } else {
             $filters = [$filters];
         }
-        $decodeParams = \setasign\Fpdi\PdfParser\Type\PdfDictionary::get($this->value, 'DecodeParms');
-        if ($decodeParams instanceof \setasign\Fpdi\PdfParser\Type\PdfArray) {
+
+        $decodeParams = PdfDictionary::get($this->value, 'DecodeParms');
+        if ($decodeParams instanceof PdfArray) {
             $decodeParams = $decodeParams->value;
         } else {
             $decodeParams = [$decodeParams];
         }
+
         foreach ($filters as $key => $filter) {
-            if (!$filter instanceof \setasign\Fpdi\PdfParser\Type\PdfName) {
+            if (!($filter instanceof PdfName)) {
                 continue;
             }
+
             $decodeParam = null;
             if (isset($decodeParams[$key])) {
-                $decodeParam = $decodeParams[$key] instanceof \setasign\Fpdi\PdfParser\Type\PdfDictionary ? $decodeParams[$key] : null;
+                $decodeParam = ($decodeParams[$key] instanceof PdfDictionary ? $decodeParams[$key] : null);
             }
+
             switch ($filter->value) {
                 case 'FlateDecode':
                 case 'Fl':
                 case 'LZWDecode':
                 case 'LZW':
                     if (\strpos($filter->value, 'LZW') === 0) {
-                        $filterObject = new \setasign\Fpdi\PdfParser\Filter\Lzw();
+                        $filterObject = new Lzw();
                     } else {
-                        $filterObject = new \setasign\Fpdi\PdfParser\Filter\Flate();
+                        $filterObject = new Flate();
                     }
+
                     $stream = $filterObject->decode($stream);
-                    if ($decodeParam instanceof \setasign\Fpdi\PdfParser\Type\PdfDictionary) {
-                        $predictor = \setasign\Fpdi\PdfParser\Type\PdfDictionary::get($decodeParam, 'Predictor', \setasign\Fpdi\PdfParser\Type\PdfNumeric::create(1));
+
+                    if ($decodeParam instanceof PdfDictionary) {
+                        $predictor = PdfDictionary::get($decodeParam, 'Predictor', PdfNumeric::create(1));
                         if ($predictor->value !== 1) {
-                            if (!\class_exists(\setasign\FpdiPdfParser\PdfParser\Filter\Predictor::class)) {
-                                throw new \setasign\Fpdi\PdfParser\PdfParserException('This PDF document makes use of features which are only implemented in the ' . 'commercial "FPDI PDF-Parser" add-on (see https://www.setasign.com/fpdi-pdf-' . 'parser).', \setasign\Fpdi\PdfParser\PdfParserException::IMPLEMENTED_IN_FPDI_PDF_PARSER);
+                            if (!\class_exists(Predictor::class)) {
+                                throw new PdfParserException(
+                                    'This PDF document makes use of features which are only implemented in the ' .
+                                    'commercial "FPDI PDF-Parser" add-on (see https://www.setasign.com/fpdi-pdf-' .
+                                    'parser).',
+                                    PdfParserException::IMPLEMENTED_IN_FPDI_PDF_PARSER
+                                );
                             }
-                            $colors = \setasign\Fpdi\PdfParser\Type\PdfDictionary::get($decodeParam, 'Colors', \setasign\Fpdi\PdfParser\Type\PdfNumeric::create(1));
-                            $bitsPerComponent = \setasign\Fpdi\PdfParser\Type\PdfDictionary::get($decodeParam, 'BitsPerComponent', \setasign\Fpdi\PdfParser\Type\PdfNumeric::create(8));
-                            $columns = \setasign\Fpdi\PdfParser\Type\PdfDictionary::get($decodeParam, 'Columns', \setasign\Fpdi\PdfParser\Type\PdfNumeric::create(1));
-                            $filterObject = new \setasign\FpdiPdfParser\PdfParser\Filter\Predictor($predictor->value, $colors->value, $bitsPerComponent->value, $columns->value);
+
+                            $colors = PdfDictionary::get($decodeParam, 'Colors', PdfNumeric::create(1));
+                            $bitsPerComponent = PdfDictionary::get(
+                                $decodeParam,
+                                'BitsPerComponent',
+                                PdfNumeric::create(8)
+                            );
+
+                            $columns = PdfDictionary::get($decodeParam, 'Columns', PdfNumeric::create(1));
+
+                            $filterObject = new Predictor(
+                                $predictor->value,
+                                $colors->value,
+                                $bitsPerComponent->value,
+                                $columns->value
+                            );
+
                             $stream = $filterObject->decode($stream);
                         }
                     }
+
                     break;
                 case 'ASCII85Decode':
                 case 'A85':
-                    $filterObject = new \setasign\Fpdi\PdfParser\Filter\Ascii85();
+                    $filterObject = new Ascii85();
                     $stream = $filterObject->decode($stream);
                     break;
+
                 case 'ASCIIHexDecode':
                 case 'AHx':
-                    $filterObject = new \setasign\Fpdi\PdfParser\Filter\AsciiHex();
+                    $filterObject = new AsciiHex();
                     $stream = $filterObject->decode($stream);
                     break;
+
                 default:
-                    throw new \setasign\Fpdi\PdfParser\Filter\FilterException(\sprintf('Unsupported filter "%s".', $filter->value), \setasign\Fpdi\PdfParser\Filter\FilterException::UNSUPPORTED_FILTER);
+                    throw new FilterException(
+                        \sprintf('Unsupported filter "%s".', $filter->value),
+                        FilterException::UNSUPPORTED_FILTER
+                    );
             }
         }
+
         return $stream;
     }
 }

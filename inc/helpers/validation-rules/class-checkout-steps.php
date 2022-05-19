@@ -58,6 +58,12 @@ class Checkout_Steps extends Rule {
 
     $required_fields_list = array_keys($required_fields);
 
+    if (!$value || is_string($value)) {
+
+      return true;
+
+    } // end if;
+
 		$fields = array_column($value, 'fields');
 
 		if (empty($fields)) {
@@ -88,14 +94,14 @@ class Checkout_Steps extends Rule {
     } // end if;
 
     /**
-     * Allow developers to bypass the check if a field is auto-submitable.
+     * Allow developers to bypass the check if a field is auto-submittable.
      * 
      * @since 2.0.0
-     * @param array $submitable_field_types The list of field types.
+     * @param array $submittable_field_types The list of field types.
      * @return array
      */
-    $submitable_field_types = apply_filters(
-      'wu_checkout_step_validation_submitable_field_types', 
+    $submittable_field_types = apply_filters(
+      'wu_checkout_step_validation_submittable_field_types', 
       array(
         'submit_button',
         'pricing_table',
@@ -108,13 +114,13 @@ class Checkout_Steps extends Rule {
      */
     foreach ($value as $step) {
 
-      $submitable_fields =  \WP_Ultimo\Dependencies\Arrch\Arrch::find($step['fields'], array(
+      $found_submittable_field_types = \WP_Ultimo\Dependencies\Arrch\Arrch::find($step['fields'], array(
         'where'    => array(
-          array('type', $submitable_field_types),
+          array('type', $submittable_field_types),
         ),
       ));
 
-      if (empty($submitable_fields)) {
+      if (empty($found_submittable_field_types)) {
 
         $this->message = sprintf(__('The %s step is missing a submit field', 'wp-ultimo'), $step['name']);
 

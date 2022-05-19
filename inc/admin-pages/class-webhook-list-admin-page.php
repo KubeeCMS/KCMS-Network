@@ -9,8 +9,6 @@
 
 namespace WP_Ultimo\Admin_Pages;
 
-use WP_Ultimo\Models\Webhook;
-
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
@@ -93,7 +91,7 @@ class Webhook_List_Admin_Page extends List_Admin_Page {
 		wu_register_form('add_new_webhook_modal', array(
 			'render'     => array($this, 'render_add_new_webhook_modal'),
 			'handler'    => array($this, 'handle_add_new_webhook_modal'),
-			'capability' => 'wu_add_webhooks',
+			'capability' => 'wu_edit_webhooks',
 		));
 
 	} // end register_forms;
@@ -118,24 +116,24 @@ class Webhook_List_Admin_Page extends List_Admin_Page {
 
 		$fields = array(
 			'name'          => array(
-				'type'              => 'text',
-				'title'             => __('Webhook Name', 'wp-ultimo'),
-				'tooltip'           => __('A name to easily identify your webhook.', 'wp-ultimo'),
-				'placeholder'       => __('Enter a name for your webhook', 'wp-ultimo'),
+				'type'        => 'text',
+				'title'       => __('Webhook Name', 'wp-ultimo'),
+				'desc'        => __('A name to easily identify your webhook.', 'wp-ultimo'),
+				'placeholder' => __('E.g. Zapier Integration', 'wp-ultimo'),
 			),
-			'event'            => array(
-				'title'             => __('Event', 'wp-ultimo'),
-				'type'              => 'select',
-				'tooltip'           => __('The event that will trigger the webhook.', 'wp-ultimo'),
-				'options'           => $event_options
+			'event'         => array(
+				'title'   => __('Event', 'wp-ultimo'),
+				'type'    => 'select',
+				'desc'    => __('The event that will trigger the webhook.', 'wp-ultimo'),
+				'options' => $event_options
 			),
-			'webhook_url'           => array(
-				'type'              => 'url',
-				'title'             => __('Webhook Url', 'wp-ultimo'),
-				'tooltip'           => __('The url of your webhook.', 'wp-ultimo'),
-				'placeholder'       => __('https://example.com/', 'wp-ultimo'),
+			'webhook_url'   => array(
+				'type'        => 'url',
+				'title'       => __('Webhook Url', 'wp-ultimo'),
+				'desc'        => __('The url of your webhook.', 'wp-ultimo'),
+				'placeholder' => __('E.g. https://example.com/', 'wp-ultimo'),
 			),
-			'submit_button'           => array(
+			'submit_button' => array(
 				'type'            => 'submit',
 				'title'           => __('Add New Webhook', 'wp-ultimo'),
 				'value'           => 'save',
@@ -154,7 +152,7 @@ class Webhook_List_Admin_Page extends List_Admin_Page {
 			'html_attr'             => array(
 				'data-wu-app' => 'edit_line_item',
 				'data-state'  => json_encode(array(
-					'event'  => ''
+					'event' => ''
 				)),
 			),
 		));
@@ -196,6 +194,21 @@ class Webhook_List_Admin_Page extends List_Admin_Page {
 	 * @return void
 	 */
 	public function register_widgets() {} // end register_widgets;
+
+	/**
+	 * Returns an array with the labels for the edit page.
+	 *
+	 * @since 1.8.2
+	 * @return array
+	 */
+	public function get_labels() {
+
+		return array(
+			'deleted_message' => __('Webhook removed successfully.', 'wp-ultimo'),
+			'search_label'    => __('Search Webhook', 'wp-ultimo'),
+		);
+
+	} // end get_labels;
 
 	/**
 	 * Returns the title of the page.

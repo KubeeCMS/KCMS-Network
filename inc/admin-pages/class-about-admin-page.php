@@ -24,7 +24,6 @@ class About_Admin_Page extends Base_Admin_Page {
 	 */
 	protected $id = 'wp-ultimo-about';
 
-
 	/**
 	 * Is this a top-level menu or a submenu?
 	 *

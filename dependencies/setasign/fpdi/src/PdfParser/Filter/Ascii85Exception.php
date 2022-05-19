@@ -7,19 +7,21 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\PdfParser\Filter;
 
 /**
  * Exception for Ascii85 filter class
  */
-class Ascii85Exception extends \setasign\Fpdi\PdfParser\Filter\FilterException
+class Ascii85Exception extends FilterException
 {
     /**
      * @var integer
      */
-    const ILLEGAL_CHAR_FOUND = 0x301;
+    const ILLEGAL_CHAR_FOUND = 0x0301;
+
     /**
      * @var integer
      */
-    const ILLEGAL_LENGTH = 0x302;
+    const ILLEGAL_LENGTH = 0x0302;
 }

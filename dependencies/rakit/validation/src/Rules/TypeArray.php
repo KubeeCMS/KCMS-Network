@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class TypeArray extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class TypeArray extends Rule
 {
     /** @var string */
     protected $message = "The :attribute must be array";

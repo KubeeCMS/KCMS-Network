@@ -14,7 +14,7 @@ use WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface;
 /**
  * This translator should only be used in a development environment.
  */
-final class PseudoLocalizationTranslator implements \WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface
+final class PseudoLocalizationTranslator implements TranslatorInterface
 {
     private const EXPANSION_CHARACTER = '~';
     private $translator;
@@ -22,6 +22,9 @@ final class PseudoLocalizationTranslator implements \WP_Ultimo\Dependencies\Symf
     private $expansionFactor;
     private $brackets;
     private $parseHTML;
+    /**
+     * @var string[]
+     */
     private $localizableHTMLAttributes;
     /**
      * Available options:
@@ -56,7 +59,7 @@ final class PseudoLocalizationTranslator implements \WP_Ultimo\Dependencies\Symf
      *      description: the list of HTML attributes whose values can be altered - it is only useful when the "parse_html" option is set to true
      *      example: if ["title"], and with the "accents" option set to true, "<a href="#" title="Go to your profile">Profile</a>" => "<a href="#" title="Ĝö ţö ýöûŕ þŕöƒîļé">Þŕöƒîļé</a>" - if "title" was not in the "localizable_html_attributes" list, the title attribute data would be left unchanged.
      */
-    public function __construct(\WP_Ultimo\Dependencies\Symfony\Contracts\Translation\TranslatorInterface $translator, array $options = [])
+    public function __construct(TranslatorInterface $translator, array $options = [])
     {
         $this->translator = $translator;
         $this->accents = $options['accents'] ?? \true;
@@ -73,7 +76,7 @@ final class PseudoLocalizationTranslator implements \WP_Ultimo\Dependencies\Symf
     /**
      * {@inheritdoc}
      */
-    public function trans(string $id, array $parameters = [], string $domain = null, string $locale = null)
+    public function trans(string $id, array $parameters = [], string $domain = null, string $locale = null) : string
     {
         $trans = '';
         $visibleText = '';
@@ -91,12 +94,16 @@ final class PseudoLocalizationTranslator implements \WP_Ultimo\Dependencies\Symf
         $this->addBrackets($trans);
         return $trans;
     }
+    public function getLocale() : string
+    {
+        return $this->translator->getLocale();
+    }
     private function getParts(string $originalTrans) : array
     {
         if (!$this->parseHTML) {
             return [[\true, \true, $originalTrans]];
         }
-        $html = \mb_convert_encoding($originalTrans, 'HTML-ENTITIES', \mb_detect_encoding($originalTrans, null, \true) ?: 'UTF-8');
+        $html = \mb_encode_numericentity($originalTrans, [0x80, 0xffff, 0, 0xffff], \mb_detect_encoding($originalTrans, null, \true) ?: 'UTF-8');
         $useInternalErrors = \libxml_use_internal_errors(\true);
         $dom = new \DOMDocument();
         $dom->loadHTML('<trans>' . $html . '</trans>');

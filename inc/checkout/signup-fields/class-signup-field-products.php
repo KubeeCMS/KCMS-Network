@@ -71,9 +71,23 @@ class Signup_Field_Products extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('PT Description', 'wp-ultimo');
+		return __('Hidden field used to pre-select products. This is useful when you have a signup page for specific offering/bundles and do not want your customers to be able to choose plans and products manually.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Hidden field used to pre-select products. This is useful when you have a signup page for specific offering/bundles and do not want your customers to be able to choose plans and products manually.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -85,7 +99,7 @@ class Signup_Field_Products extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-before dashicons-tag';
+		return 'dashicons-wu dashicons-wu-package';
 
 	} // end get_icon;
 
@@ -146,6 +160,7 @@ class Signup_Field_Products extends Base_Signup_Field {
 				'type'        => 'model',
 				'title'       => __('Products', 'wp-ultimo'),
 				'placeholder' => __('Products', 'wp-ultimo'),
+				'desc'        => __('Use this field to pre-select products. This is useful when you have a signup page for specific offering/bundles and do not want your customers to be able to choose plans and other products manually.', 'wp-ultimo'),
 				'tooltip'     => '',
 				'html_attr'   => array(
 					'data-model'        => 'product',
@@ -176,11 +191,28 @@ class Signup_Field_Products extends Base_Signup_Field {
 		foreach ($products as $product_id) {
 
 			$checkout_fields["products[{$product_id}]"] = array(
-				'type'  => 'hidden',
-				'value' => $product_id,
+				'type'      => 'hidden',
+				'value'     => $product_id,
+				'html_attr' => array(
+					'v-bind:name' => "'products[]'",
+				),
 			);
 
 		} // end foreach;
+
+		wp_add_inline_script('wu-checkout', sprintf("
+			wp.hooks.addFilter('wu_before_form_init', 'nextpress/wp-ultimo', function(data) {
+				
+				if (typeof data !== 'undefined' && Array.isArray(data.products)) {
+					
+					data.products.push(...%s);
+
+				} // end if;
+
+				return data;
+				
+			});
+		", json_encode($products)), 'before');
 
 		return $checkout_fields;
 

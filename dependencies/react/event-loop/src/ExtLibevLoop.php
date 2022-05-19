@@ -1,20 +1,21 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\EventLoop;
+namespace React\EventLoop;
 
 use BadMethodCallException;
 use WP_Ultimo\Dependencies\libev\EventLoop;
 use WP_Ultimo\Dependencies\libev\IOEvent;
 use WP_Ultimo\Dependencies\libev\SignalEvent;
 use WP_Ultimo\Dependencies\libev\TimerEvent;
-use WP_Ultimo\Dependencies\React\EventLoop\Tick\FutureTickQueue;
-use WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer;
+use React\EventLoop\Tick\FutureTickQueue;
+use React\EventLoop\Timer\Timer;
 use SplObjectStorage;
 /**
- * An `ext-libev` based event loop.
+ * [Deprecated] An `ext-libev` based event loop.
  *
- * This uses an [unofficial `libev` extension](https://github.com/m4rw3r/php-libev).
- * It supports the same backends as libevent.
+ * This uses an [unofficial `libev` extension](https://github.com/m4rw3r/php-libev),
+ * that provides an interface to `libev` library.
+ * `libev` itself supports a number of system-specific backends (epoll, kqueue).
  *
  * This loop does only work with PHP 5.
  * An update for PHP 7 is [unlikely](https://github.com/m4rw3r/php-libev/issues/8)
@@ -22,8 +23,9 @@ use SplObjectStorage;
  *
  * @see https://github.com/m4rw3r/php-libev
  * @see https://gist.github.com/1688204
+ * @deprecated 1.2.0, use [`ExtEvLoop`](#extevloop) instead.
  */
-final class ExtLibevLoop implements \WP_Ultimo\Dependencies\React\EventLoop\LoopInterface
+final class ExtLibevLoop implements \React\EventLoop\LoopInterface
 {
     private $loop;
     private $futureTickQueue;
@@ -36,12 +38,12 @@ final class ExtLibevLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
     public function __construct()
     {
         if (!\class_exists('WP_Ultimo\\Dependencies\\libev\\EventLoop', \false)) {
-            throw new \BadMethodCallException('Cannot create ExtLibevLoop, ext-libev extension missing');
+            throw new BadMethodCallException('Cannot create ExtLibevLoop, ext-libev extension missing');
         }
-        $this->loop = new \WP_Ultimo\Dependencies\libev\EventLoop();
-        $this->futureTickQueue = new \WP_Ultimo\Dependencies\React\EventLoop\Tick\FutureTickQueue();
-        $this->timerEvents = new \SplObjectStorage();
-        $this->signals = new \WP_Ultimo\Dependencies\React\EventLoop\SignalsHandler();
+        $this->loop = new EventLoop();
+        $this->futureTickQueue = new FutureTickQueue();
+        $this->timerEvents = new SplObjectStorage();
+        $this->signals = new \React\EventLoop\SignalsHandler();
     }
     public function addReadStream($stream, $listener)
     {
@@ -51,7 +53,7 @@ final class ExtLibevLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
         $callback = function () use($stream, $listener) {
             \call_user_func($listener, $stream);
         };
-        $event = new \WP_Ultimo\Dependencies\libev\IOEvent($callback, $stream, \WP_Ultimo\Dependencies\libev\IOEvent::READ);
+        $event = new IOEvent($callback, $stream, IOEvent::READ);
         $this->loop->add($event);
         $this->readEvents[(int) $stream] = $event;
     }
@@ -63,7 +65,7 @@ final class ExtLibevLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
         $callback = function () use($stream, $listener) {
             \call_user_func($listener, $stream);
         };
-        $event = new \WP_Ultimo\Dependencies\libev\IOEvent($callback, $stream, \WP_Ultimo\Dependencies\libev\IOEvent::WRITE);
+        $event = new IOEvent($callback, $stream, IOEvent::WRITE);
         $this->loop->add($event);
         $this->writeEvents[(int) $stream] = $event;
     }
@@ -87,7 +89,7 @@ final class ExtLibevLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
     }
     public function addTimer($interval, $callback)
     {
-        $timer = new \WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer($interval, $callback, \false);
+        $timer = new Timer($interval, $callback, \false);
         $that = $this;
         $timers = $this->timerEvents;
         $callback = function () use($timer, $timers, $that) {
@@ -96,23 +98,23 @@ final class ExtLibevLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
                 $that->cancelTimer($timer);
             }
         };
-        $event = new \WP_Ultimo\Dependencies\libev\TimerEvent($callback, $timer->getInterval());
+        $event = new TimerEvent($callback, $timer->getInterval());
         $this->timerEvents->attach($timer, $event);
         $this->loop->add($event);
         return $timer;
     }
     public function addPeriodicTimer($interval, $callback)
     {
-        $timer = new \WP_Ultimo\Dependencies\React\EventLoop\Timer\Timer($interval, $callback, \true);
+        $timer = new Timer($interval, $callback, \true);
         $callback = function () use($timer) {
             \call_user_func($timer->getCallback(), $timer);
         };
-        $event = new \WP_Ultimo\Dependencies\libev\TimerEvent($callback, $interval, $interval);
+        $event = new TimerEvent($callback, $timer->getInterval(), $timer->getInterval());
         $this->timerEvents->attach($timer, $event);
         $this->loop->add($event);
         return $timer;
     }
-    public function cancelTimer(\WP_Ultimo\Dependencies\React\EventLoop\TimerInterface $timer)
+    public function cancelTimer(\React\EventLoop\TimerInterface $timer)
     {
         if (isset($this->timerEvents[$timer])) {
             $this->loop->remove($this->timerEvents[$timer]);
@@ -128,7 +130,7 @@ final class ExtLibevLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
         $this->signals->add($signal, $listener);
         if (!isset($this->signalEvents[$signal])) {
             $signals = $this->signals;
-            $this->signalEvents[$signal] = new \WP_Ultimo\Dependencies\libev\SignalEvent(function () use($signals, $signal) {
+            $this->signalEvents[$signal] = new SignalEvent(function () use($signals, $signal) {
                 $signals->call($signal);
             }, $signal);
             $this->loop->add($this->signalEvents[$signal]);
@@ -148,9 +150,9 @@ final class ExtLibevLoop implements \WP_Ultimo\Dependencies\React\EventLoop\Loop
         $this->running = \true;
         while ($this->running) {
             $this->futureTickQueue->tick();
-            $flags = \WP_Ultimo\Dependencies\libev\EventLoop::RUN_ONCE;
+            $flags = EventLoop::RUN_ONCE;
             if (!$this->running || !$this->futureTickQueue->isEmpty()) {
-                $flags |= \WP_Ultimo\Dependencies\libev\EventLoop::RUN_NOWAIT;
+                $flags |= EventLoop::RUN_NOWAIT;
             } elseif (!$this->readEvents && !$this->writeEvents && !$this->timerEvents->count() && $this->signals->isEmpty()) {
                 break;
             }

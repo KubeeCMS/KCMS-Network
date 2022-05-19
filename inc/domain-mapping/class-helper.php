@@ -46,7 +46,21 @@ class Helper {
 	 */
 	public static function is_development_mode() {
 
-		return preg_match('#(localhost|staging.*\.|\.local|\.dev)#', site_url());
+		$site_url = site_url();
+
+		$is_development_mode = preg_match('#(localhost|staging.*\.|\.local|\.test)#', $site_url);
+
+		/**
+		 * Allow plugin developers to add additional tests
+		 * for development mode.
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param bool   $is_development_mode The current development status.
+		 * @param string $site_url The site URL.
+		 * @return bool
+		 */
+		return apply_filters('wu_is_development_mode', $is_development_mode, $site_url);
 
 	} // end is_development_mode;
 
@@ -78,7 +92,12 @@ class Helper {
 
 		if (self::is_development_mode()) {
 
-			return self::get_local_network_ip();
+			$local_ip = self::get_local_network_ip();
+
+			/**
+			 * See more about this filter below, on this same method.
+			 */
+			return apply_filters('wu_get_network_public_ip', $local_ip, true);
 
 		} // end if;
 
@@ -110,7 +129,21 @@ class Helper {
 
 		} // end if;
 
-		return $_ip_address;
+		/**
+		 * Allow developers to change the public IP address of the network.
+		 *
+		 * This is displayed to the customer/users when new domains are mapped
+		 * and need DNS records configured.
+		 *
+		 * This is useful in cases where a load balancer might be present and IP might vary.
+		 *
+		 * @see https://wpultimo.feedbear.com/boards/bug-reports/posts/network-ip-filter-required
+		 *
+		 * @param string $_ip_address The public IP address.
+		 * @param bool $local True if this is a local network (localhost, .dev, etc.), false otherwise.
+		 * @return string The new IP address.
+		 */
+		return apply_filters('wu_get_network_public_ip', $_ip_address, false);
 
 	} // end get_network_public_ip;
 

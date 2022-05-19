@@ -1,6 +1,6 @@
 <?php
 /**
- * Billing Info
+ * Thank You Element
  *
  * @since 2.0.0
  */
@@ -38,10 +38,10 @@
         </div>
         <!-- Body Content - End -->
 
-        <ul class="wu-thank-you-info wu-flex wu-m-0 wu-px-4 wu-py-6 wu-list-none">
+        <ul class="wu-thank-you-info wu-grid wu-grid-cols-3 wu-gap-4 wu-m-0 wu-px-4 wu-py-6 wu-list-none">
           
           <!-- Info Item -->
-          <li class="wu-flex-1 wu-pr-8">
+          <li>
 
             <span class="wu-uppercase wu-text-sm wu-block">
             
@@ -53,23 +53,11 @@
             
               <?php echo $payment->get_hash(); ?>
 
-            </span>
+              <small class="wu-text-gray-600 wu-font-normal wu-m-0 wu-block">
+              
+                <?php echo date_i18n(get_option('date_format'), strtotime($payment->get_date_created())); ?>
 
-          </li>
-          <!-- Info Item - End -->
-          
-          <!-- Info Item -->
-          <li class="wu-flex-1 wu-pr-8">
-
-            <span class="wu-uppercase wu-text-sm wu-block">
-            
-              <?php _e('Date', 'wp-ultimo'); ?>
-            
-            </span>
-            
-            <span class="wu-text-md wu-font-bold wu-block">
-            
-              <?php echo date_i18n(get_option('date_format'), strtotime($payment->get_date_created())); ?>
+              </small>
 
             </span>
 
@@ -77,7 +65,7 @@
           <!-- Info Item - End -->
 
           <!-- Info Item -->
-          <li class="wu-flex-1 wu-pr-8">
+          <li>
 
             <span class="wu-uppercase wu-text-sm wu-block">
             
@@ -95,7 +83,7 @@
           <!-- Info Item - End -->
 
           <!-- Info Item -->
-          <li class="wu-flex-1 wu-pr-8">
+          <li>
 
             <span class="wu-uppercase wu-text-sm wu-block">
             
@@ -146,10 +134,10 @@
         </div>
         <!-- Body Content - End -->
 
-        <ul class="wu-thank-you-info wu-flex wu-m-0 wu-px-4 wu-py-6 wu-list-none">
+        <ul class="wu-thank-you-info wu-grid wu-grid-cols-2 wu-gap-4 wu-m-0 wu-px-4 wu-py-6 wu-list-none">
           
           <!-- Info Item -->
-          <li class="wu-flex-1 wu-pr-8">
+          <li>
 
             <span class="wu-uppercase wu-text-sm wu-block">
             
@@ -167,7 +155,7 @@
           <!-- Info Item - End -->
           
           <!-- Info Item -->
-          <li class="wu-flex-1 wu-pr-8">
+          <li>
 
             <span class="wu-uppercase wu-text-sm wu-block">
             
@@ -185,7 +173,7 @@
           <!-- Info Item - End -->
 
           <!-- Info Item -->
-          <li class="wu-flex-1 wu-pr-8">
+          <li>
 
             <span class="wu-uppercase wu-text-sm wu-block">
             
@@ -203,7 +191,7 @@
           <!-- Info Item - End -->
 
           <!-- Info Item -->
-          <li class="wu-flex-1 wu-pr-8">
+          <li>
 
             <span class="wu-uppercase wu-text-sm wu-block">
             
@@ -253,7 +241,7 @@
 
         <?php do_action('wu_thank_you_site_block', $payment, $membership, $customer); ?>
       
-        <div>
+        <div id="wu-sites">
           
           <?php if ($membership->get_sites()) : ?>
 
@@ -282,6 +270,10 @@
                         <?php echo $site->get_type_label(); ?>
                       </span>
 
+                      <span v-cloak v-if="creating && false" class="wu-align-middle wu-inline-block wu-rounded wu-px-2 wu-py-1 wu-uppercase wu-text-xs wu-font-bold wu-text-gray-700 wu-bg-gray-300">
+                        {{ progress }}%
+                      </span>
+
                     <?php else : ?>
 
                       <span class="wu-align-middle wu-inline-block wu-rounded wu-px-2 wu-py-1 wu-uppercase wu-text-xs wu-font-bold wu-bg-green-300 wu-text-green-700">
@@ -296,7 +288,7 @@
 
                     <span class="wu-text-sm">
                         
-                        <?php echo $site->get_active_site_url(); ?>
+                      <?php echo $site->get_active_site_url(); ?>
 
                     </span>
 
@@ -308,10 +300,14 @@
                     
                   <?php if ($site->get_type() === 'pending') : ?>
 
-                    <a href="<?php echo wu_get_current_url(); ?>" class="wu-block sm:wu-inline-block wu-no-underline">
+                    <a v-if="!creating" href="<?php echo wu_get_current_url(); ?>" class="wu-block sm:wu-inline-block wu-no-underline">
                       <span class="dashicons-wu-cycle wu-align-middle wu-mr-1"></span>
                       <?php _e('Check Status', 'wp-ultimo'); ?>
                     </a>
+                    <div v-else class="wu-block sm:wu-inline-block wu-no-underline">
+                      <span class="dashicons-wu-loader wu-align-middle wu-mr-1 wu-spin" style="display: inline-block;"></span>
+                      <?php _e('Creating', 'wp-ultimo'); ?>
+                    </div>
 
                   <?php else : ?>
 
@@ -320,7 +316,7 @@
                       <?php _e('Admin Panel', 'wp-ultimo'); ?>
                     </a>
 
-                    <a href="<?php echo esc_attr(get_site_url($site->get_id())); ?>" class="wu-block sm:wu-inline-block wu-no-underline" target="_blank">
+                    <a href="<?php echo esc_attr(wu_with_sso(get_site_url($site->get_id()))); ?>" class="wu-block sm:wu-inline-block wu-no-underline" target="_blank">
                       <span class="dashicons-wu-browser wu-align-middle wu-mr-1"></span>
                       <?php _e('Visit', 'wp-ultimo'); ?>
                     </a>

@@ -2,18 +2,14 @@
 /**
  * Discount Code Functions
  *
- * Helper functions to handle currency conversion and similar.
- *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Helper/Discount_Codes
- * @version     1.4.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
-
-use \WP_Ultimo\Models\Discount_Code;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
+
+use \WP_Ultimo\Models\Discount_Code;
 
 /**
  * Returns a discount code object searching by the code.
@@ -109,10 +105,11 @@ function wu_create_discount_code($discount_code_data) {
 		'value'           => false,
 		'setup_fee_value' => false,
 		'start_date'      => false,
-		'active'          => false,
+		'active'          => true,
 		'expiration_date' => false,
-		'date_created'    => current_time('mysql'),
-		'date_modified'   => current_time('mysql'),
+		'date_created'    => wu_get_current_time('mysql', true),
+		'date_modified'   => wu_get_current_time('mysql', true),
+		'skip_validation' => false,
 	));
 
 	$discount_code = new Discount_Code($discount_code_data);

@@ -13,8 +13,6 @@
  *
  * PHP version 5 and 7
  *
- * @category  Crypt
- * @package   EC
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -22,17 +20,15 @@
  */
 namespace phpseclib3\Crypt\EC\BaseCurves;
 
-use phpseclib3\Math\Common\FiniteField\Integer;
 use phpseclib3\Common\Functions\Strings;
-use phpseclib3\Math\PrimeField;
 use phpseclib3\Math\BigInteger;
+use phpseclib3\Math\Common\FiniteField\Integer;
+use phpseclib3\Math\PrimeField;
 use phpseclib3\Math\PrimeField\Integer as PrimeInteger;
 /**
  * Curves over y^2 = x^3 + a*x + b
  *
- * @package Prime
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
 class Prime extends \phpseclib3\Crypt\EC\BaseCurves\Base
 {
@@ -105,21 +101,21 @@ class Prime extends \phpseclib3\Crypt\EC\BaseCurves\Base
     /**
      * Sets the modulo
      */
-    public function setModulo(\phpseclib3\Math\BigInteger $modulo)
+    public function setModulo(BigInteger $modulo)
     {
         $this->modulo = $modulo;
-        $this->factory = new \phpseclib3\Math\PrimeField($modulo);
-        $this->two = $this->factory->newInteger(new \phpseclib3\Math\BigInteger(2));
-        $this->three = $this->factory->newInteger(new \phpseclib3\Math\BigInteger(3));
+        $this->factory = new PrimeField($modulo);
+        $this->two = $this->factory->newInteger(new BigInteger(2));
+        $this->three = $this->factory->newInteger(new BigInteger(3));
         // used by jacobian coordinates
-        $this->one = $this->factory->newInteger(new \phpseclib3\Math\BigInteger(1));
-        $this->four = $this->factory->newInteger(new \phpseclib3\Math\BigInteger(4));
-        $this->eight = $this->factory->newInteger(new \phpseclib3\Math\BigInteger(8));
+        $this->one = $this->factory->newInteger(new BigInteger(1));
+        $this->four = $this->factory->newInteger(new BigInteger(4));
+        $this->eight = $this->factory->newInteger(new BigInteger(8));
     }
     /**
      * Set coefficients a and b
      */
-    public function setCoefficients(\phpseclib3\Math\BigInteger $a, \phpseclib3\Math\BigInteger $b)
+    public function setCoefficients(BigInteger $a, BigInteger $b)
     {
         if (!isset($this->factory)) {
             throw new \RuntimeException('setModulo needs to be called before this method');
@@ -137,15 +133,15 @@ class Prime extends \phpseclib3\Crypt\EC\BaseCurves\Base
     public function setBasePoint($x, $y)
     {
         switch (\true) {
-            case !$x instanceof \phpseclib3\Math\BigInteger && !$x instanceof \phpseclib3\Math\PrimeField\Integer:
+            case !$x instanceof BigInteger && !$x instanceof PrimeInteger:
                 throw new \UnexpectedValueException('WP_Ultimo\\Dependencies\\Argument 1 passed to Prime::setBasePoint() must be an instance of either BigInteger or PrimeField\\Integer');
-            case !$y instanceof \phpseclib3\Math\BigInteger && !$y instanceof \phpseclib3\Math\PrimeField\Integer:
+            case !$y instanceof BigInteger && !$y instanceof PrimeInteger:
                 throw new \UnexpectedValueException('WP_Ultimo\\Dependencies\\Argument 2 passed to Prime::setBasePoint() must be an instance of either BigInteger or PrimeField\\Integer');
         }
         if (!isset($this->factory)) {
             throw new \RuntimeException('setModulo needs to be called before this method');
         }
-        $this->p = [$x instanceof \phpseclib3\Math\BigInteger ? $this->factory->newInteger($x) : $x, $y instanceof \phpseclib3\Math\BigInteger ? $this->factory->newInteger($y) : $y];
+        $this->p = [$x instanceof BigInteger ? $this->factory->newInteger($x) : $x, $y instanceof BigInteger ? $this->factory->newInteger($y) : $y];
     }
     /**
      * Retrieve the base point as an array
@@ -385,8 +381,8 @@ class Prime extends \phpseclib3\Crypt\EC\BaseCurves\Base
      */
     public function derivePoint($m)
     {
-        $y = \ord(\phpseclib3\Common\Functions\Strings::shift($m));
-        $x = new \phpseclib3\Math\BigInteger($m, 256);
+        $y = \ord(Strings::shift($m));
+        $x = new BigInteger($m, 256);
         $xp = $this->convertInteger($x);
         switch ($y) {
             case 2:
@@ -605,18 +601,18 @@ class Prime extends \phpseclib3\Crypt\EC\BaseCurves\Base
      *
      * @return int[]
      */
-    private static function getJSFPoints(\phpseclib3\Math\Common\FiniteField\Integer $k1, \phpseclib3\Math\Common\FiniteField\Integer $k2)
+    private static function getJSFPoints(Integer $k1, Integer $k2)
     {
         static $three;
         if (!isset($three)) {
-            $three = new \phpseclib3\Math\BigInteger(3);
+            $three = new BigInteger(3);
         }
         $jsf = [[], []];
         $k1 = $k1->toBigInteger();
         $k2 = $k2->toBigInteger();
         $d1 = 0;
         $d2 = 0;
-        while ($k1->compare(new \phpseclib3\Math\BigInteger(-$d1)) > 0 || $k2->compare(new \phpseclib3\Math\BigInteger(-$d2)) > 0) {
+        while ($k1->compare(new BigInteger(-$d1)) > 0 || $k2->compare(new BigInteger(-$d2)) > 0) {
             // first phase
             $m14 = $k1->testBit(0) + 2 * $k1->testBit(1);
             $m14 += $d1;

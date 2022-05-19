@@ -49,7 +49,7 @@
 
       const app_name = 'wu_' + app.data('wu-app');
 
-      jQuery('body').on(app_name + '_changed', function(event, prop) {
+      wp.hooks.addAction(app_name + '_changed', 'nextpress/wp-ultimo', function(prop) {
 
         if (prop === 'tab') {
 

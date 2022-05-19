@@ -30,7 +30,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property null|\Stripe\StripeObject $metadata Set of <a href="https://stripe.com/docs/api/metadata">key-value pairs</a> that you can attach to an object. This can be useful for storing additional information about the object in a structured format.
  * @property string $type Transaction type: <code>adjustment</code>, <code>applied_to_invoice</code>, <code>credit_note</code>, <code>initial</code>, <code>invoice_too_large</code>, <code>invoice_too_small</code>, <code>unspent_receiver_credit</code>, or <code>unapplied_from_invoice</code>. See the <a href="https://stripe.com/docs/billing/customer/balance#types">Customer Balance page</a> to learn more about transaction types.
  */
-class CustomerBalanceTransaction extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class CustomerBalanceTransaction extends ApiResource
 {
     const OBJECT_NAME = 'customer_balance_transaction';
     const TYPE_ADJUSTMENT = 'adjustment';
@@ -49,11 +49,11 @@ class CustomerBalanceTransaction extends \WP_Ultimo\Dependencies\Stripe\ApiResou
         $id = $this['id'];
         $customer = $this['customer'];
         if (!$id) {
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException("Could not determine which URL to request: class instance has invalid ID: {$id}", null);
+            throw new Exception\UnexpectedValueException("Could not determine which URL to request: class instance has invalid ID: {$id}", null);
         }
-        $id = \WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($id);
-        $customer = \WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($customer);
-        $base = \WP_Ultimo\Dependencies\Stripe\Customer::classUrl();
+        $id = Util\Util::utf8($id);
+        $customer = Util\Util::utf8($customer);
+        $base = Customer::classUrl();
         $customerExtn = \urlencode($customer);
         $extn = \urlencode($id);
         return "{$base}/{$customerExtn}/balance_transactions/{$extn}";
@@ -67,7 +67,7 @@ class CustomerBalanceTransaction extends \WP_Ultimo\Dependencies\Stripe\ApiResou
     public static function retrieve($_id, $_opts = null)
     {
         $msg = 'Customer Balance Transactions cannot be retrieved without a ' . 'customer ID. Retrieve a Customer Balance Transaction using ' . "`Customer::retrieveBalanceTransaction('customer_id', " . "'balance_transaction_id')`.";
-        throw new \WP_Ultimo\Dependencies\Stripe\Exception\BadMethodCallException($msg);
+        throw new Exception\BadMethodCallException($msg);
     }
     /**
      * @param string $_id
@@ -79,6 +79,6 @@ class CustomerBalanceTransaction extends \WP_Ultimo\Dependencies\Stripe\ApiResou
     public static function update($_id, $_params = null, $_options = null)
     {
         $msg = 'Customer Balance Transactions cannot be updated without a ' . 'customer ID. Update a Customer Balance Transaction using ' . "`Customer::updateBalanceTransaction('customer_id', " . "'balance_transaction_id', \$updateParams)`.";
-        throw new \WP_Ultimo\Dependencies\Stripe\Exception\BadMethodCallException($msg);
+        throw new Exception\BadMethodCallException($msg);
     }
 }

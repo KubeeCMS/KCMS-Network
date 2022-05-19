@@ -10,18 +10,18 @@
  */
 namespace WP_Ultimo\Dependencies\Carbon\Exceptions;
 
-use Exception;
 use InvalidArgumentException as BaseInvalidArgumentException;
-class NotLocaleAwareException extends \InvalidArgumentException implements \WP_Ultimo\Dependencies\Carbon\Exceptions\InvalidArgumentException
+use Throwable;
+class NotLocaleAwareException extends BaseInvalidArgumentException implements InvalidArgumentException
 {
     /**
      * Constructor.
      *
      * @param mixed          $object
      * @param int            $code
-     * @param Exception|null $previous
+     * @param Throwable|null $previous
      */
-    public function __construct($object, $code = 0, \Exception $previous = null)
+    public function __construct($object, $code = 0, Throwable $previous = null)
     {
         $dump = \is_object($object) ? \get_class($object) : \gettype($object);
         parent::__construct("{$dump} does neither implements Symfony\\Contracts\\Translation\\LocaleAwareInterface nor getLocale() method.", $code, $previous);

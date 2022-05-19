@@ -21,6 +21,8 @@ defined('ABSPATH') || exit;
  */
 class Limits_Element extends Base_Element {
 
+	use \WP_Ultimo\Traits\Singleton;
+
 	/**
 	 * The id of the element.
 	 *
@@ -243,7 +245,7 @@ class Limits_Element extends Base_Element {
 		 */
 		$post_types = array_filter($post_types, function($post_type_slug) {
 
-			return $this->site->should_display_quota($post_type_slug);
+			return $this->site->get_limitations()->post_types->{$post_type_slug}->enabled;
 
 		}, ARRAY_FILTER_USE_KEY);
 
@@ -256,8 +258,12 @@ class Limits_Element extends Base_Element {
 		 */
 		$post_types = apply_filters('wu_get_post_types', $post_types);
 
-		$atts['site']       = $this->site;
-		$atts['post_types'] = $post_types;
+		$items_to_display = wu_get_setting('limits_and_quotas');
+
+		$atts['site']             = $this->site;
+		$atts['post_types']       = $post_types;
+		$atts['items_to_display'] = $items_to_display ? array_keys($items_to_display) : false;
+		$atts['post_type_limits'] = $this->site->get_limitations()->post_types;
 
 		return wu_get_template_contents('dashboard-widgets/limits-and-quotas', $atts);
 

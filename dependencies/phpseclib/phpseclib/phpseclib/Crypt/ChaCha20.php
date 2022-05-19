@@ -5,8 +5,6 @@
  *
  * PHP version 5
  *
- * @category  Crypt
- * @package   ChaCha20
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2019 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -14,14 +12,12 @@
  */
 namespace phpseclib3\Crypt;
 
-use phpseclib3\Exception\InsufficientSetupException;
 use phpseclib3\Exception\BadDecryptionException;
+use phpseclib3\Exception\InsufficientSetupException;
 /**
  * Pure-PHP implementation of ChaCha20.
  *
- * @package ChaCha20
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
 class ChaCha20 extends \phpseclib3\Crypt\Salsa20
 {
@@ -38,7 +34,6 @@ class ChaCha20 extends \phpseclib3\Crypt\Salsa20
      *
      * @see \phpseclib3\Crypt\Common\SymmetricKey::__construct()
      * @param int $engine
-     * @access protected
      * @return bool
      */
     protected function isValidEngineHelper($engine)
@@ -129,20 +124,20 @@ class ChaCha20 extends \phpseclib3\Crypt\Salsa20
         $params = [$ciphertext, $this->aad, $this->nonce, $this->key];
         if (isset($this->poly1305Key)) {
             if ($this->oldtag === \false) {
-                throw new \phpseclib3\Exception\InsufficientSetupException('Authentication Tag has not been set');
+                throw new InsufficientSetupException('Authentication Tag has not been set');
             }
             if ($this->usingGeneratedPoly1305Key && \strlen($this->nonce) == 12) {
                 $plaintext = \sodium_crypto_aead_chacha20poly1305_ietf_decrypt(...$params);
                 $this->oldtag = \false;
                 if ($plaintext === \false) {
-                    throw new \phpseclib3\Exception\BadDecryptionException('Derived authentication tag and supplied authentication tag do not match');
+                    throw new BadDecryptionException('Derived authentication tag and supplied authentication tag do not match');
                 }
                 return $plaintext;
             }
             $newtag = $this->poly1305($ciphertext);
             if ($this->oldtag != \substr($newtag, 0, \strlen($this->oldtag))) {
                 $this->oldtag = \false;
-                throw new \phpseclib3\Exception\BadDecryptionException('Derived authentication tag and supplied authentication tag do not match');
+                throw new BadDecryptionException('Derived authentication tag and supplied authentication tag do not match');
             }
             $this->oldtag = \false;
         }
@@ -205,10 +200,10 @@ class ChaCha20 extends \phpseclib3\Crypt\Salsa20
         $this->enbuffer = $this->debuffer = ['ciphertext' => '', 'counter' => $this->counter];
         $this->changed = $this->nonIVChanged = \false;
         if ($this->nonce === \false) {
-            throw new \phpseclib3\Exception\InsufficientSetupException('No nonce has been defined');
+            throw new InsufficientSetupException('No nonce has been defined');
         }
         if ($this->key === \false) {
-            throw new \phpseclib3\Exception\InsufficientSetupException('No key has been defined');
+            throw new InsufficientSetupException('No key has been defined');
         }
         if ($this->usePoly1305 && !isset($this->poly1305Key)) {
             $this->usingGeneratedPoly1305Key = \true;
@@ -240,6 +235,10 @@ class ChaCha20 extends \phpseclib3\Crypt\Salsa20
      */
     protected static function quarterRound(&$a, &$b, &$c, &$d)
     {
+        // in https://datatracker.ietf.org/doc/html/rfc7539#section-2.1 the addition,
+        // xor'ing and rotation are all on the same line so i'm keeping it on the same
+        // line here as well
+        // @codingStandardsIgnoreStart
         $a += $b;
         $d = self::leftRotate($d ^ $a, 16);
         $c += $d;
@@ -248,6 +247,7 @@ class ChaCha20 extends \phpseclib3\Crypt\Salsa20
         $d = self::leftRotate($d ^ $a, 8);
         $c += $d;
         $b = self::leftRotate($b ^ $c, 7);
+        // @codingStandardsIgnoreEnd
     }
     /**
      * The doubleround function
@@ -316,6 +316,7 @@ class ChaCha20 extends \phpseclib3\Crypt\Salsa20
         $z13 = $x13;
         $z14 = $x14;
         $z15 = $x15;
+        // @codingStandardsIgnoreStart
         // columnRound
         $x0 += $x4;
         $x12 = self::leftRotate($x12 ^ $x0, 16);
@@ -976,6 +977,7 @@ class ChaCha20 extends \phpseclib3\Crypt\Salsa20
         $x14 = self::leftRotate($x14 ^ $x3, 8);
         $x9 += $x14;
         $x4 = self::leftRotate($x4 ^ $x9, 7);
+        // @codingStandardsIgnoreEnd
         $x0 += $z0;
         $x1 += $z1;
         $x2 += $z2;

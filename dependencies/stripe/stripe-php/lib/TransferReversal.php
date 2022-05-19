@@ -32,7 +32,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property null|string|\Stripe\Refund $source_refund ID of the refund responsible for the transfer reversal.
  * @property string|\Stripe\Transfer $transfer ID of the transfer that was reversed.
  */
-class TransferReversal extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class TransferReversal extends ApiResource
 {
     const OBJECT_NAME = 'transfer_reversal';
     use ApiOperations\Update {
@@ -46,11 +46,11 @@ class TransferReversal extends \WP_Ultimo\Dependencies\Stripe\ApiResource
         $id = $this['id'];
         $transfer = $this['transfer'];
         if (!$id) {
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException('Could not determine which URL to request: ' . "class instance has invalid ID: {$id}", null);
+            throw new Exception\UnexpectedValueException('Could not determine which URL to request: ' . "class instance has invalid ID: {$id}", null);
         }
-        $id = \WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($id);
-        $transfer = \WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($transfer);
-        $base = \WP_Ultimo\Dependencies\Stripe\Transfer::classUrl();
+        $id = Util\Util::utf8($id);
+        $transfer = Util\Util::utf8($transfer);
+        $base = Transfer::classUrl();
         $transferExtn = \urlencode($transfer);
         $extn = \urlencode($id);
         return "{$base}/{$transferExtn}/reversals/{$extn}";

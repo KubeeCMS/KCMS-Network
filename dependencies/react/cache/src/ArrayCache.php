@@ -1,10 +1,10 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Cache;
+namespace React\Cache;
 
-use WP_Ultimo\Dependencies\React\Promise;
-use WP_Ultimo\Dependencies\React\Promise\PromiseInterface;
-class ArrayCache implements \WP_Ultimo\Dependencies\React\Cache\CacheInterface
+use React\Promise;
+use React\Promise\PromiseInterface;
+class ArrayCache implements \React\Cache\CacheInterface
 {
     private $limit;
     private $data = array();
@@ -60,13 +60,13 @@ class ArrayCache implements \WP_Ultimo\Dependencies\React\Cache\CacheInterface
             unset($this->data[$key], $this->expires[$key]);
         }
         if (!\array_key_exists($key, $this->data)) {
-            return \WP_Ultimo\Dependencies\React\Promise\resolve($default);
+            return Promise\resolve($default);
         }
         // remove and append to end of array to keep track of LRU info
         $value = $this->data[$key];
         unset($this->data[$key]);
         $this->data[$key] = $value;
-        return \WP_Ultimo\Dependencies\React\Promise\resolve($value);
+        return Promise\resolve($value);
     }
     public function set($key, $value, $ttl = null)
     {
@@ -93,12 +93,12 @@ class ArrayCache implements \WP_Ultimo\Dependencies\React\Cache\CacheInterface
             }
             unset($this->data[$key], $this->expires[$key]);
         }
-        return \WP_Ultimo\Dependencies\React\Promise\resolve(\true);
+        return Promise\resolve(\true);
     }
     public function delete($key)
     {
         unset($this->data[$key], $this->expires[$key]);
-        return \WP_Ultimo\Dependencies\React\Promise\resolve(\true);
+        return Promise\resolve(\true);
     }
     public function getMultiple(array $keys, $default = null)
     {
@@ -106,27 +106,27 @@ class ArrayCache implements \WP_Ultimo\Dependencies\React\Cache\CacheInterface
         foreach ($keys as $key) {
             $values[$key] = $this->get($key, $default);
         }
-        return \WP_Ultimo\Dependencies\React\Promise\all($values);
+        return Promise\all($values);
     }
     public function setMultiple(array $values, $ttl = null)
     {
         foreach ($values as $key => $value) {
             $this->set($key, $value, $ttl);
         }
-        return \WP_Ultimo\Dependencies\React\Promise\resolve(\true);
+        return Promise\resolve(\true);
     }
     public function deleteMultiple(array $keys)
     {
         foreach ($keys as $key) {
             unset($this->data[$key], $this->expires[$key]);
         }
-        return \WP_Ultimo\Dependencies\React\Promise\resolve(\true);
+        return Promise\resolve(\true);
     }
     public function clear()
     {
         $this->data = array();
         $this->expires = array();
-        return \WP_Ultimo\Dependencies\React\Promise\resolve(\true);
+        return Promise\resolve(\true);
     }
     public function has($key)
     {
@@ -135,13 +135,13 @@ class ArrayCache implements \WP_Ultimo\Dependencies\React\Cache\CacheInterface
             unset($this->data[$key], $this->expires[$key]);
         }
         if (!\array_key_exists($key, $this->data)) {
-            return \WP_Ultimo\Dependencies\React\Promise\resolve(\false);
+            return Promise\resolve(\false);
         }
         // remove and append to end of array to keep track of LRU info
         $value = $this->data[$key];
         unset($this->data[$key]);
         $this->data[$key] = $value;
-        return \WP_Ultimo\Dependencies\React\Promise\resolve(\true);
+        return Promise\resolve(\true);
     }
     /**
      * @return float

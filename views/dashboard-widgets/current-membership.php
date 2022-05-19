@@ -22,19 +22,23 @@
 
       <?php endif; ?>
 
-      <div class="wu-ml-auto">
+      <?php if (wu_request('page') !== 'wu-checkout') : ?>
 
-        <a 
-          title="<?php esc_attr_e('Update Billing Address', 'wp-ultimo'); ?>" 
-          class="wu-text-sm wu-no-underline wubox button" 
-          href="#"
-        >
+        <div class="wu-ml-auto">
 
-          <?php _e('Change', 'wp-ultimo'); ?>
+          <a 
+            title="<?php esc_attr_e('Update Billing Address', 'wp-ultimo'); ?>" 
+            class="wu-text-sm wu-no-underline button" 
+            href="<?php echo esc_attr($element->get_upgrade_form_url($membership->get_hash())); ?>"
+          >
 
-        </a>
+            <?php _e('Change', 'wp-ultimo'); ?>
 
-      </div>
+          </a>
+
+        </div>
+
+      <?php endif; ?>
 
     </div>
     <!-- Title Element - End -->
@@ -83,6 +87,20 @@
 
           </div>
 
+          <?php if ($pending_change) : ?>
+
+            <div class="wu-mt-4"> 
+              
+              <div class="wu-bg-yellow-200 wu-text-yellow-700 wu-rounded wu-p-2">
+
+                <?php printf(__("There's a pending change for this membership, scheduled to take place on <strong>%1\$s</strong>. Changing to <strong>%2\$s</strong>.", 'wp-ultimo'), $pending_change_date, $pending_change); ?>
+
+              </div>
+
+            </div>
+
+          <?php endif; ?>
+
         </div>
 
       </div>
@@ -125,29 +143,37 @@
 
         </div>
 
-        <div class="sm:wu-col-span-1">
+        <?php if ($membership->is_recurring()) : ?>
 
-          <div class="wu-text-sm wu-font-medium wu-text-gray-600">
-            <?php _e('Times Billed', 'wp-ultimo'); ?>
+          <div class="sm:wu-col-span-1">
+
+            <div class="wu-text-sm wu-font-medium wu-text-gray-600">
+              <?php _e('Times Billed', 'wp-ultimo'); ?>
+            </div>
+
+            <div class="wu-mt-1 wu-text-sm wu-text-gray-900 wu-mb-4">
+              <?php echo $membership->get_times_billed_description(); ?> 
+            </div>
+
           </div>
 
-          <div class="wu-mt-1 wu-text-sm wu-text-gray-900 wu-mb-4">
-            <?php echo $membership->get_times_billed_description(); ?> 
+        <?php endif; ?>
+
+        <?php if (!$membership->is_lifetime()) : ?>
+
+          <div class="sm:wu-col-span-1">
+
+            <div class="wu-text-sm wu-font-medium wu-text-gray-600">
+              <?php _e('Expires', 'wp-ultimo'); ?>
+            </div>
+
+            <div class="wu-mt-1 wu-text-sm wu-text-gray-900 wu-mb-4">
+              <?php echo $membership->get_formatted_date('date_expiration'); ?>
+            </div>
+
           </div>
 
-        </div>
-
-        <div class="sm:wu-col-span-1">
-
-          <div class="wu-text-sm wu-font-medium wu-text-gray-600">
-            <?php _e('Created', 'wp-ultimo'); ?>
-          </div>
-
-          <div class="wu-mt-1 wu-text-sm wu-text-gray-900 wu-mb-4">
-            <?php echo $membership->get_date_created(); ?>
-          </div>
-
-        </div>
+        <?php endif; ?>
 
       </div>
 
@@ -198,29 +224,11 @@
         <!-- Title Element -->
         <div class="wu-p-4 wu-flex wu-items-center <?php echo wu_env_picker('', 'wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-b wu-border-gray-200'); ?>">
 
-          <?php if (true) : ?>
+          <h3 class="wu-m-0 <?php echo wu_env_picker('', 'wu-widget-title'); ?>">
 
-            <h3 class="wu-m-0 <?php echo wu_env_picker('', 'wu-widget-title'); ?>">
+            <?php echo __('Additional Packages & Services', 'wp-ultimo'); ?>
 
-              <?php echo __('Additional Packages & Services', 'wp-ultimo'); ?>
-
-            </h3>
-
-          <?php endif; ?>
-
-          <div class="wu-ml-auto wu-hidden">
-
-            <a 
-              title="<?php esc_attr_e('Update Billing Address', 'wp-ultimo'); ?>" 
-              class="wu-text-sm wu-no-underline wubox button" 
-              href="#"
-            >
-
-              <?php _e('Add Product', 'wp-ultimo'); ?>
-
-            </a>
-
-          </div>
+          </h3>
 
         </div>
         <!-- Title Element - End -->
@@ -297,56 +305,34 @@
         <?php endif; ?>  
 
       </div>
-    
-      <!-- Additional Packages - End -->
 
-      <!-- Summary Line - Default -->
-      <!-- <div class="wu-bg-gray-100 wu-p-2 wu-rounded wu-flex wu-items-center wu-justify-between">
+      <?php if ($membership->is_recurring()) : ?>
 
-        <div class="wu-text-lg">
-        
-          <span>$29</span>
+        <!-- Summary Line - Total Applied -->
+        <div class="<?php echo wu_env_picker('', 'wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-200'); ?> wu-m-0 wu-p-4 wu-rounded lg:wu-flex wu-items-center wu-justify-between">
+
+          <div class="wu-text-lg">
+
+            <small class="wu-block wu-text-xs wu-uppercase wu-font-bold wu-text-gray-600">
+              <?php _e('Total', 'wp-ultimo'); ?>
+            </small>
           
-          <span class="wu-text-gray-500 wu-text-sm">
-            per month
-          </span>
+            <!-- <span class="wu-text-gray-500 wu-line-through">$29</span> -->
+            
+            <span>
+              <?php echo wu_format_currency($membership->get_amount(), $membership->get_currency()) ?>
+            </span>
+            
+            <span class="wu-text-gray-500 wu-text-sm">
+              <?php echo $membership->get_recurring_description(); ?>
+            </span>
+
+          </div>
 
         </div>
+        <!-- Summary Line - Total Applied End -->
 
-        <div class="wu-text-gray-500 wu-text-sm wu-self-end">
-          Next Payment in 23/12/2020
-        </div>
-
-      </div> -->
-      <!-- Summary Line - Default End -->
-
-      <!-- Summary Line - Coupon Applied -->
-      <div class="<?php echo wu_env_picker('', 'wu-bg-gray-100 wu-border-solid wu-border-0 wu-border-t wu-border-gray-200'); ?> wu-m-0 wu-p-4 wu-rounded lg:wu-flex wu-items-center wu-justify-between">
-
-        <div class="wu-text-lg">
-
-          <small class="wu-block wu-text-xs wu-uppercase wu-font-bold wu-text-gray-600">
-            <?php _e('Total', 'wp-ultimo'); ?>
-          </small>
-        
-          <!-- <span class="wu-text-gray-500 wu-line-through">$29</span> -->
-          
-          <span>
-            <?php echo wu_format_currency($membership->get_amount(), $membership->get_currency()) ?>
-          </span>
-          
-          <span class="wu-text-gray-500 wu-text-sm">
-            <?php echo $membership->get_recurring_description(); ?>
-          </span>
-
-        </div>
-
-        <!-- <div class="wu-text-gray-500 wu-text-sm">
-          Next payment due in 23/12/2020
-        </div> -->
-
-      </div>
-      <!-- Summary Line - Coupon Applied End -->
+      <?php endif; ?>
 
     <?php endif; ?>
 

@@ -45,7 +45,7 @@ class Visits_Manager {
 
 		add_action('wp_enqueue_scripts', array($this, 'enqueue_visit_counter_script'));
 
-		add_action('init', array($this, 'maybe_lock_site'));
+		add_action('template_redirect', array($this, 'maybe_lock_site'));
 
 	} // end init;
 
@@ -65,9 +65,18 @@ class Visits_Manager {
 
 		} // end if;
 
-		if ($site->has_limitations() && $site->get_visits_count() > $site->get_quota('visits')) {
+		/*
+		 * Case unlimited visits
+		 */
+		if (empty($site->get_limitations()->visits->get_limit())) {
 
-			wp_die('This site is now available at this time');
+			return;
+
+		} // end if;
+
+		if ($site->has_limitations() && $site->get_visits_count() > $site->get_limitations()->visits->get_limit()) {
+
+			wp_die(__('This site is now available at this time.', 'wp-ultimo'), __('Not available', 'wp-ultimo'), 404);
 
 		} // end if;
 

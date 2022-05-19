@@ -5,7 +5,7 @@ namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
 use InvalidArgumentException;
 use Closure;
-class Callback extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class Callback extends Rule
 {
     /** @var string */
     protected $message = "The :attribute is not valid";
@@ -17,7 +17,7 @@ class Callback extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
      * @param Closure $callback
      * @return self
      */
-    public function setCallback(\Closure $callback) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function setCallback(Closure $callback) : Rule
     {
         return $this->setParameter('callback', $callback);
     }
@@ -32,9 +32,9 @@ class Callback extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
     {
         $this->requireParameters($this->fillableParams);
         $callback = $this->parameter('callback');
-        if (\false === $callback instanceof \Closure) {
+        if (\false === $callback instanceof Closure) {
             $key = $this->attribute->getKey();
-            throw new \InvalidArgumentException("Callback rule for '{$key}' is not callable.");
+            throw new InvalidArgumentException("Callback rule for '{$key}' is not callable.");
         }
         $callback = $callback->bindTo($this);
         $invalidMessage = $callback($value);

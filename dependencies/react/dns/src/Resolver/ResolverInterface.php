@@ -1,6 +1,6 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Dns\Resolver;
+namespace React\Dns\Resolver;
 
 interface ResolverInterface
 {

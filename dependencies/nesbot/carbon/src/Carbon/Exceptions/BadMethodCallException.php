@@ -10,6 +10,7 @@
  */
 namespace WP_Ultimo\Dependencies\Carbon\Exceptions;
 
-interface BadMethodCallException extends \WP_Ultimo\Dependencies\Carbon\Exceptions\Exception
+interface BadMethodCallException extends Exception
 {
+    //
 }

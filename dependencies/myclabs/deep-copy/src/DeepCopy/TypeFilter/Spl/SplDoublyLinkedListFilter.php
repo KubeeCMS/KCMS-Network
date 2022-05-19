@@ -9,10 +9,10 @@ use SplDoublyLinkedList;
 /**
  * @final
  */
-class SplDoublyLinkedListFilter implements \WP_Ultimo\Dependencies\DeepCopy\TypeFilter\TypeFilter
+class SplDoublyLinkedListFilter implements TypeFilter
 {
     private $copier;
-    public function __construct(\WP_Ultimo\Dependencies\DeepCopy\DeepCopy $copier)
+    public function __construct(DeepCopy $copier)
     {
         $this->copier = $copier;
     }
@@ -28,7 +28,7 @@ class SplDoublyLinkedListFilter implements \WP_Ultimo\Dependencies\DeepCopy\Type
     private function createCopyClosure()
     {
         $copier = $this->copier;
-        $copy = function (\SplDoublyLinkedList $list) use($copier) {
+        $copy = function (SplDoublyLinkedList $list) use($copier) {
             // Replace each element in the list with a deep copy of itself
             for ($i = 1; $i <= $list->count(); $i++) {
                 $copy = $copier->recursiveCopy($list->shift());
@@ -36,6 +36,6 @@ class SplDoublyLinkedListFilter implements \WP_Ultimo\Dependencies\DeepCopy\Type
             }
             return $list;
         };
-        return \Closure::bind($copy, null, \WP_Ultimo\Dependencies\DeepCopy\DeepCopy::class);
+        return Closure::bind($copy, null, DeepCopy::class);
     }
 }

@@ -1,13 +1,31 @@
 <?php
 /**
- * Wrapper around Action Scheduler to make it easier to
- * make changes if needed be in the future.
+ * Scheduler Functions
  *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Scheduler
- * @version     2.0.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
+
+// Exit if accessed directly
+defined('ABSPATH') || exit;
+
+/**
+ * Returns how much time it takes until the next queue. In seconds.
+ *
+ * @since 2.0.0
+ * @return int
+ */
+function wu_get_next_queue_run() {
+
+	if (class_exists('ActionScheduler')) {
+
+		return ActionScheduler::lock()->get_expiration('async-request-runner') - time();
+
+	} // end if;
+
+	return 0;
+
+} // end wu_get_next_queue_run;
 
 /**
  * Enqueue an action to run one time, as soon as possible.

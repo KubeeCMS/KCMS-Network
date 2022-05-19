@@ -25,7 +25,7 @@
 }
 
 .wu-compat-admin-theme-admin-2020 .wu-list-table.wu-mode-grid .tablenav.top {
-  margin-top: 0 !important;
+  top: 0 !important;
 }
 
 .wu-compat-admin-theme-admin-2020 .filter-links {

@@ -32,7 +32,7 @@ use WP_Ultimo\Dependencies\BerlinDB\Database\Base;
  *
  * @since 1.0.0
  */
-class Date extends \WP_Ultimo\Dependencies\BerlinDB\Database\Base
+class Date extends Base
 {
     /**
      * Array of date queries.

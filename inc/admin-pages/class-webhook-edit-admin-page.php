@@ -136,14 +136,14 @@ class Webhook_Edit_Admin_Page extends Edit_Admin_Page {
 			'title'    => __('Webhook URL', 'wp-ultimo'),
 			'position' => 'normal',
 			'fields'   => array(
-				'webhook_url'   => array(
+				'webhook_url' => array(
 					'type'        => 'url',
 					'title'       => __('Webhook URL', 'wp-ultimo'),
-					'tooltip'     => __('The URL where we will send the payload when the event triggers.', 'wp-ultimo'),
+					'desc'        => __('The URL where we will send the payload when the event triggers.', 'wp-ultimo'),
 					'placeholder' => __('https://example.com', 'wp-ultimo'),
 					'value'       => $this->get_object()->get_webhook_url(),
 				),
-				'actions'       => array(
+				'actions'     => array(
 					'type'            => 'actions',
 					'tooltip'         => __('The event .', 'wp-ultimo'),
 					'actions'         => array(
@@ -183,7 +183,7 @@ class Webhook_Edit_Admin_Page extends Edit_Admin_Page {
 				'event' => array(
 					'type'        => 'select',
 					'title'       => __('Event', 'wp-ultimo'),
-					'tooltip'     => __('The event that will trigger this webhook.', 'wp-ultimo'),
+					'desc'        => __('The event that triggers this webhook.', 'wp-ultimo'),
 					'placeholder' => __('Select Event', 'wp-ultimo'),
 					'options'     => $event_list,
 					'value'       => $this->get_object()->get_event(),
@@ -196,9 +196,9 @@ class Webhook_Edit_Admin_Page extends Edit_Admin_Page {
 			'fields' => array(
 				'active' => array(
 					'type'    => 'toggle',
-					'title'   => __('Is Active?', 'wp-ultimo'),
+					'title'   => __('Active', 'wp-ultimo'),
 					'tooltip' => __('Deactivate will end the event trigger for this webhook.', 'wp-ultimo'),
-					'desc'    => __('Deactivate this webhook.', 'wp-ultimo'),
+					'desc'    => __('Use this option to manually enable or disable this webhook.', 'wp-ultimo'),
 					'value'   => $this->get_object()->is_active(),
 				),
 			),
@@ -216,7 +216,7 @@ class Webhook_Edit_Admin_Page extends Edit_Admin_Page {
 					'display_value' => ucwords($this->get_object()->get_integration()),
 					'tooltip'       => __('Name of the service responsible for creating this webhook. If you are manually creating this webhook, use the value "manual".', 'wp-ultimo'),
 				),
-				'event_count'       => array(
+				'event_count' => array(
 					'title'         => __('Run Count', 'wp-ultimo'),
 					'type'          => 'text-edit',
 					'min'           => 0,
@@ -243,10 +243,12 @@ class Webhook_Edit_Admin_Page extends Edit_Admin_Page {
 
 		$event = wu_get_event_type($object_event_slug);
 
+		$payload = isset($event['payload']) ? json_encode(wu_maybe_lazy_load_payload($event['payload']), JSON_PRETTY_PRINT) : '{}';
+
 		wu_get_template('events/widget-payload', array(
 			'title'        => __('Event Payload', 'wp-ultimo'),
 			'loading_text' => __('Loading Payload', 'wp-ultimo'),
-			'payload'       => json_encode($event['payload'], JSON_PRETTY_PRINT),
+			'payload'      => $payload,
 		));
 
 	} // end output_default_widget_payload;
@@ -263,7 +265,7 @@ class Webhook_Edit_Admin_Page extends Edit_Admin_Page {
 
 		$extra_args = array(
 			'object_type' => 'webhook',
-			'object_id'   => abs($this->get_object()->get_id()),
+			'object_id'   => absint($this->get_object()->get_id()),
 		);
 
 		return array_merge($args, $extra_args);

@@ -10,6 +10,7 @@
  */
 namespace WP_Ultimo\Dependencies\Carbon\Exceptions;
 
-interface InvalidArgumentException extends \WP_Ultimo\Dependencies\Carbon\Exceptions\Exception
+interface InvalidArgumentException extends Exception
 {
+    //
 }

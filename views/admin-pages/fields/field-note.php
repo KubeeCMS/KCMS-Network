@@ -5,26 +5,24 @@
  * @since 2.0.0
  */
 ?>
-<li class="<?php echo esc_attr($field->wrapper_classes); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
+<li class="<?php echo esc_attr(trim($field->wrapper_classes)); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
-  <?php if ($field->title) : ?>
+  <?php
 
-  <h3 class="wu-my-1 wu-text-2xs wu-uppercase">
+  /**
+   * Adds the partial title template.
+   * @since 2.0.0
+   */
+  wu_get_template('admin-pages/fields/partials/field-title', array(
+    'field' => $field,
+  ));
 
-    <?php echo $field->title; ?>
+  ?>
 
-    <?php if ($field->tooltip) : ?>
+  <div class="<?php echo esc_attr('wu-my-0 '.$field->classes); ?>">
 
-      <?php echo wu_tooltip($field->tooltip); ?>
-
-    <?php endif; ?>
-
-  </h3>
-
-  <?php endif; ?>
-
-  <p class="wu-my-0 <?php echo esc_attr($field->classes); ?>">
     <?php echo $field->desc; ?>
-  </p>
+    
+  </div>
 
 </li>

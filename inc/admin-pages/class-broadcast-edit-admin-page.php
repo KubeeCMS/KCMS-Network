@@ -97,11 +97,18 @@ class Broadcast_Edit_Admin_Page extends Edit_Admin_Page {
 		));
 
 		$this->add_save_widget('save', array(
-			'fields' => array(
-				'type'   => array(
+			'html_attr' => array(
+				'data-wu-app' => 'save_broadcast',
+				'data-state'  => wu_convert_to_state(array(
+					'type' => $this->get_object()->get_type(),
+				)),
+			),
+			'fields'    => array(
+				'type'        => array(
 					'type'        => 'select',
 					'title'       => __('Broadcast Type', 'wp-ultimo'),
 					'placeholder' => __('Type', 'wp-ultimo'),
+					'desc'        => __('Broadcast type cannot be edited.', 'wp-ultimo'),
 					'options'     => array(
 						'broadcast_email'  => __('Email', 'wp-ultimo'),
 						'broadcast_notice' => __('Admin Notice', 'wp-ultimo'),
@@ -113,21 +120,22 @@ class Broadcast_Edit_Admin_Page extends Edit_Admin_Page {
 						'name'     => ''
 					)
 				),
-				'status' => array(
-					'type'        => 'select',
-					'title'       => __('Broadcast Status', 'wp-ultimo'),
-					'placeholder' => __('Status', 'wp-ultimo'),
-					'options'     => array(
+				'notice_type' => array(
+					'type'              => 'select',
+					'title'             => __('Broadcast Status', 'wp-ultimo'),
+					'placeholder'       => __('Status', 'wp-ultimo'),
+					'desc'              => __('This option determines the color of the admin notice.', 'wp-ultimo'),
+					'options'           => array(
 						'info'    => __('Info (blue)', 'wp-ultimo'),
 						'success' => __('Success (green)', 'wp-ultimo'),
 						'warning' => __('Warning (yellow)', 'wp-ultimo'),
 						'error'   => __('Error (red)', 'wp-ultimo'),
 					),
-					'value'       => $this->get_object()->get_status(),
-					'tooltip'     => '',
-					'html_attr'   => array(
-						'disabled' => 'disabled',
-						'name'     => ''
+					'value'             => $this->get_object()->get_notice_type(),
+					'tooltip'           => '',
+					'wrapper_html_attr' => array(
+						'v-if'    => 'type === "broadcast_notice"',
+						'v-cloak' => 1,
 					)
 				),
 			),
@@ -169,7 +177,7 @@ class Broadcast_Edit_Admin_Page extends Edit_Admin_Page {
 
 		$targets_count = count($targets);
 
-		$html = '<div class="wu-bg-gray-100 wu--mt-3 wu--mb-6 wu--mx-3 wu-max-h-2">
+		$html = '<div class="wu-bg-gray-100 wu--mt-3 wu--mb-6 wu--mx-3">
 							<ul class="wu-widget-list">
 								<li class="wu-p-2 wu-m-0 wu-border-t wu-border-l-0 wu-border-r-0 wu-border-b-0 wu-border-gray-200 wu-border-solid">
 									<div class="wu-p-2 wu-mr-1 wu-flex wu-rounded wu-items-center wu-border wu-border-solid wu-border-gray-300 wu-bg-white wu-relative wu-overflow-hidden">';
@@ -297,38 +305,42 @@ class Broadcast_Edit_Admin_Page extends Edit_Admin_Page {
 
 				$product = wu_get_product($value);
 
-				$modal_atts = array(
-					'action'     => 'wu_modal_product_targets_display',
-					'product_id' => $product->get_id(),
-					'width'      => '400',
-					'height'     => '360',
-				);
+				if ($product) {
 
-				$link = wu_get_form_url('view_broadcast_targets', $modal_atts);
+					$modal_atts = array(
+						'action'     => 'wu_modal_product_targets_display',
+						'product_id' => $product->get_id(),
+						'width'      => '400',
+						'height'     => '360',
+					);
 
-				$image = $product->get_featured_image('thumbnail');
+					$link = wu_get_form_url('view_broadcast_targets', $modal_atts);
 
-				$image = $image ? sprintf('<img class="wu-w-8 wu-h-8 wu-rounded-full" src="%s">', esc_attr($image)) : '<span class="dashicons-wu-image"></span>';
+					$image = $product->get_featured_image('thumbnail');
 
-				$plan_customers = wu_get_membership_customers($product->get_id());
+					$image = $image ? sprintf('<img class="wu-w-8 wu-h-8 wu-rounded-full" src="%s">', esc_attr($image)) : '<span class="dashicons-wu-image"></span>';
 
-				$customer_count = (int) 0;
+					$plan_customers = wu_get_membership_customers($product->get_id());
 
-				if ($plan_customers) {
+					$customer_count = (int) 0;
 
-					$customer_count = count($plan_customers);
+					if ($plan_customers) {
+
+						$customer_count = count($plan_customers);
+
+					} // end if;
+
+					$description = sprintf(__('%s customer(s) targeted.', 'wp-ultimo'), $customer_count);
+
+					$product_targets[$key] = array(
+						'link'         => $link,
+						'avatar'       => $image,
+						'display_name' => $product->get_name(),
+						'id'           => $product->get_id(),
+						'description'  => $description
+					);
 
 				} // end if;
-
-				$description = sprintf(__('%s customer(s) targeted.', 'wp-ultimo'), $customer_count);
-
-				$product_targets[$key] = array(
-					'link'         => $link,
-					'avatar'       => $image,
-					'display_name' => $product->get_name(),
-					'id'           => $product->get_id(),
-					'description'  => $description
-				);
 
 			} // end foreach;
 
@@ -337,7 +349,7 @@ class Broadcast_Edit_Admin_Page extends Edit_Admin_Page {
 		$args = array(
 			'targets'       => $product_targets,
 			'loading_text'  => __('Loading...', 'wp-ultimo'),
-			'wrapper_class' => 'wu-bg-gray-100 wu--mt-3 wu--mb-6 wu--mx-3 wu-max-h-2',
+			'wrapper_class' => 'wu-bg-gray-100 wu--mt-3 wu--mb-6 wu--mx-3',
 			'modal_class'   => 'wubox',
 		);
 
@@ -393,7 +405,7 @@ class Broadcast_Edit_Admin_Page extends Edit_Admin_Page {
 			'edit_label'          => __('Edit Broadcast', 'wp-ultimo'),
 			'add_new_label'       => __('Add new Broadcast', 'wp-ultimo'),
 			'updated_message'     => __('Broadcast updated with success!', 'wp-ultimo'),
-			'title_placeholder'   => __('Enter Broadcast', 'wp-ultimo'),
+			'title_placeholder'   => __('Enter Broadcast Title', 'wp-ultimo'),
 			'title_description'   => __('This title is used on the message itself, and in the case of a broadcast email, it will be used as the subject.', 'wp-ultimo'),
 			'save_button_label'   => __('Save Broadcast', 'wp-ultimo'),
 			'save_description'    => '',
@@ -415,7 +427,7 @@ class Broadcast_Edit_Admin_Page extends Edit_Admin_Page {
 
 		$extra_args = array(
 			'object_type' => 'broadcast',
-			'object_id'   => abs($this->get_object()->get_id()),
+			'object_id'   => absint($this->get_object()->get_id()),
 		);
 
 		return array_merge($args, $extra_args);
@@ -488,7 +500,7 @@ class Broadcast_Edit_Admin_Page extends Edit_Admin_Page {
 
 		$extra_args = array(
 			'object_type' => 'broadcast',
-			'object_id'   => abs($this->get_object()->get_id()),
+			'object_id'   => absint($this->get_object()->get_id()),
 		);
 
 		return array_merge($args, $extra_args);

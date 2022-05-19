@@ -128,32 +128,51 @@ class Broadcast_Manager extends Base_Manager {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param mixed $args With the message Arguments.
 	 * @return void
 	 */
-	public function handle_broadcast($args) {
+	public function handle_broadcast() {
 
-		$args['date_created'] = current_time('mysql');
+		$args = $_POST;
 
-		if ($args['type'] === 'broadcast_notice') {
+		$target_customers = wu_request('target_customers', '');
+
+		$target_products = wu_request('target_products', '');
+
+		if (!$target_customers && !$target_products) {
+
+			wp_send_json_error(new \WP_Error('error', __('No product or customer target was selected.', 'wp-ultimo')));
+
+		} // end if;
+
+		$broadcast_type = wu_request('type', 'broadcast_notice');
+
+		$args['type'] = $broadcast_type;
+
+		if ($broadcast_type === 'broadcast_notice') {
 
 			$targets = array(
-				'customers' => $args['target_customers'],
-				'products'  => $args['target_product']
+				'customers' => $target_customers,
+				'products'  => $target_products
 			);
 
 			$args['targets'] = $targets;
 
 			// then we save with the message status (success, fail)
-			$this->save_broadcast($args);
+			$saved = $this->save_broadcast($args);
+
+			if (is_wp_error($saved)) {
+
+				wp_send_json_error($saved);
+
+			} // end if;
 
 			wp_send_json_success(array(
-				'redirect_url' => wu_network_admin_url('wp-ultimo-broadcasts')
+				'redirect_url' => add_query_arg('id', $saved->get_id(), wu_network_admin_url('wp-ultimo-edit-broadcast'))
 			));
 
 		} // end if;
 
-		if ($args['type'] == 'broadcast_email') {
+		if ($args['type'] === 'broadcast_email') {
 
 			$to = array();
 
@@ -169,9 +188,9 @@ class Broadcast_Manager extends Base_Manager {
 
 			} // end if;
 
-			if ($args['target_product']) {
+			if ($args['target_products']) {
 
-				$product_targets = explode(',', $args['target_product']);
+				$product_targets = explode(',', $args['target_products']);
 
 				$targets = array_merge($targets, $product_targets);
 
@@ -209,11 +228,13 @@ class Broadcast_Manager extends Base_Manager {
 				$from = array(
 					'name'  => $args['custom_sender']['from_name'],
 					'email' => $args['custom_sender']['from_email'],
-
 				);
+
 			} // end if;
 
 			$template_type = wu_get_setting('email_template_type', 'html');
+
+			$template_type = $template_type ? $template_type : 'html';
 
 			$send_args = array(
 				'site_name' => get_network_option(null, 'site_name'),
@@ -239,7 +260,7 @@ class Broadcast_Manager extends Base_Manager {
 
 				$args['targets'] = array(
 					'customers' => $args['target_customers'],
-					'products'  => $args['target_product'],
+					'products'  => $args['target_products'],
 				);
 
 				// then we save with the message status (success, fail)
@@ -265,7 +286,7 @@ class Broadcast_Manager extends Base_Manager {
 	 * @since 2.0.0
 	 *
 	 * @param array $args With the message arguments.
-	 * @return void
+	 * @return Broadcast|\WP_Error
 	 */
 	public function save_broadcast($args) {
 
@@ -278,7 +299,7 @@ class Broadcast_Manager extends Base_Manager {
 
 		$broadcast = new Broadcast($broadcast_data);
 
-		if ($args['type'] == 'broadcast_notice') {
+		if ($args['type'] === 'broadcast_notice') {
 
 			$broadcast->set_notice_type($args['notice_type']);
 
@@ -286,7 +307,9 @@ class Broadcast_Manager extends Base_Manager {
 
 		$broadcast->set_message_targets($args['targets']);
 
-		$broadcast->save();
+		$saved = $broadcast->save();
+
+		return is_wp_error($saved) ? $saved : $broadcast;
 
 	} // end save_broadcast;
 
@@ -297,13 +320,11 @@ class Broadcast_Manager extends Base_Manager {
 	 *
 	 * @param string $object_id The broadcast object id.
 	 * @param string $type The broadcast target type.
-	 * @return array Return the broadcast targets for the specific type.
+	 * @return string Return the broadcast targets for the specific type.
 	 */
 	public function get_broadcast_targets($object_id, $type) {
 
-		$object = Broadcast::get_by_id($object_id);
-
-		$broadcast = new Broadcast($object);
+		$broadcast = Broadcast::get_by_id($object_id);
 
 		$targets = $broadcast->get_message_targets();
 
@@ -324,10 +345,6 @@ class Broadcast_Manager extends Base_Manager {
 	 * @return array Return the broadcast targets for the specific type.
 	 */
 	public function get_all_notice_customer_targets($object_id) {
-
-		$object = Broadcast::get_by_id($object_id);
-
-		$broadcast = new Broadcast($object);
 
 		$customers_targets = explode(',', $this->get_broadcast_targets($object_id, 'customers'));
 
@@ -369,7 +386,7 @@ class Broadcast_Manager extends Base_Manager {
 
 		} // end if;
 
-		return array_map('abs', array_filter(array_unique($targets)));
+		return array_map('absint', array_filter(array_unique($targets)));
 
 	} // end get_all_notice_customer_targets;
 

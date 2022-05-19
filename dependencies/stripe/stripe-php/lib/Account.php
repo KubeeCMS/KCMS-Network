@@ -19,13 +19,15 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property \Stripe\StripeObject $capabilities
  * @property bool $charges_enabled Whether the account can create live charges.
  * @property \Stripe\StripeObject $company
+ * @property \Stripe\StripeObject $controller
  * @property string $country The account's country.
- * @property int $created Time at which the object was created. Measured in seconds since the Unix epoch.
+ * @property int $created Time at which the account was connected. Measured in seconds since the Unix epoch.
  * @property string $default_currency Three-letter ISO currency code representing the default currency for the account. This must be a currency that <a href="https://stripe.com/docs/payouts">Stripe supports in the account's country</a>.
  * @property bool $details_submitted Whether account details have been submitted. Standard accounts cannot receive payouts before this is true.
- * @property null|string $email The primary user's email address.
- * @property \Stripe\Collection $external_accounts External accounts (bank accounts and debit cards) currently attached to this account
- * @property \Stripe\Person $individual <p>This is an object representing a person associated with a Stripe account.</p><p>Related guide: <a href="https://stripe.com/docs/connect/identity-verification-api#person-information">Handling Identity Verification with the API</a>.</p>
+ * @property null|string $email An email address associated with the account. You can treat this as metadata: it is not used for authentication or messaging account holders.
+ * @property \Stripe\Collection<\Stripe\BankAccount|\Stripe\Card> $external_accounts External accounts (bank accounts and debit cards) currently attached to this account
+ * @property \Stripe\StripeObject $future_requirements
+ * @property \Stripe\Person $individual <p>This is an object representing a person associated with a Stripe account.</p><p>A platform cannot access a Standard or Express account's persons after the account starts onboarding, such as after generating an account link for the account. See the <a href="https://stripe.com/docs/connect/standard-accounts">Standard onboarding</a> or <a href="https://stripe.com/docs/connect/express-accounts">Express onboarding documentation</a> for information about platform pre-filling and account onboarding steps.</p><p>Related guide: <a href="https://stripe.com/docs/connect/identity-verification-api#person-information">Handling Identity Verification with the API</a>.</p>
  * @property \Stripe\StripeObject $metadata Set of <a href="https://stripe.com/docs/api/metadata">key-value pairs</a> that you can attach to an object. This can be useful for storing additional information about the object in a structured format.
  * @property bool $payouts_enabled Whether Stripe can send payouts to this account.
  * @property \Stripe\StripeObject $requirements
@@ -33,7 +35,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property \Stripe\StripeObject $tos_acceptance
  * @property string $type The Stripe account type. Can be <code>standard</code>, <code>express</code>, or <code>custom</code>.
  */
-class Account extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class Account extends ApiResource
 {
     const OBJECT_NAME = 'account';
     use ApiOperations\All;
@@ -62,7 +64,7 @@ class Account extends \WP_Ultimo\Dependencies\Stripe\ApiResource
     {
         static $savedNestedResources = null;
         if (null === $savedNestedResources) {
-            $savedNestedResources = new \WP_Ultimo\Dependencies\Stripe\Util\Set(['external_account', 'bank_account']);
+            $savedNestedResources = new Util\Set(['external_account', 'bank_account']);
         }
         return $savedNestedResources;
     }
@@ -87,7 +89,7 @@ class Account extends \WP_Ultimo\Dependencies\Stripe\ApiResource
         }
         if (isset($this->_values['individual'])) {
             $individual = $this['individual'];
-            if ($individual instanceof \WP_Ultimo\Dependencies\Stripe\Person && !isset($update['individual'])) {
+            if ($individual instanceof Person && !isset($update['individual'])) {
                 $update['individual'] = $individual->serializeParameters($force);
             }
         }
@@ -101,11 +103,11 @@ class Account extends \WP_Ultimo\Dependencies\Stripe\ApiResource
             $originalValue = [];
         }
         if ($originalValue && \count($originalValue) > \count($additionalOwners)) {
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException('You cannot delete an item from an array, you must instead set a new array');
+            throw new Exception\InvalidArgumentException('You cannot delete an item from an array, you must instead set a new array');
         }
         $updateArr = [];
         foreach ($additionalOwners as $i => $v) {
-            $update = $v instanceof \WP_Ultimo\Dependencies\Stripe\StripeObject ? $v->serializeParameters() : $v;
+            $update = $v instanceof StripeObject ? $v->serializeParameters() : $v;
             if ([] !== $update) {
                 if (!$originalValue || !\array_key_exists($i, $originalValue) || $update !== $legalEntity->serializeParamsValue($originalValue[$i], null, \false, \true)) {
                     $updateArr[$i] = $update;
@@ -142,7 +144,7 @@ class Account extends \WP_Ultimo\Dependencies\Stripe\ApiResource
     public function deauthorize($clientId = null, $opts = null)
     {
         $params = ['client_id' => $clientId, 'stripe_user_id' => $this->id];
-        return \WP_Ultimo\Dependencies\Stripe\OAuth::deauthorize($params, $opts);
+        return OAuth::deauthorize($params, $opts);
     }
     /**
      * @param null|array $params
@@ -150,13 +152,13 @@ class Account extends \WP_Ultimo\Dependencies\Stripe\ApiResource
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection the list of persons
+     * @return \Stripe\Collection<\Stripe\Person> the list of persons
      */
     public function persons($params = null, $opts = null)
     {
         $url = $this->instanceUrl() . '/persons';
         list($response, $opts) = $this->_request('get', $url, $params, $opts);
-        $obj = \WP_Ultimo\Dependencies\Stripe\Util\Util::convertToStripeObject($response, $opts);
+        $obj = Util\Util::convertToStripeObject($response, $opts);
         $obj->setLastResponse($response);
         return $obj;
     }
@@ -166,7 +168,7 @@ class Account extends \WP_Ultimo\Dependencies\Stripe\ApiResource
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return Account the rejected account
+     * @return \Stripe\Account the rejected account
      */
     public function reject($params = null, $opts = null)
     {
@@ -188,7 +190,7 @@ class Account extends \WP_Ultimo\Dependencies\Stripe\ApiResource
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection the list of capabilities
+     * @return \Stripe\Collection<\Stripe\Capability> the list of capabilities
      */
     public static function allCapabilities($id, $params = null, $opts = null)
     {
@@ -230,7 +232,7 @@ class Account extends \WP_Ultimo\Dependencies\Stripe\ApiResource
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection the list of external accounts (BankAccount or Card)
+     * @return \Stripe\Collection<\Stripe\BankAccount|\Stripe\Card> the list of external accounts (BankAccount or Card)
      */
     public static function allExternalAccounts($id, $params = null, $opts = null)
     {
@@ -313,7 +315,7 @@ class Account extends \WP_Ultimo\Dependencies\Stripe\ApiResource
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection the list of persons
+     * @return \Stripe\Collection<\Stripe\Person> the list of persons
      */
     public static function allPersons($id, $params = null, $opts = null)
     {

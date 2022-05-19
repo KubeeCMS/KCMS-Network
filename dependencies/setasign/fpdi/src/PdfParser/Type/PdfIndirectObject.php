@@ -7,15 +7,17 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\PdfParser\Type;
 
 use setasign\Fpdi\PdfParser\PdfParser;
 use setasign\Fpdi\PdfParser\StreamReader;
 use setasign\Fpdi\PdfParser\Tokenizer;
+
 /**
  * Class representing an indirect object
  */
-class PdfIndirectObject extends \setasign\Fpdi\PdfParser\Type\PdfType
+class PdfIndirectObject extends PdfType
 {
     /**
      * Parses an indirect object from a tokenizer, parser and stream-reader.
@@ -28,24 +30,33 @@ class PdfIndirectObject extends \setasign\Fpdi\PdfParser\Type\PdfType
      * @return bool|self
      * @throws PdfTypeException
      */
-    public static function parse($objectNumberToken, $objectGenerationNumberToken, \setasign\Fpdi\PdfParser\PdfParser $parser, \setasign\Fpdi\PdfParser\Tokenizer $tokenizer, \setasign\Fpdi\PdfParser\StreamReader $reader)
-    {
+    public static function parse(
+        $objectNumberToken,
+        $objectGenerationNumberToken,
+        PdfParser $parser,
+        Tokenizer $tokenizer,
+        StreamReader $reader
+    ) {
         $value = $parser->readValue();
-        if ($value === \false) {
-            return \false;
+        if ($value === false) {
+            return false;
         }
+
         $nextToken = $tokenizer->getNextToken();
         if ($nextToken === 'stream') {
-            $value = \setasign\Fpdi\PdfParser\Type\PdfStream::parse($value, $reader, $parser);
-        } elseif ($nextToken !== \false) {
+            $value = PdfStream::parse($value, $reader, $parser);
+        } elseif ($nextToken !== false) {
             $tokenizer->pushStack($nextToken);
         }
+
         $v = new self();
         $v->objectNumber = (int) $objectNumberToken;
         $v->generationNumber = (int) $objectGenerationNumberToken;
         $v->value = $value;
+
         return $v;
     }
+
     /**
      * Helper method to create an instance.
      *
@@ -54,14 +65,16 @@ class PdfIndirectObject extends \setasign\Fpdi\PdfParser\Type\PdfType
      * @param PdfType $value
      * @return self
      */
-    public static function create($objectNumber, $generationNumber, \setasign\Fpdi\PdfParser\Type\PdfType $value)
+    public static function create($objectNumber, $generationNumber, PdfType $value)
     {
         $v = new self();
         $v->objectNumber = (int) $objectNumber;
         $v->generationNumber = (int) $generationNumber;
         $v->value = $value;
+
         return $v;
     }
+
     /**
      * Ensures that the passed value is a PdfIndirectObject instance.
      *
@@ -71,14 +84,16 @@ class PdfIndirectObject extends \setasign\Fpdi\PdfParser\Type\PdfType
      */
     public static function ensure($indirectObject)
     {
-        return \setasign\Fpdi\PdfParser\Type\PdfType::ensureType(self::class, $indirectObject, 'Indirect object expected.');
+        return PdfType::ensureType(self::class, $indirectObject, 'Indirect object expected.');
     }
+
     /**
      * The object number.
      *
      * @var int
      */
     public $objectNumber;
+
     /**
      * The generation number.
      *

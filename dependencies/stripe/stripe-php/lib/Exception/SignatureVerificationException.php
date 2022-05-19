@@ -6,7 +6,7 @@ namespace WP_Ultimo\Dependencies\Stripe\Exception;
  * SignatureVerificationException is thrown when the signature verification for
  * a webhook fails.
  */
-class SignatureVerificationException extends \Exception implements \WP_Ultimo\Dependencies\Stripe\Exception\ExceptionInterface
+class SignatureVerificationException extends \Exception implements ExceptionInterface
 {
     protected $httpBody;
     protected $sigHeader;

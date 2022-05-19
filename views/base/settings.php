@@ -5,7 +5,7 @@
  * @since 2.0.0
  */
 ?>
-<div id="wp-ultimo-wrap" class="wrap wu-wrap <?php echo esc_attr($classes); ?>">
+<div id="wp-ultimo-wrap" class="<?php wu_wrap_use_container() ?> wrap wu-wrap <?php echo esc_attr($classes); ?>">
 
   <h1 class="wp-heading-inline">
 
@@ -53,7 +53,7 @@
 
   <?php if (wu_request('updated')) : ?>
 
-    <div id="message" class="updated notice notice-success is-dismissible below-h2">
+    <div id="message" class="updated notice wu-admin-notice notice-success is-dismissible below-h2">
       <p><?php _e('Settings successfully saved.', 'wp-ultimo') ?></p>
     </div>
 
@@ -63,9 +63,9 @@
 
   <form method="post">
 
-    <div id="poststuff" class="sm:wu-flex">
+    <div id="poststuff" class="sm:wu-grid sm:wu-grid-cols-12 wu-gap-4">
 
-      <div class="wu-w-full md:wu-w-4/12 lg:wu-w-2/12">
+      <div class="sm:wu-col-span-4 lg:wu-col-span-2">
 
         <div class="wu-py-4 wu-relative">
 
@@ -82,82 +82,178 @@
 
         </div>
 
-        <!-- Navigator -->
-        <ul data-wu-app="settings_menu" data-state="{}">
+        <div data-wu-app="settings_menu" data-state="{}">
 
-          <li class="md:wu-hidden wu-p-4 wu-font-bold wu-uppercase wu-text-xs wu-text-gray-700">
-            <?php _e('Menu', 'wp-ultimo'); ?>
-          </li>
+          <!-- Navigator -->
+          <ul>
 
-          <?php
+            <li class="md:wu-hidden wu-p-4 wu-font-bold wu-uppercase wu-text-xs wu-text-gray-700">
 
-          /**
-           * We need to set a couple of flags in here to control clickable navigation elements.
-           * This flag makes sure only steps the user already went through are clickable.
-           */
-          $is_pre_current_section = true;
+              <?php _e('Menu', 'wp-ultimo'); ?>
 
-          ?>
-
-          <?php foreach ($sections as $section_name => $section) : ?>
+            </li>
 
             <?php
 
             /**
-             * Updates the flag after the current section is looped.
+             * We need to set a couple of flags in here to control clickable navigation elements.
+             * This flag makes sure only steps the user already went through are clickable.
              */
-            if ($current_section === $section_name) {
+            $is_pre_current_section = true;
 
-              $is_pre_current_section = false;
-
-            } // end if;
+            /**
+             * Holds add-on menus
+             */
+            $addons = array();
 
             ?>
 
-            <!-- Menu Item -->
-            <li class="wu-sticky">
+            <?php foreach ($sections as $section_name => $section) : ?>
 
-              <!-- Menu Link -->
-              <a href="<?php echo esc_url($page->get_section_link($section_name)); ?>" class="wu-block wu-py-2 wu-px-4 wu-no-underline wu-text-sm wu-rounded <?php echo !$clickable_navigation && !$is_pre_current_section ? 'wu-pointer-events-none' : ''; ?> <?php echo $current_section === $section_name ? 'wu-bg-gray-300 wu-text-gray-800' : 'wu-text-gray-600 hover:wu-text-gray-700'; ?>">
+              <?php
 
-                <span class="<?php echo esc_attr($section['icon']); ?> wu-align-text-bottom wu-mr-1"></span>
+              if (wu_get_isset($section, 'invisible')) {
 
-                <?php echo $section['title']; ?>
+                continue; // skip add-ons for now.
 
-              </a>
-              <!-- End Menu Link -->
+              } // end if;
 
-              <?php if (!empty($section['sub-sections'])) : ?>
+              if (wu_get_isset($section, 'addon')) {
 
-                <!-- Sub-menu -->
-                <ul class="classes" v-show="false" v-cloak>
+                $addons[$section_name] = $section;
 
-                  <?php foreach ($section['sub-sections'] as $sub_section_name => $sub_section) : ?>
+                continue; // skip add-ons for now.
 
-                    <li class="classes">
-                      <a href="<?php echo esc_url($page->get_section_link($section_name)."#".$sub_section_name); ?>" class="wu-block wu-py-2 wu-px-4 wu-no-underline wu-text-gray-500 hover:wu-text-gray-600 wu-text-sm">
-                        &rarr; <?php echo $sub_section['title']; ?>
-                      </a>
-                    </li>
+              } // end if;
 
-                  <?php endforeach; ?>
+              /**
+               * Updates the flag after the current section is looped.
+               */
+              if ($current_section === $section_name) {
 
-                </ul>
-                <!-- End Sub-menu -->
+                $is_pre_current_section = false;
 
-              <?php endif; ?>
+              } // end if;
 
-            </li>
-            <!-- End Menu Item -->
+              ?>
 
-          <?php endforeach; ?>
+              <!-- Menu Item -->
+              <li id="tab-selector-<?php echo esc_attr($section_name); ?>" class="wu-sticky">
 
-        </ul>
-        <!-- End Navigator -->
+                <!-- Menu Link -->
+                <a
+                  id="tab-selector-<?php echo esc_attr($section_name); ?>-link"
+                  href="<?php echo esc_url($page->get_section_link($section_name)); ?>" 
+                  class="wu-block wu-py-2 wu-px-4 wu-no-underline wu-text-sm wu-rounded <?php echo !$clickable_navigation && !$is_pre_current_section ? 'wu-pointer-events-none' : ''; ?> <?php echo $current_section === $section_name ? 'wu-bg-gray-300 wu-text-gray-800' : 'wu-text-gray-600 hover:wu-text-gray-700'; ?>"
+                >
+
+                  <span class="<?php echo esc_attr($section['icon']); ?> wu-align-text-bottom wu-mr-1"></span>
+
+                  <?php echo $section['title']; ?>
+
+                </a>
+                <!-- End Menu Link -->
+
+                <?php if (!empty($section['sub-sections'])) : ?>
+
+                  <!-- Sub-menu -->
+                  <ul class="classes" v-show="false" v-cloak>
+
+                    <?php foreach ($section['sub-sections'] as $sub_section_name => $sub_section) : ?>
+
+                      <li class="classes">
+                        <a href="<?php echo esc_url($page->get_section_link($section_name)."#".$sub_section_name); ?>" class="wu-block wu-py-2 wu-px-4 wu-no-underline wu-text-gray-500 hover:wu-text-gray-600 wu-text-sm">
+                          &rarr; <?php echo $sub_section['title']; ?>
+                        </a>
+                      </li>
+
+                    <?php endforeach; ?>
+
+                  </ul>
+                  <!-- End Sub-menu -->
+
+                <?php endif; ?>
+
+              </li>
+              <!-- End Menu Item -->
+
+            <?php endforeach; ?>
+
+          </ul>
+          <!-- End Navigator -->
+
+          <?php if (!empty($addons)) : ?>
+
+            <!-- Addon Navigator -->
+            <ul class="wu-pt-4">
+
+              <li class="wu-px-4 wu-font-bold wu-uppercase wu-text-xs wu-text-gray-700">
+                <?php _e('Add-ons', 'wp-ultimo'); ?>
+              </li>
+
+              <?php foreach ($addons as $section_name => $section) : ?>
+
+                <?php
+
+                /**
+                 * Updates the flag after the current section is looped.
+                 */
+                if ($current_section === $section_name) {
+
+                  $is_pre_current_section = false;
+
+                } // end if;
+
+                ?>
+
+                <!-- Menu Item -->
+                <li class="wu-sticky">
+
+                  <!-- Menu Link -->
+                  <a href="<?php echo esc_url($page->get_section_link($section_name)); ?>" class="wu-block wu-py-2 wu-px-4 wu-no-underline wu-text-sm wu-rounded <?php echo !$clickable_navigation && !$is_pre_current_section ? 'wu-pointer-events-none' : ''; ?> <?php echo $current_section === $section_name ? 'wu-bg-gray-300 wu-text-gray-800' : 'wu-text-gray-600 hover:wu-text-gray-700'; ?>">
+
+                    <span class="<?php echo esc_attr($section['icon']); ?> wu-align-text-bottom wu-mr-1"></span>
+
+                    <?php echo $section['title']; ?>
+
+                  </a>
+                  <!-- End Menu Link -->
+
+                  <?php if (!empty($section['sub-sections'])) : ?>
+
+                    <!-- Sub-menu -->
+                    <ul class="classes" v-show="false" v-cloak>
+
+                      <?php foreach ($section['sub-sections'] as $sub_section_name => $sub_section) : ?>
+
+                        <li class="classes">
+                          <a href="<?php echo esc_url($page->get_section_link($section_name)."#".$sub_section_name); ?>" class="wu-block wu-py-2 wu-px-4 wu-no-underline wu-text-gray-500 hover:wu-text-gray-600 wu-text-sm">
+                            &rarr; <?php echo $sub_section['title']; ?>
+                          </a>
+                        </li>
+
+                      <?php endforeach; ?>
+
+                    </ul>
+                    <!-- End Sub-menu -->
+
+                  <?php endif; ?>
+
+                </li>
+                <!-- End Menu Item -->
+
+              <?php endforeach; ?>
+
+            </ul>
+            <!-- End Addon Navigator -->
+
+          <?php endif; ?>
+
+        </div>
 
       </div>
 
-      <div class="wu-w-full md:wu-w-8/12 lg:wu-w-6/12 md:wu-pl-4 lg:wu-px-4 metabox-holder">
+      <div class="sm:wu-col-span-8 lg:wu-col-span-6 metabox-holder">
 
         <div class="wu-relative">
 
@@ -177,9 +273,7 @@
 
       </div>
 
-      <div class="wu-hidden md:wu-block lg:wu-w-1/12">&nbsp;</div>
-
-      <div class="wu-w-full wu-hidden lg:wu-block lg:wu-w-3/12 metabox-holder">
+      <div class="sm:wu-col-span-8 sm:wu-col-start-5 lg:wu-col-span-3 lg:wu-col-start-10 metabox-holder">
 
         <?php
         /**

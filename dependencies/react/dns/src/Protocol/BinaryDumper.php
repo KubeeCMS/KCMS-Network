@@ -1,17 +1,17 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Dns\Protocol;
+namespace React\Dns\Protocol;
 
-use WP_Ultimo\Dependencies\React\Dns\Model\Message;
-use WP_Ultimo\Dependencies\React\Dns\Model\Record;
-use WP_Ultimo\Dependencies\React\Dns\Query\Query;
+use React\Dns\Model\Message;
+use React\Dns\Model\Record;
+use React\Dns\Query\Query;
 final class BinaryDumper
 {
     /**
      * @param Message $message
      * @return string
      */
-    public function toBinary(\WP_Ultimo\Dependencies\React\Dns\Model\Message $message)
+    public function toBinary(Message $message)
     {
         $data = '';
         $data .= $this->headerToBinary($message);
@@ -25,7 +25,7 @@ final class BinaryDumper
      * @param Message $message
      * @return string
      */
-    private function headerToBinary(\WP_Ultimo\Dependencies\React\Dns\Model\Message $message)
+    private function headerToBinary(Message $message)
     {
         $data = '';
         $data .= \pack('n', $message->id);
@@ -69,46 +69,47 @@ final class BinaryDumper
         foreach ($records as $record) {
             /* @var $record Record */
             switch ($record->type) {
-                case \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_A:
-                case \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_AAAA:
+                case Message::TYPE_A:
+                case Message::TYPE_AAAA:
                     $binary = \inet_pton($record->data);
                     break;
-                case \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_CNAME:
-                case \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_NS:
-                case \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_PTR:
+                case Message::TYPE_CNAME:
+                case Message::TYPE_NS:
+                case Message::TYPE_PTR:
                     $binary = $this->domainNameToBinary($record->data);
                     break;
-                case \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_TXT:
+                case Message::TYPE_TXT:
+                case Message::TYPE_SPF:
                     $binary = $this->textsToBinary($record->data);
                     break;
-                case \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_MX:
+                case Message::TYPE_MX:
                     $binary = \pack('n', $record->data['priority']);
                     $binary .= $this->domainNameToBinary($record->data['target']);
                     break;
-                case \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_SRV:
+                case Message::TYPE_SRV:
                     $binary = \pack('n*', $record->data['priority'], $record->data['weight'], $record->data['port']);
                     $binary .= $this->domainNameToBinary($record->data['target']);
                     break;
-                case \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_SOA:
+                case Message::TYPE_SOA:
                     $binary = $this->domainNameToBinary($record->data['mname']);
                     $binary .= $this->domainNameToBinary($record->data['rname']);
                     $binary .= \pack('N*', $record->data['serial'], $record->data['refresh'], $record->data['retry'], $record->data['expire'], $record->data['minimum']);
                     break;
-                case \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_CAA:
+                case Message::TYPE_CAA:
                     $binary = \pack('C*', $record->data['flag'], \strlen($record->data['tag']));
                     $binary .= $record->data['tag'];
                     $binary .= $record->data['value'];
                     break;
-                case \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_SSHFP:
+                case Message::TYPE_SSHFP:
                     $binary = \pack('CCH*', $record->data['algorithm'], $record->data['type'], $record->data['fingerprint']);
                     break;
-                case \WP_Ultimo\Dependencies\React\Dns\Model\Message::TYPE_OPT:
+                case Message::TYPE_OPT:
                     $binary = '';
                     foreach ($record->data as $opt => $value) {
-                        if ($opt === \WP_Ultimo\Dependencies\React\Dns\Model\Message::OPT_TCP_KEEPALIVE && $value !== null) {
+                        if ($opt === Message::OPT_TCP_KEEPALIVE && $value !== null) {
                             $value = \pack('n', \round($value * 10));
                         }
-                        $binary .= \pack('n*', $opt, \strlen($value)) . $value;
+                        $binary .= \pack('n*', $opt, \strlen((string) $value)) . $value;
                     }
                     break;
                 default:

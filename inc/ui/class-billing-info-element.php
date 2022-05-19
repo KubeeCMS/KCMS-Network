@@ -21,6 +21,8 @@ defined('ABSPATH') || exit;
  */
 class Billing_Info_Element extends Base_Element {
 
+	use \WP_Ultimo\Traits\Singleton;
+
 	/**
 	 * The id of the element.
 	 *
@@ -73,6 +75,18 @@ class Billing_Info_Element extends Base_Element {
 		));
 
 	} // end init;
+
+	/**
+	 * Loads the required scripts.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function register_scripts() {
+
+		add_wubox();
+
+	} // end register_scripts;
 
 	/**
 	 * The title of the UI element.
@@ -269,6 +283,26 @@ class Billing_Info_Element extends Base_Element {
 	} // end output;
 
 	/**
+	 * Apply the placeholders to the fields.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param array $fields The billing fields.
+	 * @return array
+	 */
+	protected function apply_placeholders($fields) {
+
+		foreach ($fields as &$field) {
+
+			$field['placeholder'] = $field['default_placeholder'];
+
+		} // end foreach;
+
+		return $fields;
+
+	} // end apply_placeholders;
+
+	/**
 	 * Renders the update billing address form.
 	 *
 	 * @since 2.0.0
@@ -286,7 +320,19 @@ class Billing_Info_Element extends Base_Element {
 
 		$billing_address = $membership->get_billing_address();
 
-		$fields = $billing_address->get_fields();
+		$fields = array();
+
+		$fields['billing-title'] = array(
+			'type'            => 'header',
+			'order'           => 1,
+			'title'           => __('Your Address', 'wp-ultimo'),
+			'desc'            => __('Enter your billing address here. This info will be used on your invoices.', 'wp-ultimo'),
+			'wrapper_classes' => 'wu-col-span-2',
+		);
+
+		$billing_fields = $this->apply_placeholders($billing_address->get_fields());
+
+		$fields = array_merge($fields, $billing_fields);
 
 		$fields['submit'] = array(
 			'type'            => 'submit',
@@ -356,7 +402,7 @@ class Billing_Info_Element extends Base_Element {
 		} // end if;
 
 		wp_send_json_success(array(
-			'redirect_url' => add_query_arg('updated', (int) $status, $_SERVER['HTTP_REFERER']),
+			'redirect_url' => add_query_arg('updated', (int) $saved, $_SERVER['HTTP_REFERER']),
 		));
 
 	} // end handle_update_billing_address;

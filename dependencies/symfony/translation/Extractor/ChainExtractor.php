@@ -26,8 +26,6 @@ class ChainExtractor implements \Symfony\Component\Translation\Extractor\Extract
     private $extractors = [];
     /**
      * Adds a loader to the translation extractor.
-     *
-     * @param string $format The format of the loader
      */
     public function addExtractor(string $format, \Symfony\Component\Translation\Extractor\ExtractorInterface $extractor)
     {
@@ -45,7 +43,7 @@ class ChainExtractor implements \Symfony\Component\Translation\Extractor\Extract
     /**
      * {@inheritdoc}
      */
-    public function extract($directory, \Symfony\Component\Translation\MessageCatalogue $catalogue)
+    public function extract($directory, MessageCatalogue $catalogue)
     {
         foreach ($this->extractors as $extractor) {
             $extractor->extract($directory, $catalogue);

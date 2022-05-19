@@ -12,8 +12,8 @@ namespace WP_Ultimo\Admin_Pages;
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
+use \WP_Ultimo\Database\Sites\Site_Type;
 use \WP_Ultimo\Models\Site;
-use \WP_Ultimo\Managers\Site_Manager;
 
 /**
  * WP Ultimo Site Edit New Admin Page.
@@ -91,7 +91,13 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 
 		parent::register_scripts();
 
+		WP_Ultimo()->scripts->register_script('wu-screenshot-scraper', wu_get_asset('screenshot-scraper.js', 'js'), array('jquery'));
+
+		wp_enqueue_script('wu-screenshot-scraper');
+
 		wp_enqueue_media();
+
+		wp_enqueue_editor();
 
 	} // end register_scripts;
 
@@ -121,7 +127,52 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 			);
 		});
 
+		add_filter("wu_page_{$this->id}_load", array($this, 'add_new_site_template_warning_message'));
+
 	} // end register_forms;
+
+	/**
+	 * Adds the new site_template warning.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function add_new_site_template_warning_message() {
+
+		if (wu_request('wu-new-model')) {
+
+			if (!$this->get_object() || $this->get_object()->get_type() !== Site_Type::SITE_TEMPLATE) {
+
+				return;
+
+			} // end if;
+
+			\WP_Ultimo\UI\Tours::get_instance()->create_tour('new_site_template_warning', array(
+				array(
+					'id'       => 'new-site-template-warning',
+					'title'    => __('On adding a new Site Template...', 'wp-ultimo'),
+					'text'     => array(
+						__("You just successfully added a new site template to your WP Ultimo network and that's awesome!", 'wp-ultimo'),
+						__('Keep in mind that newly created site templates do not appear automatically in your checkout forms.', 'wp-ultimo'),
+						__('To make a site template available on registration, you will need to manually add it to the template selection field of your checkout forms.', 'wp-ultimo'),
+					),
+					'buttons'  => array(
+						array(
+							'classes' => 'button wu-text-xs sm:wu-normal-case wu-float-left',
+							'text'    => __('Go to Checkout Forms', 'wp-ultimo'),
+							'url'     => wu_network_admin_url('wp-ultimo-checkout-forms'),
+						)
+					),
+					'attachTo' => array(
+						'element' => '#message.updated',
+						'on'      => 'top',
+					),
+				),
+			));
+
+		} // end if;
+
+	} // end add_new_site_template_warning_message;
 
 	/**
 	 * Renders the transfer confirmation form.
@@ -192,9 +243,11 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 	 * @return void
 	 */
 	public function handle_transfer_site_modal() {
+
 		global $wpdb;
 
-		$site              = wu_get_site(wu_request('id'));
+		$site = wu_get_site(wu_request('id'));
+
 		$target_membership = wu_get_membership(wu_request('target_membership_id'));
 
 		if (!$site) {
@@ -213,6 +266,8 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 
 		$site->set_customer_id($target_membership->get_customer_id());
 
+		$site->set_type('customer_owned');
+
 		$saved = $site->save();
 
 		if (is_wp_error($saved)) {
@@ -223,7 +278,8 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 
 		wp_send_json_success(array(
 			'redirect_url' => wu_network_admin_url('wp-ultimo-edit-site', array(
-				'id' => $site->get_id(),
+				'id'      => $site->get_id(),
+				'updated' => 1,
 			))
 		));
 
@@ -254,42 +310,18 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 				'style' => 'margin-top: -6px;',
 			),
 			'fields'                => array(
-				'type'            => array(
+				'type' => array(
 					'type'          => 'text-display',
 					'title'         => __('Site Type', 'wp-ultimo'),
 					'display_value' => $tag,
 					'tooltip'       => '',
 				),
-				'id'              => array(
+				'id'   => array(
 					'type'          => 'text-display',
+					'copy'          => true,
 					'title'         => __('Site ID', 'wp-ultimo'),
 					'display_value' => $this->get_object()->get_id(),
 					'tooltip'       => '',
-				),
-				'total_grossed'   => array(
-					'type'          => 'text-display',
-					'title'         => __('Membership', 'wp-ultimo'),
-					'display_value' => $this->get_object()->get_membership()
-						? sprintf('<a href="%s" class="wu-no-underline">' . $this->get_object()->get_membership()->get_hash() . ' &rarr;</a>', wu_network_admin_url(
-							'wp-ultimo-edit-membership',
-							array(
-								'id' => $this->get_object()->get_membership_id()
-							)
-						))
-						: '--',
-					'tooltip'       => '',
-				),
-				'date_expiration' => array(
-					'type'          => 'text-display',
-					'title'         => __('Customer', 'wp-ultimo'),
-					'display_value' => $this->get_object()->get_customer()
-						? sprintf('<a href="%s" class="wu-no-underline">' . $this->get_object()->get_customer()->get_display_name() . ' &rarr;</a>', wu_network_admin_url(
-							'wp-ultimo-edit-customer',
-							array(
-								'id' => $this->get_object()->get_customer_id()
-							)
-						))
-						: '--',
 				),
 			),
 		));
@@ -322,6 +354,34 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 			'query_filter' => array($this, 'domain_query_filter'),
 		));
 
+		if ($this->get_object()->get_type() === 'customer_owned') {
+
+			$this->add_list_table_widget('membership', array(
+				'title'        => __('Linked Membership', 'wp-ultimo'),
+				'table'        => new \WP_Ultimo\List_Tables\Customers_Membership_List_Table(),
+				'query_filter' => function($query) {
+
+					$query['id'] = $this->get_object()->get_membership_id();
+
+					return $query;
+
+				},
+			));
+
+			$this->add_list_table_widget('customer', array(
+				'title'        => __('Linked Customer', 'wp-ultimo'),
+				'table'        => new \WP_Ultimo\List_Tables\Site_Customer_List_Table(),
+				'query_filter' => function($query) {
+
+					$query['id'] = $this->get_object()->get_customer_id();
+
+					return $query;
+
+				},
+			));
+
+		} // end if;
+
 		$this->add_list_table_widget('events', array(
 			'title'        => __('Events', 'wp-ultimo'),
 			'table'        => new \WP_Ultimo\List_Tables\Inside_Events_List_Table(),
@@ -342,32 +402,41 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 			),
 			'fields'    => array(
 				// Fields for price
+				'type_main'     => array(
+					'type'              => 'text-display',
+					'title'             => __('Site Type', 'wp-ultimo'),
+					'display_value'     => __('Main Site', 'wp-ultimo'),
+					'tooltip'           => __('You can\'t change the main site type.', 'wp-ultimo'),
+					'wrapper_html_attr' => array(
+						'v-cloak' => '1',
+						'v-show'  => 'type === "main"',
+					),
+				),
 				'type'          => array(
 					'type'              => 'select',
 					'title'             => __('Site Type', 'wp-ultimo'),
 					'placeholder'       => __('Select Site Type', 'wp-ultimo'),
+					'desc'              => __('Different site types have different options and settings.', 'wp-ultimo'),
 					'value'             => $this->get_object()->get_type(),
 					'tooltip'           => '',
 					'options'           => array(
 						'default'        => __('Regular WordPress', 'wp-ultimo'),
 						'site_template'  => __('Site Template', 'wp-ultimo'),
 						'customer_owned' => __('Customer-owned', 'wp-ultimo'),
-						'main'           => __('Main Site', 'wp-ultimo'),
 					),
 					'html_attr'         => array(
-						'v-model'         => 'type',
-						'disabled'        => $this->get_object()->get_type() === 'main',
-						'v-bind:disabled' => 'type === "main"',
+						'v-model' => 'type',
 					),
 					'wrapper_html_attr' => array(
 						'v-cloak' => '1',
+						'v-show'  => 'type !== "main"',
 					),
 				),
 				'categories'    => array(
 					'type'              => 'select',
 					'title'             => __('Template Categories', 'wp-ultimo'),
 					'placeholder'       => __('e.g.: Landing Page, Health...', 'wp-ultimo'),
-					'tooltip'           => __('Customers will be able to filter by categories during signup.', 'wp-ultimo'),
+					'desc'              => __('Customers will be able to filter by categories during signup.', 'wp-ultimo'),
 					'value'             => $this->get_object()->get_categories(),
 					'options'           => Site::get_all_categories(),
 					'html_attr'         => array(
@@ -382,7 +451,8 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 				'membership_id' => array(
 					'type'              => 'model',
 					'title'             => __('Associated Membership', 'wp-ultimo'),
-					'placeholder'       => __('Membership', 'wp-ultimo'),
+					'placeholder'       => __('Search Membership...', 'wp-ultimo'),
+					'desc'              => __('The membership that owns this site.', 'wp-ultimo'),
 					'value'             => $this->get_object()->get_membership_id(),
 					'tooltip'           => '',
 					'wrapper_html_attr' => array(
@@ -438,14 +508,14 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 			),
 		));
 
-		$this->add_fields_widget('public', array(
-			'title'  => __('Is Active?', 'wp-ultimo'),
+		$this->add_fields_widget('active', array(
+			'title'  => __('Active', 'wp-ultimo'),
 			'fields' => array(
-				'public' => array(
+				'active' => array(
 					'type'  => 'toggle',
-					'title' => __('Is Active?', 'wp-ultimo'),
-					'desc'  => __('Deactivate this site.', 'wp-ultimo'),
-					'value' => $this->get_object()->get_public(),
+					'title' => __('Active', 'wp-ultimo'),
+					'desc'  => __('Use this option to manually enable or disable this site.', 'wp-ultimo'),
+					'value' => $this->get_object()->is_active(),
 				),
 			),
 		));
@@ -454,10 +524,12 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 			'title'  => __('Site Image', 'wp-ultimo'),
 			'fields' => array(
 				'featured_image_id' => array(
-					'type'  => 'image',
-					'title' => __('Set Site Image', 'wp-ultimo'),
-					'value' => $this->get_object()->get_featured_image_id(),
-					'img'   => $this->get_object()->get_featured_image(),
+					'type'    => 'image',
+					'stacked' => true,
+					'title'   => __('Site Image', 'wp-ultimo'),
+					'desc'    => __('This image is used on lists of sites and other places. It can be automatically generated by the screenshot scraper.', 'wp-ultimo'),
+					'value'   => $this->get_object()->get_featured_image_id(),
+					'img'     => $this->get_object()->get_featured_image(),
 				),
 				'scraper_note'      => array(
 					'type'            => 'note',
@@ -469,8 +541,14 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 					'desc'            => '<span class="wu-scraper-error-message wu-p-2 wu-bg-red-100 wu-text-red-600 wu-rounded wu-block"></span>',
 					'wrapper_classes' => 'wu-hidden wu-scraper-error',
 				),
+				'scraper_message'   => array(
+					'type'            => 'note',
+					'desc'            => sprintf('<span class="wu-p-2 wu-bg-red-100 wu-text-red-600 wu-rounded wu-block">%s</span>', __('We detected that this network might be running locally. If that\'s the case, WP Ultimo will not be able to take a screenshot of the site. A site needs to be publicly available to the outside world in order for this feature to work.', 'wp-ultimo')),
+					'wrapper_classes' => \WP_Ultimo\Domain_Mapping\Helper::is_development_mode() ? '' : 'wu-hidden',
+				),
 				'scraper'           => array(
 					'type'    => 'submit',
+					'title'   => __('Take Screenshot', 'wp-ultimo'),
 					'title'   => __('Take Screenshot', 'wp-ultimo'),
 					'classes' => 'button wu-w-full',
 				),
@@ -491,53 +569,9 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 	 */
 	protected function get_site_option_sections() {
 
-		$reset_url = wu_get_form_url('confirm_limitations_reset', array(
-			'id'    => $this->get_object()->get_id(),
-			'model' => 'site',
-		));
-
-		$sections = array(
-			'general' => array(
-				'title'  => __('General', 'wp-ultimo'),
-				'desc'   => __('General site options.', 'wp-ultimo'),
-				'icon'   => 'dashicons-wu-globe',
-				'fields' => array(
-					'reset_permissions' => array(
-						'type'  => 'note',
-						'title' => sprintf("%s<span class='wu-normal-case wu-block wu-text-xs wu-font-normal wu-mt-1'>%s</span>", __('Reset Limitations', 'wp-ultimo'), __('Use this option to remove the custom limitations applied to this object.', 'wp-ultimo')),
-						'desc'  => sprintf('<a href="%s" title="%s" class="wubox button-primary">%s</a>', $reset_url, __('Reset Limitations', 'wp-ultimo'), __('Reset Limitations', 'wp-ultimo')),
-					)
-				),
-			),
-		);
+		$sections = array();
 
 		$sections = apply_filters('wu_site_options_sections', $sections, $this->get_object());
-
-		$sections['custom_fields'] = array(
-			'title'  => __('Extra Information', 'wp-ultimo'),
-			'desc'   => __('Add extra information to this site.', 'wp-ultimo'),
-			'icon'   => 'dashicons-wu-new-message',
-			'fields' => array(
-				'extra_information' => array(
-					'type'   => 'repeater',
-					'fields' => array(
-						'field_name'  => array(
-							'title'           => __('Name', 'wp-ultimo'),
-							'type'            => 'text',
-							'value'           => '',
-							'wrapper_classes' => 'wu-w-1/2',
-						),
-						'field_value' => array(
-							'title'           => __('Value', 'wp-ultimo'),
-							'type'            => 'text',
-							'value'           => '',
-							'wrapper_classes' => 'wu-w-1/2 wu-ml-4',
-						),
-					),
-					'values' => $this->get_object()->get_extra_information()
-				),
-			)
-		);
 
 		return $sections;
 
@@ -628,7 +662,7 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 	public function domain_query_filter($args) {
 
 		$extra_args = array(
-			'blog_id' => abs($this->get_object()->get_id()),
+			'blog_id' => absint($this->get_object()->get_id()),
 		);
 
 		return array_merge($args, $extra_args);
@@ -647,7 +681,7 @@ class Site_Edit_Admin_Page extends Edit_Admin_Page {
 
 		$extra_args = array(
 			'object_type' => 'site',
-			'object_id'   => abs($this->get_object()->get_id()),
+			'object_id'   => absint($this->get_object()->get_id()),
 		);
 
 		return array_merge($args, $extra_args);

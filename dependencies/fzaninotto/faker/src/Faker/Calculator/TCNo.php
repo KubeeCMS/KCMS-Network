@@ -17,7 +17,7 @@ class TCNo
     public static function checksum($identityPrefix)
     {
         if (\strlen((string) $identityPrefix) !== 9) {
-            throw new \InvalidArgumentException('Argument should be an integer and should be 9 digits.');
+            throw new InvalidArgumentException('Argument should be an integer and should be 9 digits.');
         }
         $oddSum = 0;
         $evenSum = 0;

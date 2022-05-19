@@ -99,7 +99,7 @@ class Domains_Schema extends Schema {
 		array(
 			'name'       => 'date_created',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'created'    => true,
 			'date_query' => true,
 			'sortable'   => true
@@ -108,7 +108,7 @@ class Domains_Schema extends Schema {
 		array(
 			'name'       => 'date_modified',
 			'type'       => 'datetime',
-			'default'    => '0000-00-00 00:00:00',
+			'default'    => null,
 			'modified'   => true,
 			'date_query' => true,
 			'sortable'   => true,

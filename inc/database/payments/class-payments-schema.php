@@ -127,6 +127,14 @@ class Payments_Schema extends Schema {
 		),
 
 		array(
+			'name'       => 'refund_total',
+			'type'       => 'decimal(13,4)',
+			'default'    => '',
+			'sortable'   => true,
+			'transition' => true,
+		),
+
+		array(
 			'name'       => 'tax_total',
 			'type'       => 'decimal(13,4)',
 			'default'    => '',

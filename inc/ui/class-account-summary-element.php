@@ -21,6 +21,8 @@ defined('ABSPATH') || exit;
  */
 class Account_Summary_Element extends Base_Element {
 
+	use \WP_Ultimo\Traits\Singleton;
+
 	/**
 	 * The id of the element.
 	 *
@@ -85,7 +87,7 @@ class Account_Summary_Element extends Base_Element {
 	 */
 	public function get_description() {
 
-		return __('Adds a checkout form block to the page.', 'wp-ultimo');
+		return __('Adds a account summary block to the page.', 'wp-ultimo');
 
 	} // end get_description;
 
@@ -210,7 +212,7 @@ class Account_Summary_Element extends Base_Element {
 		is_multisite() && restore_current_blog();
 
 		$this->atts = array(
-			'site_trial'      => 30, // @todo: fix this
+			'site_trial'      => 0, // @todo: fix this
 			'space_used'      => $space_used,
 			'space_allowed'   => $space_allowed,
 			'percentage'      => $percentage,

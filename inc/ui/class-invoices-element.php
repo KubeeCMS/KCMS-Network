@@ -21,6 +21,8 @@ defined('ABSPATH') || exit;
  */
 class Invoices_Element extends Base_Element {
 
+	use \WP_Ultimo\Traits\Singleton;
+
 	/**
 	 * The id of the element.
 	 *
@@ -208,6 +210,12 @@ class Invoices_Element extends Base_Element {
 
 			require_once ABSPATH . 'wp-admin/includes/class-wp-screen.php';
 			require_once ABSPATH . 'wp-admin/includes/screen.php';
+
+		} // end if;
+
+		if (!function_exists('wu_responsive_table_row')) {
+
+			require wu_path('/inc/functions/admin.php');
 
 		} // end if;
 

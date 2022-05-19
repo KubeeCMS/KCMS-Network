@@ -84,14 +84,6 @@ abstract class Base_Host_Provider {
 	} // end init;
 
 	/**
-	 * Singletons can't be cloned!
-	 *
-	 * @since 2.0.0
-	 * @return void
-	 */
-	final private function __clone() {} // end __clone;
-
-	/**
 	 * Loads the hooks and dependencies, but only if the hosting is enabled via is_enabled().
 	 *
 	 * @since 2.0.0
@@ -250,6 +242,12 @@ abstract class Base_Host_Provider {
 	 */
 	public function alert_provider_detected() {
 
+		if (WP_Ultimo()->is_loaded() === false) {
+
+			return;
+
+		} // end if;
+
 		// translators: %1$s will be replaced with the integration title. E.g. RunCloud
 		$message = sprintf(__('It looks like you are using %1$s as your hosting provider, yet the %1$s integration module is not active. In order for the domain mapping integration to work with %1$s, you might want to activate that module.', 'wp-ultimo'), $this->get_title());
 
@@ -276,6 +274,12 @@ abstract class Base_Host_Provider {
 	 * @return void
 	 */
 	public function alert_provider_not_setup() {
+
+		if (WP_Ultimo()->is_loaded() === false) {
+
+			return;
+
+		} // end if;
 
 		// translators: %1$s will be replaced with the integration title. E.g. RunCloud.
 		$message = sprintf(__('It looks like you are using %1$s as your hosting provider, yet the %1$s integration module was not properly setup. In order for the domain mapping integration to work with %1$s, you need to configure that module.', 'wp-ultimo'), $this->get_title());
@@ -359,11 +363,34 @@ abstract class Base_Host_Provider {
 		add_action('wu_add_domain', array($this, 'on_add_domain'), 10, 2);
 
 		/*
-		 * Hooks the vent that is triggered when a domain is deleted.
+		 * Hooks the event that is triggered when a domain is deleted.
 		 */
 		add_action('wu_remove_domain', array($this, 'on_remove_domain'), 10, 2);
 
+		/*
+		 * Hooks the event that is triggered when a sub-domain is added.
+		 */
+		add_action('wu_add_subdomain', array($this, 'on_add_subdomain'), 10, 2);
+
+		/*
+		 * Hooks the event that is triggered when a sub-domain is added.
+		 */
+		add_action('wu_remove_subdomain', array($this, 'on_remove_subdomain'), 10, 2);
+
+		/*
+		 * Add additional hooks.
+		 */
+		$this->additional_hooks();
+
 	} // end register_hooks;
+
+	/**
+	 * Lets integrations add additional hooks.
+	 *
+	 * @since 2.0.7
+	 * @return void
+	 */
+	public function additional_hooks() {} // end additional_hooks;
 
 	/**
 	 * Can be used to load dependencies.

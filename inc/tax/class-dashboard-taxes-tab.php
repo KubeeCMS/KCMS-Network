@@ -18,6 +18,15 @@ defined('ABSPATH') || exit;
 class Dashboard_Taxes_Tab {
 
 	/**
+	 * Reference to the main admin page object so we can
+	 * access its methods on the render functions.
+	 *
+	 * @since 2.0.11
+	 * @var \WP_Ultimo\Admin_Pages\Base_Admin_Page
+	 */
+	protected $dashboard_page;
+
+	/**
 	 * Constructor
 	 *
 	 * @since 2.0.0
@@ -114,6 +123,14 @@ class Dashboard_Taxes_Tab {
 	 * @return void
 	 */
 	public function register_widgets($tab, $screen, $dashboard_page) {
+
+		/**
+		 * Set the dashboard page as a property
+		 * to make the helper methods available on the render
+		 * functions for the metaboxes.
+		 */
+		$this->dashboard_page = $dashboard_page;
+
 		/*
 		 * Displays an empty page with the option to activate tax support.
 		 */
@@ -191,7 +208,7 @@ class Dashboard_Taxes_Tab {
 
 		} // end for;
 
-		wp_register_script('wu-tax-stats', wu_get_asset('tax-statistics.js', 'js'), array('jquery', 'wu-functions', 'wu-ajax-list-table', 'wu-moment', 'wu-block-ui', 'dashboard', 'wu-apex-charts', 'wu-vue-apex-charts'), wu_get_version(), true);
+		wp_register_script('wu-tax-stats', wu_get_asset('tax-statistics.js', 'js'), array('jquery', 'wu-functions', 'wu-ajax-list-table', 'moment', 'wu-block-ui', 'dashboard', 'wu-apex-charts', 'wu-vue-apex-charts'), wu_get_version(), true);
 
 		wp_localize_script('wu-tax-stats', 'wu_tax_statistics_vars', array(
 			'data'       => $payments_per_month,
@@ -217,7 +234,7 @@ class Dashboard_Taxes_Tab {
 	 */
 	public function output_widget_taxes() {
 
-		WP_Ultimo()->helper->render('dashboard-statistics/widget-tax-graph');
+		wu_get_template('dashboard-statistics/widget-tax-graph');
 
 	} // end output_widget_taxes;
 
@@ -233,6 +250,7 @@ class Dashboard_Taxes_Tab {
 
 		wu_get_template('dashboard-statistics/widget-tax-by-code', array(
 			'taxes_by_rate' => $taxes_by_rate,
+			'page'          => $this->dashboard_page,
 		));
 
 	} // end output_widget_taxes_by_rate;
@@ -249,6 +267,7 @@ class Dashboard_Taxes_Tab {
 
 		wu_get_template('dashboard-statistics/widget-tax-by-day', array(
 			'taxes_by_day' => $taxes_by_day,
+			'page'         => $this->dashboard_page,
 		));
 
 	} // end output_widget_taxes_by_day;

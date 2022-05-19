@@ -7,6 +7,7 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\PdfParser;
 
 /**
@@ -18,21 +19,24 @@ class Tokenizer
      * @var StreamReader
      */
     protected $streamReader;
+
     /**
      * A token stack.
      *
      * @var string[]
      */
     protected $stack = [];
+
     /**
      * Tokenizer constructor.
      *
      * @param StreamReader $streamReader
      */
-    public function __construct(\setasign\Fpdi\PdfParser\StreamReader $streamReader)
+    public function __construct(StreamReader $streamReader)
     {
         $this->streamReader = $streamReader;
     }
+
     /**
      * Get the stream reader instance.
      *
@@ -42,6 +46,7 @@ class Tokenizer
     {
         return $this->streamReader;
     }
+
     /**
      * Clear the token stack.
      */
@@ -49,6 +54,7 @@ class Tokenizer
     {
         $this->stack = [];
     }
+
     /**
      * Push a token onto the stack.
      *
@@ -58,6 +64,7 @@ class Tokenizer
     {
         $this->stack[] = $token;
     }
+
     /**
      * Get next token.
      *
@@ -69,15 +76,18 @@ class Tokenizer
         if ($token !== null) {
             return $token;
         }
-        if (($byte = $this->streamReader->readByte()) === \false) {
-            return \false;
+
+        if (($byte = $this->streamReader->readByte()) === false) {
+            return false;
         }
-        if (\in_array($byte, [" ", "\n", "\r", "\f", "\t", "\0"], \true)) {
-            if ($this->leapWhiteSpaces() === \false) {
-                return \false;
+
+        if (\in_array($byte, ["\x20", "\x0A", "\x0D", "\x0C", "\x09", "\x00"], true)) {
+            if ($this->leapWhiteSpaces() === false) {
+                return false;
             }
             $byte = $this->streamReader->readByte();
         }
+
         switch ($byte) {
             case '/':
             case '[':
@@ -93,17 +103,33 @@ class Tokenizer
                 $this->streamReader->readLine();
                 return $this->getNextToken();
         }
+
         /* This way is faster than checking single bytes.
          */
         $bufferOffset = $this->streamReader->getOffset();
         do {
-            $lastBuffer = $this->streamReader->getBuffer(\false);
-            $pos = \strcspn($lastBuffer, "\0\t\n\f\r ()<>[]{}/%", $bufferOffset);
-        } while ($lastBuffer !== \false && ($bufferOffset + $pos === \strlen($lastBuffer) && $this->streamReader->increaseLength()));
+            $lastBuffer = $this->streamReader->getBuffer(false);
+            $pos = \strcspn(
+                $lastBuffer,
+                "\x00\x09\x0A\x0C\x0D\x20()<>[]{}/%",
+                $bufferOffset
+            );
+        } while (
+            // Break the loop if a delimiter or white space char is matched
+            // in the current buffer or increase the buffers length
+            $lastBuffer !== false &&
+            (
+                $bufferOffset + $pos === \strlen($lastBuffer) &&
+                $this->streamReader->increaseLength()
+            )
+        );
+
         $result = \substr($lastBuffer, $bufferOffset - 1, $pos + 1);
         $this->streamReader->setOffset($bufferOffset + $pos);
+
         return $result;
     }
+
     /**
      * Leap white spaces.
      *
@@ -113,14 +139,16 @@ class Tokenizer
     {
         do {
             if (!$this->streamReader->ensureContent()) {
-                return \false;
+                return false;
             }
-            $buffer = $this->streamReader->getBuffer(\false);
-            $matches = \strspn($buffer, " \n\f\r\t\0", $this->streamReader->getOffset());
+
+            $buffer = $this->streamReader->getBuffer(false);
+            $matches = \strspn($buffer, "\x20\x0A\x0C\x0D\x09\x00", $this->streamReader->getOffset());
             if ($matches > 0) {
                 $this->streamReader->addOffset($matches);
             }
         } while ($this->streamReader->getOffset() >= $this->streamReader->getBufferLength());
-        return \true;
+
+        return true;
     }
 }

@@ -45,7 +45,7 @@ abstract class RFC4648
      */
     public static function base64Encode(string $str) : string
     {
-        return \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Base64::encode($str);
+        return Base64::encode($str);
     }
     /**
      * RFC 4648 Base64 decoding
@@ -58,7 +58,7 @@ abstract class RFC4648
      */
     public static function base64Decode(string $str) : string
     {
-        return \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Base64::decode($str, \true);
+        return Base64::decode($str, \true);
     }
     /**
      * RFC 4648 Base64 (URL Safe) encoding
@@ -71,7 +71,7 @@ abstract class RFC4648
      */
     public static function base64UrlSafeEncode(string $str) : string
     {
-        return \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Base64UrlSafe::encode($str);
+        return Base64UrlSafe::encode($str);
     }
     /**
      * RFC 4648 Base64 (URL Safe) decoding
@@ -84,7 +84,7 @@ abstract class RFC4648
      */
     public static function base64UrlSafeDecode(string $str) : string
     {
-        return \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Base64UrlSafe::decode($str, \true);
+        return Base64UrlSafe::decode($str, \true);
     }
     /**
      * RFC 4648 Base32 encoding
@@ -97,7 +97,7 @@ abstract class RFC4648
      */
     public static function base32Encode(string $str) : string
     {
-        return \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Base32::encodeUpper($str);
+        return Base32::encodeUpper($str);
     }
     /**
      * RFC 4648 Base32 encoding
@@ -110,7 +110,7 @@ abstract class RFC4648
      */
     public static function base32Decode(string $str) : string
     {
-        return \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Base32::decodeUpper($str, \true);
+        return Base32::decodeUpper($str, \true);
     }
     /**
      * RFC 4648 Base32-Hex encoding
@@ -123,7 +123,7 @@ abstract class RFC4648
      */
     public static function base32HexEncode(string $str) : string
     {
-        return \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Base32::encodeUpper($str);
+        return Base32::encodeUpper($str);
     }
     /**
      * RFC 4648 Base32-Hex decoding
@@ -136,7 +136,7 @@ abstract class RFC4648
      */
     public static function base32HexDecode(string $str) : string
     {
-        return \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Base32::decodeUpper($str, \true);
+        return Base32::decodeUpper($str, \true);
     }
     /**
      * RFC 4648 Base16 decoding
@@ -149,7 +149,7 @@ abstract class RFC4648
      */
     public static function base16Encode(string $str) : string
     {
-        return \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Hex::encodeUpper($str);
+        return Hex::encodeUpper($str);
     }
     /**
      * RFC 4648 Base16 decoding
@@ -161,6 +161,6 @@ abstract class RFC4648
      */
     public static function base16Decode(string $str) : string
     {
-        return \WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Hex::decode($str, \true);
+        return Hex::decode($str, \true);
     }
 }

@@ -2,30 +2,14 @@
 /**
  * Checkout Functions
  *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Checkout
- * @version     2.0.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
 use \WP_Ultimo\Managers\Signup_Fields_Manager;
-
-/**
- * Needs to be removed.
- *
- * @todo Remove this and use our functions instead.
- * @param string $error Error passed by what was log.
- * @since 2.0.0
- * @return void
- */
-function wu_log($error) {
-
-	wu_log_add('stripe', $error);
-
-} // end wu_log;
 
 /**
  * Needs to be removed.
@@ -90,9 +74,22 @@ function wu_create_checkout_fields($fields = array()) {
 
 	$actual_fields = array();
 
+	// Extra check to prevent error messages from being displayed.
+	if (!is_array($fields)) {
+
+		$fields = array();
+
+	} // end if;
+
 	foreach ($fields as $field) {
 
 		$type = $field['type'];
+
+		if (!wu_get_isset($field_types, $type)) {
+
+			continue;
+
+		} // end if;
 
 		try {
 
@@ -100,7 +97,7 @@ function wu_create_checkout_fields($fields = array()) {
 
 		} catch (\Throwable $e) {
 
-			_doing_it_wrong($type, __('This field type does not exist', 'wp-ultimo'), '2.0.0');
+			continue;
 
 		} // end try;
 
@@ -129,6 +126,19 @@ function wu_create_checkout_fields($fields = array()) {
 
 		} // end if;
 
+		/*
+		 * Pass the attributes down to the field class.
+		 */
+		$field_class->set_attributes($field);
+
+		/*
+		 * Makes sure we have default indexes.
+		 */
+		$field = wp_parse_args($field, array(
+			'element_classes' => '',
+			'classes'         => '',
+		));
+
 		$actual_fields = array_merge($actual_fields, $field_class->to_fields_array($field));
 
 	} // end foreach;
@@ -146,9 +156,9 @@ function wu_create_checkout_fields($fields = array()) {
  */
 function wu_get_registration_url($path = false) {
 
-	$checkout = \WP_Ultimo\Checkout\Checkout::get_instance();
+	$checkout_pages = \WP_Ultimo\Checkout\Checkout_Pages::get_instance();
 
-	$url = $checkout->get_page_url('register');
+	$url = $checkout_pages->get_page_url('register');
 
 	if (!$url) {
 
@@ -169,9 +179,9 @@ function wu_get_registration_url($path = false) {
  */
 function wu_get_login_url($path = false) {
 
-	$checkout = \WP_Ultimo\Checkout\Checkout::get_instance();
+	$checkout_pages = \WP_Ultimo\Checkout\Checkout_Pages::get_instance();
 
-	$url = $checkout->get_page_url('login');
+	$url = $checkout_pages->get_page_url('login');
 
 	if (!$url) {
 
@@ -201,11 +211,11 @@ function wu_multiple_memberships_enabled() {
  *
  * Taken from WooCommerce.
  *
+ * @since 2.0.0
  * @param string $duration_unit Unit: day, month, or year.
- * @param int    $duration      Cycle duration.
+ * @param int    $duration Cycle duration.
  *
- * @since 3.0.4
- * @return int The number of days in a billing cycle.
+ * @return int
  */
 function wu_get_days_in_cycle($duration_unit, $duration) {
 
@@ -231,3 +241,61 @@ function wu_get_days_in_cycle($duration_unit, $duration) {
 	return $days_in_cycle;
 
 } // end wu_get_days_in_cycle;
+
+/**
+ * Register a new field type.
+ *
+ * Field types are types of field (duh!) that can be
+ * added to the checkout flow and other forms inside WP Ultimo.
+ *
+ * @see https://help.wpultimo.com/article/344-add-custom-field-types-to-wp-ultimo
+ *
+ * @since 2.0.0
+ *
+ * @param string $field_type_id The field type id. E.g. pricing_table, template_selection.
+ * @param string $field_type_class_name The field type class name. The "absolute" path to the class.
+ * @return void
+ */
+function wu_register_field_type($field_type_id, $field_type_class_name) {
+
+	add_filter('wu_checkout_field_types', function($field_types) use ($field_type_id, $field_type_class_name) {
+
+		$field_types[$field_type_id] = $field_type_class_name;
+
+		return $field_types;
+
+	});
+
+} // end wu_register_field_type;
+
+/**
+ * Register a new field template for a field type.
+ *
+ * Field templates are different layouts that can be added to
+ * WP Ultimo to be used as the final representation of a given
+ * checkout field.
+ *
+ * @see https://help.wpultimo.com/article/343-customize-your-checkout-flow-using-field-templates
+ *
+ * @since 2.0.0
+ *
+ * @param string $field_type The field type. E.g. pricing_table, template_selection.
+ * @param string $field_template_id The field template ID. e.g. clean, minimal.
+ * @param string $field_template_class_name The field template class name. The "absolute" path to the class.
+ * @return void
+ */
+function wu_register_field_template($field_type, $field_template_id, $field_template_class_name) {
+
+	add_filter('wu_checkout_field_templates', function($field_templates) use ($field_type, $field_template_id, $field_template_class_name) {
+
+		$field_templates_for_field_type = wu_get_isset($field_templates, $field_type, array());
+
+		$field_templates_for_field_type[$field_template_id] = $field_template_class_name;
+
+		$field_templates[$field_type] = $field_templates_for_field_type;
+
+		return $field_templates;
+
+	});
+
+} // end wu_register_field_template;

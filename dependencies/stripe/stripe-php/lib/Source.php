@@ -51,7 +51,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property null|string $usage Either <code>reusable</code> or <code>single_use</code>. Whether this source should be reusable or not. Some source types may or may not be reusable by construction, while others may leave the option at creation. If an incompatible value is passed, an error will be returned.
  * @property \Stripe\StripeObject $wechat
  */
-class Source extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class Source extends ApiResource
 {
     const OBJECT_NAME = 'source';
     use ApiOperations\Create;
@@ -85,19 +85,19 @@ class Source extends \WP_Ultimo\Dependencies\Stripe\ApiResource
         if (!$id) {
             $class = static::class;
             $msg = "Could not determine which URL to request: {$class} instance " . "has invalid ID: {$id}";
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException($msg, null);
+            throw new Exception\UnexpectedValueException($msg, null);
         }
         if ($this['customer']) {
-            $base = \WP_Ultimo\Dependencies\Stripe\Customer::classUrl();
-            $parentExtn = \urlencode(\WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($this['customer']));
-            $extn = \urlencode(\WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($id));
+            $base = Customer::classUrl();
+            $parentExtn = \urlencode(Util\Util::utf8($this['customer']));
+            $extn = \urlencode(Util\Util::utf8($id));
             $url = "{$base}/{$parentExtn}/sources/{$extn}";
             list($response, $opts) = $this->_request('delete', $url, $params, $opts);
             $this->refreshFrom($response, $opts);
             return $this;
         }
         $message = 'This source object does not appear to be currently attached ' . 'to a customer object.';
-        throw new \WP_Ultimo\Dependencies\Stripe\Exception\UnexpectedValueException($message);
+        throw new Exception\UnexpectedValueException($message);
     }
     /**
      * @deprecated sourceTransactions is deprecated. Please use Source::allSourceTransactions instead.
@@ -136,7 +136,7 @@ class Source extends \WP_Ultimo\Dependencies\Stripe\ApiResource
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return Source the verified source
+     * @return \Stripe\Source the verified source
      */
     public function verify($params = null, $opts = null)
     {

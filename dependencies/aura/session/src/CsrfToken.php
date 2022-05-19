@@ -44,7 +44,7 @@ class CsrfToken
      * value generator.
      *
      */
-    public function __construct(\WP_Ultimo\Dependencies\Aura\Session\Segment $segment, \WP_Ultimo\Dependencies\Aura\Session\RandvalInterface $randval)
+    public function __construct(Segment $segment, RandvalInterface $randval)
     {
         $this->segment = $segment;
         $this->randval = $randval;

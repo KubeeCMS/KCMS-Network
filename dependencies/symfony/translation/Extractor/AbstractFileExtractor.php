@@ -51,7 +51,7 @@ abstract class AbstractFileExtractor
     protected function isFile(string $file)
     {
         if (!\is_file($file)) {
-            throw new \Symfony\Component\Translation\Exception\InvalidArgumentException(\sprintf('The "%s" file does not exist.', $file));
+            throw new InvalidArgumentException(\sprintf('The "%s" file does not exist.', $file));
         }
         return \true;
     }
@@ -62,7 +62,7 @@ abstract class AbstractFileExtractor
     /**
      * @param string|array $resource Files, a file or a directory
      *
-     * @return iterable files to be extracted
+     * @return iterable
      */
     protected abstract function extractFromDirectory($resource);
 }

@@ -5,7 +5,7 @@
  * @since 2.0.0
  */
 ?>
-<li class="<?php echo esc_attr($field->wrapper_classes); ?> wu-bg-gray-200" style="margin-bottom: -1px;" <?php echo $field->get_wrapper_html_attributes(); ?>>
+<li class="<?php echo esc_attr(trim($field->wrapper_classes)); ?> wu-bg-gray-200" style="margin-bottom: -1px;" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
   <div class="wu--m-4 wu-px-1">
 

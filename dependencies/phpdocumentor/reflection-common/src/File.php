@@ -1,13 +1,12 @@
 <?php
 
+declare (strict_types=1);
 /**
  * This file is part of phpDocumentor.
  *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @copyright 2010-2015 Mike van Riel<mike@phpdoc.org>
- * @license   http://www.opensource.org/licenses/mit-license.php MIT
  * @link      http://phpdoc.org
  */
 namespace WP_Ultimo\Dependencies\phpDocumentor\Reflection;
@@ -19,20 +18,14 @@ interface File
 {
     /**
      * Returns the content of the file as a string.
-     *
-     * @return string
      */
-    public function getContents();
+    public function getContents() : string;
     /**
      * Returns md5 hash of the file.
-     *
-     * @return string
      */
-    public function md5();
+    public function md5() : string;
     /**
      * Returns an relative path to the file.
-     *
-     * @return string
      */
-    public function path();
+    public function path() : string;
 }

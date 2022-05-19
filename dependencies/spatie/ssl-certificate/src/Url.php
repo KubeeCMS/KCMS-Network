@@ -18,12 +18,12 @@ class Url
             $url = \idn_to_ascii($url, \false, \INTL_IDNA_VARIANT_UTS46);
         }
         if (!\filter_var($url, \FILTER_VALIDATE_URL)) {
-            throw \WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\InvalidUrl::couldNotValidate($url);
+            throw InvalidUrl::couldNotValidate($url);
         }
         $this->url = $url;
         $this->parsedUrl = \parse_url($url);
         if (!isset($this->parsedUrl['host'])) {
-            throw \WP_Ultimo\Dependencies\Spatie\SslCertificate\Exceptions\InvalidUrl::couldNotDetermineHost($this->url);
+            throw InvalidUrl::couldNotDetermineHost($this->url);
         }
     }
     public function getHostName() : string

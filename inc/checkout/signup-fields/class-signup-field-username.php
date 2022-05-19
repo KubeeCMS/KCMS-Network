@@ -86,9 +86,23 @@ class Signup_Field_Username extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('Username', 'wp-ultimo');
+		return __('Adds an username field. This username will be used to create the WordPress user.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Adds an username field. This username will be used to create the WordPress user.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -100,7 +114,7 @@ class Signup_Field_Username extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-wu-user';
+		return 'dashicons-wu-user1';
 
 	} // end get_icon;
 
@@ -116,7 +130,7 @@ class Signup_Field_Username extends Base_Signup_Field {
 	public function defaults() {
 
 		return array(
-			'auto_generate' => false,
+			'auto_generate_username' => false,
 		);
 
 	} // end defaults;
@@ -161,14 +175,14 @@ class Signup_Field_Username extends Base_Signup_Field {
 	public function get_fields() {
 
 		return array(
-			'auto_generate' => array(
+			'auto_generate_username' => array(
 				'type'      => 'toggle',
-				'title'     => __('Auto-generate?', 'wp-ultimo'),
+				'title'     => __('Auto-generate', 'wp-ultimo'),
 				'desc'      => __('Check this option to auto-generate this field based on the email address of the customer.', 'wp-ultimo'),
 				'tooltip'   => '',
 				'value'     => 0,
 				'html_attr' => array(
-					'v-model' => 'auto_generate',
+					'v-model' => 'auto_generate_username',
 				),
 			),
 		);
@@ -193,23 +207,42 @@ class Signup_Field_Username extends Base_Signup_Field {
 
 		} // end if;
 
-		if ($attributes['auto_generate']) {
+		if (isset($attributes['auto_generate_username']) && $attributes['auto_generate_username']) {
 
-			return array();
+			return array(
+				'auto_generate_username' => array(
+					'type'  => 'hidden',
+					'id'    => 'auto_generate_username',
+					'value' => 'email',
+				),
+				'username'               => array(
+					'type'  => 'hidden',
+					'id'    => 'username',
+					'value' => uniqid(),
+				),
+			);
 
 		} // end if;
 
 		return array(
 			'username' => array(
-				'type'        => 'text',
-				'id'          => 'username',
-				'name'        => $attributes['name'],
-				'placeholder' => $attributes['placeholder'],
-				'tooltip'     => $attributes['tooltip'],
-				'required'    => true,
-				'html_attr'   => array(
-					'v-model' => 'username',
-				)
+				'type'              => 'text',
+				'id'                => 'username',
+				'name'              => $attributes['name'],
+				'placeholder'       => $attributes['placeholder'],
+				'tooltip'           => $attributes['tooltip'],
+				'wrapper_classes'   => wu_get_isset($attributes, 'wrapper_element_classes', ''),
+				'classes'           => wu_get_isset($attributes, 'element_classes', ''),
+				'required'          => true,
+				'value'             => $this->get_value(),
+				'html_attr'         => array(
+					'v-model'         => 'username',
+					'v-init:username' => "'{$this->get_value()}'",
+					'autocomplete'    => 'username',
+				),
+				'wrapper_html_attr' => array(
+					'style' => $this->calculate_style_attr(),
+				),
 			),
 		);
 

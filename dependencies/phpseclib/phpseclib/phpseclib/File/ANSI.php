@@ -10,8 +10,6 @@
  * {@link http://en.wikipedia.org/wiki/Terminal_emulator terminal emulator} how to format the characters, what
  * color to display them in, etc. \phpseclib3\File\ANSI is a {@link http://en.wikipedia.org/wiki/VT100 VT100} terminal emulator.
  *
- * @category  File
- * @package   ANSI
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2012 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -22,9 +20,7 @@ namespace phpseclib3\File;
 /**
  * Pure-PHP ANSI Decoder
  *
- * @package ANSI
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
 class ANSI
 {
@@ -32,119 +28,102 @@ class ANSI
      * Max Width
      *
      * @var int
-     * @access private
      */
     private $max_x;
     /**
      * Max Height
      *
      * @var int
-     * @access private
      */
     private $max_y;
     /**
      * Max History
      *
      * @var int
-     * @access private
      */
     private $max_history;
     /**
      * History
      *
      * @var array
-     * @access private
      */
     private $history;
     /**
      * History Attributes
      *
      * @var array
-     * @access private
      */
     private $history_attrs;
     /**
      * Current Column
      *
      * @var int
-     * @access private
      */
     private $x;
     /**
      * Current Row
      *
      * @var int
-     * @access private
      */
     private $y;
     /**
      * Old Column
      *
      * @var int
-     * @access private
      */
     private $old_x;
     /**
      * Old Row
      *
      * @var int
-     * @access private
      */
     private $old_y;
     /**
      * An empty attribute cell
      *
      * @var object
-     * @access private
      */
     private $base_attr_cell;
     /**
      * The current attribute cell
      *
      * @var object
-     * @access private
      */
     private $attr_cell;
     /**
      * An empty attribute row
      *
      * @var array
-     * @access private
      */
     private $attr_row;
     /**
      * The current screen text
      *
-     * @var array
-     * @access private
+     * @var list<string>
      */
     private $screen;
     /**
      * The current screen attributes
      *
      * @var array
-     * @access private
      */
     private $attrs;
     /**
      * Current ANSI code
      *
      * @var string
-     * @access private
      */
     private $ansi;
     /**
      * Tokenization
      *
      * @var array
-     * @access private
      */
     private $tokenization;
     /**
      * Default Constructor.
      *
      * @return \phpseclib3\File\ANSI
-     * @access public
      */
     public function __construct()
     {
@@ -167,7 +146,6 @@ class ANSI
      *
      * @param int $x
      * @param int $y
-     * @access public
      */
     public function setDimensions($x, $y)
     {
@@ -184,7 +162,6 @@ class ANSI
      * Set the number of lines that should be logged past the terminal height
      *
      * @param int $history
-     * @access public
      */
     public function setHistory($history)
     {
@@ -194,7 +171,6 @@ class ANSI
      * Load a string
      *
      * @param string $source
-     * @access public
      */
     public function loadString($source)
     {
@@ -205,7 +181,6 @@ class ANSI
      * Appdend a string
      *
      * @param string $source
-     * @access public
      */
     public function appendString($source)
     {
@@ -246,6 +221,7 @@ class ANSI
                             \array_shift($this->history);
                             \array_shift($this->history_attrs);
                         }
+                    // fall-through
                     case "\33[K":
                         // Clear screen from cursor right
                         $this->screen[$this->y] = \substr($this->screen[$this->y], 0, $this->x);
@@ -273,14 +249,14 @@ class ANSI
                             case \preg_match('#\\x1B\\[(\\d+)B#', $this->ansi, $match):
                                 // Move cursor down n lines
                                 $this->old_y = $this->y;
-                                $this->y += $match[1];
+                                $this->y += (int) $match[1];
                                 break;
                             case \preg_match('#\\x1B\\[(\\d+);(\\d+)H#', $this->ansi, $match):
                                 // Move cursor to screen location v,h
                                 $this->old_x = $this->x;
                                 $this->old_y = $this->y;
                                 $this->x = $match[2] - 1;
-                                $this->y = $match[1] - 1;
+                                $this->y = (int) $match[1] - 1;
                                 break;
                             case \preg_match('#\\x1B\\[(\\d+)C#', $this->ansi, $match):
                                 // Move cursor right n lines
@@ -446,7 +422,6 @@ class ANSI
      *
      * Also update the $this->screen and $this->history buffers
      *
-     * @access private
      */
     private function newLine()
     {
@@ -469,7 +444,6 @@ class ANSI
     /**
      * Returns the current coordinate without preformating
      *
-     * @access private
      * @param \stdClass $last_attr
      * @param \stdClass $cur_attr
      * @param string $char
@@ -525,7 +499,6 @@ class ANSI
     /**
      * Returns the current screen without preformating
      *
-     * @access private
      * @return string
      */
     private function getScreenHelper()
@@ -548,7 +521,6 @@ class ANSI
     /**
      * Returns the current screen
      *
-     * @access public
      * @return string
      */
     public function getScreen()
@@ -558,7 +530,6 @@ class ANSI
     /**
      * Returns the current screen and the x previous lines
      *
-     * @access public
      * @return string
      */
     public function getHistory()

@@ -7,12 +7,13 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\PdfParser\Type;
 
 /**
  * Class representing a numeric PDF object
  */
-class PdfNumeric extends \setasign\Fpdi\PdfParser\Type\PdfType
+class PdfNumeric extends PdfType
 {
     /**
      * Helper method to create an instance.
@@ -24,8 +25,10 @@ class PdfNumeric extends \setasign\Fpdi\PdfParser\Type\PdfType
     {
         $v = new self();
         $v->value = $value + 0;
+
         return $v;
     }
+
     /**
      * Ensures that the passed value is a PdfNumeric instance.
      *
@@ -35,6 +38,6 @@ class PdfNumeric extends \setasign\Fpdi\PdfParser\Type\PdfType
      */
     public static function ensure($value)
     {
-        return \setasign\Fpdi\PdfParser\Type\PdfType::ensureType(self::class, $value, 'Numeric value expected.');
+        return PdfType::ensureType(self::class, $value, 'Numeric value expected.');
     }
 }

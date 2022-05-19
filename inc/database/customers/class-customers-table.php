@@ -43,7 +43,17 @@ final class Customers_Table extends Table {
 	 * @since 2.0.0
 	 * @var string
 	 */
-	protected $version = '2.0.0';
+	protected $version = '2.0.1-revision.20210607';
+
+	/**
+	 * List of table upgrades.
+	 *
+	 * @var array
+	 */
+	protected $upgrades = array(
+		'2.0.1-revision.20210508' => 20210508,
+		'2.0.1-revision.20210607' => 20210607,
+	);
 
 	/**
 	 * Customer constructor.
@@ -71,15 +81,77 @@ final class Customers_Table extends Table {
 			user_id bigint(20) unsigned NOT NULL DEFAULT '0',
 			type varchar(20) NOT NULL DEFAULT 'customer',
 			email_verification enum('verified', 'pending', 'none') DEFAULT 'none',
-			date_modified datetime NOT NULL default '0000-00-00 00:00:00',
-			date_registered datetime NOT NULL default '0000-00-00 00:00:00',
-			last_login datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+			date_modified datetime NULL,
+			date_registered datetime NULL,
+			last_login datetime NULL,
 			has_trialed smallint unsigned DEFAULT NULL,
 			vip smallint unsigned DEFAULT '0',
 			ips longtext,
+			signup_form varchar(40) DEFAULT 'by-admin',
 			PRIMARY KEY (id),
 			KEY user_id (user_id)";
 
 	} // end set_schema;
+
+	/**
+	 * Adds the signup_form column.
+	 *
+	 * This does not work on older versions of MySQl, so we needed
+	 * the other migration below.
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	protected function __20210508() { // phpcs:ignore
+
+		$result = $this->column_exists('signup_form');
+
+		// Maybe add column
+		if (empty($result)) {
+
+			$query = "ALTER TABLE {$this->table_name} ADD COLUMN `signup_form` varchar(40) default 'by-admin' AFTER `ips`;";
+
+			$result = $this->get_db()->query($query);
+
+		} // end if;
+
+		// Return success/fail
+		return $this->is_success($result);
+
+	} // end __20210508;
+
+	/**
+	 * Adds the signup_form column.
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	protected function __20210607() { // phpcs:ignore
+
+		$result = $this->column_exists('signup_form');
+
+		// Maybe add column
+		if (empty($result)) {
+
+			$query_set = "SET sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';";
+
+			$result_set = $this->get_db()->query($query_set);
+
+			if ($this->is_success($result_set) === false) {
+
+				return false;
+
+			} // end if;
+
+			$query = "ALTER TABLE {$this->table_name} ADD COLUMN `signup_form` varchar(40) default 'by-admin' AFTER `ips`;";
+
+			$result = $this->get_db()->query($query);
+
+		} // end if;
+
+		// Return success/fail
+		return $this->is_success($result);
+
+	} // end __20210607;
 
 } // end class Customers_Table;

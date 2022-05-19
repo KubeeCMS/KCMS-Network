@@ -173,6 +173,15 @@ class Closte_Host_Provider extends Base_Host_Provider {
 	 */
 	public function send_closte_api_request($endpoint, $data) {
 
+		if (defined('CLOSTE_CLIENT_API_KEY') === false) {
+
+			return (object) array(
+				'success' => false,
+				'error'   => 'Closte API Key not found.',
+			);
+
+		} // end if;
+
 		$post_fields = array(
 			'blocking' => true,
 			'timeout'  => 45,

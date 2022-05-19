@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class DigitsBetween extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class DigitsBetween extends Rule
 {
     /** @var string */
     protected $message = "The :attribute must have a length between the given :min and :max";

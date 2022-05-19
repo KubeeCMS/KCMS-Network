@@ -2,6 +2,6 @@
 
 namespace WP_Ultimo\Dependencies;
 
-if (!\function_exists('WP_Ultimo\\Dependencies\\React\\Promise\\resolve')) {
+if (!\function_exists('React\\Promise\\resolve')) {
     require __DIR__ . '/functions.php';
 }

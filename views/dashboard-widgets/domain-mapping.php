@@ -37,114 +37,92 @@
 
     <div class="wu-border-t wu-border-solid wu-border-0 wu-border-gray-200">
     
-      <table class="">
+      <table class="wu-m-0 wu-my-2 wu-p-0 wu-w-full">
 
-      <?php if ($domains) : ?>
+        <tbody class="wu-align-baseline">
 
-      <thead class="wu-uppercase">
+          <?php if ($domains) : ?>
 
-        <tr>
+              <?php foreach ($domains as $key => $domain) : $item = $domain['domain_object']; ?>
 
-          <th class="wu-text-left wu-px-4 wu-text-xs wu-font-semibold wu-text-gray-700" style="width: 30%;">
+                  <tr>
 
-		        <?php echo __('Name', 'wp-ultimo'); ?>
+                    <td class="wu-px-1">
 
-          </th>
+                      <?php
 
-          <th class="wu-text-left wu-px-4 wu-text-xs wu-font-semibold wu-text-gray-700" style="width: 30%;">
+                      $label = $item->get_stage_label();
 
-		        <?php echo __('Status', 'wp-ultimo'); ?>
+                      if (!$item->is_active()) {
 
-          </th>
+                        $label = sprintf('%s <small>(%s)</small>', $label, __('Inactive', 'wp-ultimo'));
 
-          <th class="wu-text-left wu-px-4 wu-text-xs wu-font-semibold wu-text-gray-700" style="width: 20%;">
+                      } // end if;
 
-		        <?php echo __('Primary', 'wp-ultimo'); ?>
+                      $class = $item->get_stage_class();
 
-          </th>
+                      $status = "<span class='wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-leading-none wu-font-mono $class'>{$label}</span>";
 
-          <th class="wu-text-xs wu-px-4 wu-font-semibold wu-text-gray-700 wu-text-center" style="width: 15%;">
+                      $second_row_actions = array();
 
-		        <?php echo __('Secure', 'wp-ultimo'); ?>
+                      if (!$item->is_primary_domain()) {
 
-          </th>
+                        $second_row_actions['make_primary'] = array(
+                          'wrapper_classes' => 'wubox',
+                          'icon'            => 'dashicons-wu-edit1 wu-align-middle wu-mr-1',
+                          'label'           => '',
+                          'url'             => $domain['primary_link'],
+                          'value'           => __('Make Primary', 'wp-ultimo'),
+                        );
 
-          <th class="wu-text-xs wu-px-4 wu-font-semibold wu-text-gray-700" style="width: 10%;">
+                      } // end if;
 
-            &nbsp;
+                      $second_row_actions['remove'] = array(
+                        'wrapper_classes' => 'wu-text-red-500 wubox',
+                        'icon'            => 'dashicons-wu-trash-2 wu-align-middle wu-mr-1',
+                        'label'           => '',
+                        'value'           => __('Delete', 'wp-ultimo'),
+                        'url'             => $domain['delete_link'],
+                      );
 
-          </th>
+                      echo wu_responsive_table_row(array(
+                        'id'     => false,
+                        'title'  => strtolower($item->get_domain()),
+                        'url'    => false,
+                        'status' => $status,
+                      ), array(
+                        'primary' => array(
+                          'wrapper_classes' => $item->is_primary_domain() ? 'wu-text-blue-600' : '',
+                          'icon'  => $item->is_primary_domain() ? 'dashicons-wu-filter_1 wu-align-text-bottom wu-mr-1' : 'dashicons-wu-plus-square wu-align-text-bottom wu-mr-1',
+                          'label' => '',
+                          'value' => $item->is_primary_domain() ? __('Primary', 'wp-ultimo').wu_tooltip(__('All other mapped domains will redirect to the primary domain.', 'wp-ultimo'), 'dashicons-editor-help wu-align-middle wu-ml-1') : __('Alias', 'wp-ultimo'),
+                        ),
+                        'secure'  => array(
+                          'wrapper_classes' => $item->is_secure() ? 'wu-text-green-500' : '',
+                          'icon'            => $item->is_secure() ? 'dashicons-wu-lock1 wu-align-text-bottom wu-mr-1' : 'dashicons-wu-lock1 wu-align-text-bottom wu-mr-1',
+                          'label'           => '',
+                          'value'           => $item->is_secure() ? __('Secure (HTTPS)', 'wp-ultimo') : __('Not Secure (HTTP)', 'wp-ultimo'),
+                        ),
+                      ),
+                      $second_row_actions);
 
-        </tr>
+                      ?>
 
-      </thead>
+                    </td>
 
-      <?php endif; ?>
+                  </tr>
 
-      <tbody class="wu-align-baseline">
+              <?php endforeach; ?>
 
-        <?php if ($domains) : ?>
+          <?php else : ?>
 
-            <?php foreach ($domains as $key => $domain) : ?>
+            <div class="wu-text-center wu-bg-gray-100 wu-rounded wu-uppercase wu-font-semibold wu-text-xs wu-text-gray-700 wu-p-4 wu-m-4 wu-mt-6">
+              <span><?php echo __('No domains added.', 'wp-ultimo'); ?></span>
+            </div>
 
-                <tr>
+          <?php endif; ?>
 
-                <td class="wu-align-middle wu-text-sm wu-px-4 wu-whitespace-no-wrap">
-
-				<?php echo $domain['domain']; ?>
-
-                </td>
-
-                <td class="wu-align-middle wu-text-xs">
-
-                    <span class="wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono <?php echo $domain['stage_class']; ?>">
-
-				<?php echo $domain['stage']; ?>
-
-                    </span>
-
-                </td>
-
-                <td class="wu-align-middle">
-
-                    <span class="wu-toggle wu-inline-block" style="transform: scale(0.75)">
-                    <input class="wu-tgl wu-tgl-ios wu-domain-primary" value="<?php echo $domain['id']; ?>" <?php checked($domain['primary'] == 1); ?>
-                        id="wu-tg-primary-<?php echo $domain['domain']; ?>" type="checkbox" name="is_primary" />
-                    <label for="wu-tg-primary-<?php echo $domain['domain']; ?>" class="wu-tgl-btn wp-ui-highlight"></label>
-                    </span>
-
-                </td>
-
-                <td class="wu-align-middle wu-text-xs wu-whitespace-no-wrap wu-text-center">
-
-                    <span <?php echo wu_tooltip_text($domain['secure_message']); ?> class="wu-text-base <?php echo $domain['secure_class']; ?>"></span>
-
-                </td>
-
-                <td class="wu-align-middle wu-text-xs wu-text-right">
-
-                    <a title="<?php _e('Delete Domain', 'wp-ultimo'); ?>" <?php echo wu_tooltip_text(__('Delete domain', 'wp-ultimo')); ?> class="wubox wu-m-0 wu-p-0" href="<?php echo $domain['delete_link']; ?>">
-
-                    <span
-                        class="wu-bg-red-500 wu-text-white wu-rounded-full wu-text-sm dashicons-wu-cross wu-inline-block"></span>
-
-                    </a>
-
-                </td>
-
-                </tr>
-
-            <?php endforeach; ?>
-
-        <?php else : ?>
-
-          <div class="wu-text-center wu-bg-gray-100 wu-rounded wu-uppercase wu-font-semibold wu-text-xs wu-text-gray-700 wu-p-4 wu-m-4 wu-mt-6">
-            <span><?php echo __('No domains added.', 'wp-ultimo'); ?></span>
-          </div>
-
-        <?php endif; ?>
-
-      </tbody>
+        </tbody>
 
     </table>
     

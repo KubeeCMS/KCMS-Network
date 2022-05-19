@@ -7,9 +7,7 @@ declare (strict_types=1);
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  *
- * @copyright 2010-2015 Mike van Riel<mike@phpdoc.org>
- * @license   http://www.opensource.org/licenses/mit-license.php MIT
- * @link      http://phpdoc.org
+ * @link http://phpdoc.org
  */
 namespace WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Tags;
 
@@ -18,7 +16,7 @@ use WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Description;
 /**
  * Parses a tag definition for a DocBlock.
  */
-abstract class BaseTag implements \WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Tag
+abstract class BaseTag implements DocBlock\Tag
 {
     /** @var string Name of the tag */
     protected $name = '';
@@ -29,18 +27,18 @@ abstract class BaseTag implements \WP_Ultimo\Dependencies\phpDocumentor\Reflecti
      *
      * @return string The name of this tag.
      */
-    public function getName()
+    public function getName() : string
     {
         return $this->name;
     }
-    public function getDescription()
+    public function getDescription() : ?Description
     {
         return $this->description;
     }
-    public function render(\WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Tags\Formatter $formatter = null)
+    public function render(?Formatter $formatter = null) : string
     {
         if ($formatter === null) {
-            $formatter = new \WP_Ultimo\Dependencies\phpDocumentor\Reflection\DocBlock\Tags\Formatter\PassthroughFormatter();
+            $formatter = new Formatter\PassthroughFormatter();
         }
         return $formatter->format($this);
     }

@@ -12,7 +12,7 @@ body .theme-browser .theme .theme-name {
 }
 </style>
 
-<div id="wp-ultimo-wrap" class="wrap wu-wrap <?php echo esc_attr($classes); ?>">
+<div id="wp-ultimo-wrap" class="<?php wu_wrap_use_container() ?> wrap wu-wrap <?php echo esc_attr($classes); ?>">
 
   <h1 class="wp-heading-inline">
 
@@ -60,7 +60,7 @@ body .theme-browser .theme .theme-name {
 
   <?php if (wu_request('updated')) : ?>
 
-    <div id="message" class="updated notice notice-success is-dismissible below-h2">
+    <div id="message" class="updated notice wu-admin-notice notice-success is-dismissible below-h2">
       <p><?php _e('Settings successfully saved.', 'wp-ultimo') ?></p>
     </div>
 
@@ -117,51 +117,96 @@ body .theme-browser .theme .theme-name {
 
             ?>
 
-            <!-- Menu Item -->
-            <li class="wu-sticky">
+            <?php if (wu_get_isset($section, 'separator')) : ?>
 
-              <!-- Menu Link -->
-              <a 
-                href="<?php echo esc_url($page->get_section_link($section_name)); ?>" 
-                class="wu-block wu-py-2 wu-px-4 wu-no-underline wu-text-sm wu-rounded wu-text-gray-600 hover:wu-text-gray-700"
-                :class="category === '<?php echo esc_attr($section_name); ?>' ? 'wu-bg-gray-300 wu-text-gray-800' : 'wu-text-gray-600 hover:wu-text-gray-700'"
-                @click.prevent="set_category('<?php echo esc_attr($section_name); ?>')"
-              >
+              <!-- Separator Item -->
+              <li class="wu-sticky wu-py-2 wu-px-4">&nbsp;</li>
 
-                <span class="<?php echo esc_attr($section['icon']); ?> wu-align-text-bottom wu-mr-1"></span>
+            <?php else : ?>
 
-                <?php echo $section['title']; ?>
+              <!-- Menu Item -->
+              <li class="wu-sticky">
 
-              </a>
-              <!-- End Menu Link -->
+                <!-- Menu Link -->
+                <a 
+                  href="<?php echo esc_url($page->get_section_link($section_name)); ?>" 
+                  class="wu-block wu-py-2 wu-px-4 wu-no-underline wu-text-sm wu-rounded wu-text-gray-600 hover:wu-text-gray-700"
+                  :class="category === '<?php echo esc_attr($section_name); ?>' ? 'wu-bg-gray-300 wu-text-gray-800' : 'wu-text-gray-600 hover:wu-text-gray-700'"
+                  @click.prevent="set_category('<?php echo esc_attr($section_name); ?>')"
+                >
 
-              <?php if (!empty($section['sub-sections'])) : ?>
+                  <span class="<?php echo esc_attr($section['icon']); ?> wu-align-text-bottom wu-mr-1"></span>
 
-                <!-- Sub-menu -->
-                <ul class="classes" v-show="false" v-cloak>
+                  <?php echo $section['title']; ?>
 
-                  <?php foreach ($section['sub-sections'] as $sub_section_name => $sub_section) : ?>
+                </a>
+                <!-- End Menu Link -->
 
-                    <li class="classes">
-                      <a href="<?php echo esc_url($page->get_section_link($section_name)."#".$sub_section_name); ?>" class="wu-block wu-py-2 wu-px-4 wu-no-underline wu-text-gray-500 hover:wu-text-gray-600 wu-text-sm">
-                        &rarr; <?php echo $sub_section['title']; ?>
-                      </a>
-                    </li>
+                <?php if (!empty($section['sub-sections'])) : ?>
 
-                  <?php endforeach; ?>
+                  <!-- Sub-menu -->
+                  <ul class="classes" v-show="false" v-cloak>
 
-                </ul>
-                <!-- End Sub-menu -->
+                    <?php foreach ($section['sub-sections'] as $sub_section_name => $sub_section) : ?>
 
-              <?php endif; ?>
+                      <li class="classes">
+                        <a href="<?php echo esc_url($page->get_section_link($section_name)."#".$sub_section_name); ?>" class="wu-block wu-py-2 wu-px-4 wu-no-underline wu-text-gray-500 hover:wu-text-gray-600 wu-text-sm">
+                          &rarr; <?php echo $sub_section['title']; ?>
+                        </a>
+                      </li>
 
-            </li>
-            <!-- End Menu Item -->
+                    <?php endforeach; ?>
+
+                  </ul>
+                  <!-- End Sub-menu -->
+
+                <?php endif; ?>
+
+              </li>
+              <!-- End Menu Item -->
+
+            <?php endif; ?>
 
           <?php endforeach; ?>
 
         </ul>
         <!-- End Navigator -->
+
+        <div class="wu-mt-10 wu-p-4">
+
+          <div>
+  
+            <span class="wu-bg-orange-600 wu-text-gray-100 wu-text-xs wu-inline-block wu-rounded wu-py-1 wu-px-2 wu-font-bold wu-uppercase wu-opacity-50">
+              <?php _e('Beta', 'wp-ultimo'); ?>
+            </span>
+
+            <span class="wu-block wu-mt-2 wu-text-xs wu-text-gray-600"><?php _e('Ready for testing, but not necessarily production-ready.', 'wp-ultimo'); ?></span>
+         
+
+          </div>
+
+          <div class="wu-mt-4">
+
+            <span class="wu-bg-gray-800 wu-text-gray-200 wu-text-xs wu-inline-block wu-rounded wu-py-1 wu-px-2 wu-font-bold wu-uppercase wu-opacity-50">
+              <?php _e('Coming Soon', 'wp-ultimo'); ?>
+            </span>
+
+            <span class="wu-block wu-mt-2 wu-text-xs wu-text-gray-600"><?php _e('In active development, but not yet available.', 'wp-ultimo'); ?></span>
+  
+          </div>
+
+          <div class="wu-mt-4">
+
+            <span class="wu-bg-purple-800 wu-text-gray-200 wu-text-xs wu-inline-block wu-rounded wu-py-1 wu-px-2 wu-font-bold wu-uppercase wu-opacity-50">
+              <?php _e('Legacy', 'wp-ultimo'); ?>
+            </span>
+
+            <span class="wu-block wu-mt-2 wu-text-xs wu-text-gray-600"><?php _e('Developed for 1.X, but compatible with 2.X.', 'wp-ultimo'); ?></span>
+
+          </div>
+
+        </div>
+
 
       </div>
 
@@ -200,21 +245,22 @@ body .theme-browser .theme .theme-name {
 
           <div class="theme-browser rendered">
 
-              <div class="themes wp-clearfix">
+              <div v-if="loading"
+                class="">
+                
+                  <?php echo wu_render_empty_state(array(
+                    'message'      => __("Loading...", 'wp-ultimo'),
+                    'sub_message'  => __('We are fetching the list of WP Ultimo add-ons.', 'wp-ultimo'),
+                    'link_url'     => false,
+                  )); ?>
 
-                  <div v-if="loading"
-                    class="">
-                    
-                      <?php echo wu_render_empty_state(array(
-                        'message'      => __("Loading...", 'wp-ultimo'),
-                        'sub_message'  => __('We are fetch the list of WP Ultimo add-ons.', 'wp-ultimo'),
-                        'link_url'     => false,
-                      )); ?>
+              </div>
 
-                  </div>
+              <div class="themes wp-clearfix wu-grid wu-gap-6 wu-grid-cols-1 sm:wu-grid-cols-2 lg:wu-grid-cols-3">
 
                   <div 
-                    class="theme" 
+                    class="theme wu-col-span-1" 
+                    style="width: 100% !important; margin: 0 !important;"
                     tabindex="0"
                     v-cloak
                     v-for="addon in addons_list"
@@ -223,9 +269,21 @@ body .theme-browser .theme .theme-name {
 
                       <div class="theme-screenshot wu-bg-gray-100">
 
-                          <img :src="addon.image_url" :alt="addon.name" />
+                          <img :class="addon.available ? '' : 'wu-opacity-50'" :src="addon.image_url" :alt="addon.name" />
 
                       </div>
+
+                      <span class="wu-absolute wu-m-6 wu-bg-gray-800 wu-text-gray-200 wu-text-xs wu-inline-block wu-rounded wu-top-0 wu-right-0 wu-py-1 wu-px-2 wu-font-bold wu-uppercase" v-cloak v-if="!addon.available">
+                        <?php _e('Coming Soon', 'wp-ultimo'); ?>
+                      </span>
+
+                      <span class="wu-absolute wu-m-6 wu-bg-purple-800 wu-text-gray-200 wu-text-xs wu-inline-block wu-rounded wu-top-0 wu-right-0 wu-py-1 wu-px-2 wu-font-bold wu-uppercase" v-cloak v-show="addon.legacy">
+                        <?php _e('Legacy', 'wp-ultimo'); ?>
+                      </span>
+
+                      <span class="wu-absolute wu-m-6 wu-bg-orange-600 wu-text-gray-100 wu-text-xs wu-inline-block wu-rounded wu-top-0 wu-right-0 wu-py-1 wu-px-2 wu-font-bold wu-uppercase" v-cloak v-show="addon.beta">
+                        <?php _e('Beta', 'wp-ultimo'); ?>
+                      </span>
 
                       <a 
                         class="more-details wubox wu-no-underline" 
@@ -243,7 +301,7 @@ body .theme-browser .theme .theme-name {
 
                       </div>
 
-                      <h2 class="theme-name" :id="addon.slug">
+                      <h2 class="theme-name" :id="addon.slug" :class="addon.available ? '' : 'wu-opacity-50'" >
                         {{ addon.name }}
 
                         <div class="wu-pt-1 wu-block">

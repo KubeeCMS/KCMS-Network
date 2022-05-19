@@ -11,9 +11,6 @@
 
 namespace WP_Ultimo\Managers;
 
-use WP_Ultimo\Models\Event;
-use WP_Ultimo\Objects\Event_Code;
-
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
@@ -22,4 +19,14 @@ defined('ABSPATH') || exit;
  *
  * @since 1.9.14
  */
-class Base_Manager {} // end class Base_Manager;
+class Base_Manager {
+
+	/**
+	 * A valid init method is required.
+	 *
+	 * @since 2.0.11
+	 * @return void
+	 */
+	public function init() {} // end init;
+
+} // end class Base_Manager;

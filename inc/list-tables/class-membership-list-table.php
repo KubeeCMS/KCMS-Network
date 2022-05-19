@@ -114,7 +114,9 @@ class Membership_List_Table extends Base_List_Table {
 
 		$class = $item->get_status_class();
 
-		return "<span class='wu-bg-gray-200 wu-text-gray-700 wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono $class'>{$label}</span>";
+		$html = "<span class='wu-bg-gray-200 wu-leading-none wu-text-gray-700 wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono $class'>{$label}</span>";
+
+		return $html;
 
 	} // end column_status;
 
@@ -128,21 +130,21 @@ class Membership_List_Table extends Base_List_Table {
 	 */
 	public function column_amount($item) {
 
-		if (empty($item->get_amount())) {
+		if (empty($item->get_amount()) && empty($item->get_initial_amount())) {
 
 			return __('Free', 'wp-ultimo');
 
 		} // end if;
 
-		$amount = wu_format_currency($item->get_amount(), $item->get_currency());
-
 		if ($item->is_recurring()) {
+
+			$amount = wu_format_currency($item->get_amount(), $item->get_currency());
 
 			$duration = $item->get_duration();
 
 			$message = sprintf(
 				// translators: %1$s is the formatted price, %2$s the duration, and %3$s the duration unit (day, week, month, etc)
-				_n('every %2$s', 'every %1$s %2$ss', $duration, 'wp-ultimo'), // phpcs:ignore
+				_n('every %2$s', 'every %1$s %2$s', $duration, 'wp-ultimo'), // phpcs:ignore
 				$duration,
 				$item->get_duration_unit()
 			);
@@ -160,6 +162,8 @@ class Membership_List_Table extends Base_List_Table {
 			} // end if;
 
 		} else {
+
+			$amount = wu_format_currency($item->get_initial_amount(), $item->get_currency());
 
 			$message = __('one time payment', 'wp-ultimo');
 
@@ -195,12 +199,50 @@ class Membership_List_Table extends Base_List_Table {
 	} // end get_columns;
 
 	/**
+	 * Handles the default displaying of datetime columns.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param self $item The membership.
+	 * @return string
+	 */
+	public function column_date_expiration($item) {
+
+		$date = $item->get_date_expiration();
+
+		if (empty($date) || $date === '0000-00-00 00:00:00') {
+
+			return sprintf('<span>%s</span><br><small>%s</small>', __('Lifetime', 'wp-ultimo'), __('It never expires', 'wp-ultimo'));
+
+		} // end if;
+
+		if (!wu_validate_date($date)) {
+
+			return __('--', 'wp-ultimo');
+
+		} // end if;
+
+		$time = strtotime(get_date_from_gmt($date));
+
+		$formatted_value = date_i18n(get_option('date_format'), $time);
+
+		$placeholder = wu_get_current_time('timestamp') > $time ? __('%s ago', 'wp-ultimo') : __('In %s', 'wp-ultimo'); // phpcs:ignore
+
+		$text = $formatted_value . sprintf('<br><small>%s</small>', sprintf($placeholder, human_time_diff($time)));
+
+		return sprintf('<span %s>%s</span>', wu_tooltip_text(date_i18n('Y-m-d H:i:s', $time)), $text);
+
+	} // end column_date_expiration;
+
+	/**
 	 * Returns the filters for this page.
 	 *
 	 * @since 2.0.0
 	 * @return boolean|array
 	 */
 	public function get_filters() {
+
+		$membership_status = new \WP_Ultimo\Database\Memberships\Membership_Status();
 
 		return array(
 			'filters'      => array(
@@ -210,13 +252,7 @@ class Membership_List_Table extends Base_List_Table {
 				 */
 				'status' => array(
 					'label'   => __( 'Status', 'wp-ultimo' ),
-					'options' => array(
-						'active'   => __( 'Active', 'wp-ultimo' ),
-						'canceled' => __( 'Canceled', 'wp-ultimo' ),
-						'disabled' => __( 'Disabled', 'wp-ultimo' ),
-						'pending'  => __( 'Pending', 'wp-ultimo' ),
-						'other'    => __( 'Other', 'wp-ultimo' ),
-					),
+					'options' => $membership_status::to_array(),
 				),
 
 			),
@@ -289,10 +325,10 @@ class Membership_List_Table extends Base_List_Table {
 				'label' => __('Expired', 'wp-ultimo'),
 				'count' => 0,
 			),
-			'canceled' => array(
+			'cancelled' => array(
 				'field' => 'status',
-				'url'   => add_query_arg('status', 'canceled'),
-				'label' => __('Canceled', 'wp-ultimo'),
+				'url'   => add_query_arg('status', 'cancelled'),
+				'label' => __('Cancelled', 'wp-ultimo'),
 				'count' => 0,
 			),
 		);

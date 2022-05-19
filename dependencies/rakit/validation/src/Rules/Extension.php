@@ -4,7 +4,7 @@ namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Helper;
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class Extension extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class Extension extends Rule
 {
     /** @var string */
     protected $message = "The :attribute must be a :allowed_extensions file";
@@ -14,7 +14,7 @@ class Extension extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
      * @param array $params
      * @return self
      */
-    public function fillParameters(array $params) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function fillParameters(array $params) : Rule
     {
         if (\count($params) == 1 && \is_array($params[0])) {
             $params = $params[0];
@@ -36,7 +36,7 @@ class Extension extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
             $allowedExtensions[$key] = \ltrim($ext, '.');
         }
         $or = $this->validation ? $this->validation->getTranslation('or') : 'or';
-        $allowedExtensionsText = \WP_Ultimo\Dependencies\Rakit\Validation\Helper::join(\WP_Ultimo\Dependencies\Rakit\Validation\Helper::wraps($allowedExtensions, ".", ""), ', ', ", {$or} ");
+        $allowedExtensionsText = Helper::join(Helper::wraps($allowedExtensions, ".", ""), ', ', ", {$or} ");
         $this->setParameterText('allowed_extensions', $allowedExtensionsText);
         $ext = \strtolower(\pathinfo($value, \PATHINFO_EXTENSION));
         return $ext && \in_array($ext, $allowedExtensions) ? \true : \false;

@@ -12,13 +12,13 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property string $secret The key's secret. You can use this value to make authorized requests to the Stripe API.
  * @property array $associated_objects
  */
-class EphemeralKey extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class EphemeralKey extends ApiResource
 {
     const OBJECT_NAME = 'ephemeral_key';
-    use ApiOperations\Delete;
     use ApiOperations\Create {
         create as protected _create;
     }
+    use ApiOperations\Delete;
     /**
      * @param null|array $params
      * @param null|array|string $opts
@@ -31,7 +31,7 @@ class EphemeralKey extends \WP_Ultimo\Dependencies\Stripe\ApiResource
     public static function create($params = null, $opts = null)
     {
         if (!$opts || !isset($opts['stripe_version'])) {
-            throw new \WP_Ultimo\Dependencies\Stripe\Exception\InvalidArgumentException('stripe_version must be specified to create an ephemeral key');
+            throw new Exception\InvalidArgumentException('stripe_version must be specified to create an ephemeral key');
         }
         return self::_create($params, $opts);
     }

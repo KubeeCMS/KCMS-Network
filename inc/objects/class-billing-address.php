@@ -250,67 +250,68 @@ class Billing_Address {
 		$fields = array();
 
 		$fields['company_name'] = array(
-			'type'            => 'text',
-			'title'           => __('Company Name', 'wp-ultimo'),
-			'wrapper_classes' => 'wu-col-span-1',
+			'type'                => 'text',
+			'title'               => __('Company Name', 'wp-ultimo'),
+			'default_placeholder' => __('E.g. Google (optional)', 'wp-ultimo'),
+			'wrapper_classes'     => 'sm:wu-col-span-1',
 		);
 
 		$fields['billing_email'] = array(
-			'type'            => 'text',
-			'title'           => __('Billing Email', 'wp-ultimo'),
-			'wrapper_classes' => 'wu-col-span-1',
-			'required'        => true,
-		);
-
-    // TODO: Only add in case taxes are available
-		$fields['tax_id'] = array(
-			'type'            => 'text',
-			'title'           => __('VAT / Tax ID', 'wp-ultimo'),
-			'wrapper_classes' => 'wu-col-span-2',
+			'type'                => 'text',
+			'title'               => __('Billing Email', 'wp-ultimo'),
+			'default_placeholder' => __('E.g. john@company.com', 'wp-ultimo'),
+			'wrapper_classes'     => 'sm:wu-col-span-1',
+			'required'            => true,
 		);
 
 		$fields['billing_address_line_1'] = array(
-			'type'            => 'text',
-			'title'           => __('Address Line 1', 'wp-ultimo'),
-			'wrapper_classes' => 'wu-col-span-2',
-			'required'        => true,
+			'type'                => 'text',
+			'title'               => __('Address Line 1', 'wp-ultimo'),
+			'default_placeholder' => __('E.g. 555 1st Avenue', 'wp-ultimo'),
+			'wrapper_classes'     => 'wu-col-span-2',
+			'required'            => true,
 		);
 
 		$fields['billing_address_line_2'] = array(
-			'type'            => 'text',
-			'title'           => __('Address Line 2', 'wp-ultimo'),
-			'wrapper_classes' => 'wu-col-span-2',
-		);
-
-		$fields['billing_city'] = array(
-			'type'            => 'text',
-			'title'           => __('City / Town', 'wp-ultimo'),
-			'wrapper_classes' => 'wu-col-span-1',
-		);
-
-		$fields['billing_zip_code'] = array(
-			'type'            => 'text',
-			'title'           => __('ZIP / Postal Code', 'wp-ultimo'),
-			'wrapper_classes' => 'wu-col-span-1',
-			'required'        => true,
-		);
-
-		$fields['billing_state'] = array(
-			'type'            => 'text',
-			'title'           => __('State / Province', 'wp-ultimo'),
-			'wrapper_classes' => 'wu-col-span-1',
+			'type'                => 'text',
+			'title'               => __('Address Line 2', 'wp-ultimo'),
+			'default_placeholder' => __('E.g. Apartment 10a', 'wp-ultimo'),
+			'wrapper_classes'     => 'wu-col-span-2',
 		);
 
 		$fields['billing_country'] = array(
-			'type'            => 'select',
-			'title'           => __('Country', 'wp-ultimo'),
-			'wrapper_classes' => 'wu-col-span-1',
-			'value'           => ' ',
-			'options'         => 'wu_get_countries_as_options',
-			'required'        => true,
+			'type'                => 'select',
+			'title'               => __('Country', 'wp-ultimo'),
+			'default_placeholder' => __('E.g. US', 'wp-ultimo'),
+			'wrapper_classes'     => 'sm:wu-col-span-1',
+			'value'               => ' ',
+			'options'             => 'wu_get_countries_as_options',
+			'required'            => true,
 		);
 
-		uasort($fields, 'wu_sort_by_order');
+		$fields['billing_state'] = array(
+			'type'                => 'text',
+			'title'               => __('State / Province', 'wp-ultimo'),
+			'default_placeholder' => __('E.g. NY', 'wp-ultimo'),
+			'wrapper_classes'     => 'sm:wu-col-span-1',
+		);
+
+		$fields['billing_city'] = array(
+			'type'                => 'text',
+			'title'               => __('City / Town', 'wp-ultimo'),
+			'default_placeholder' => __('E.g. New York City', 'wp-ultimo'),
+			'wrapper_classes'     => 'sm:wu-col-span-1',
+		);
+
+		$fields['billing_zip_code'] = array(
+			'type'                => 'text',
+			'title'               => __('ZIP / Postal Code', 'wp-ultimo'),
+			'default_placeholder' => __('E.g. 10009', 'wp-ultimo'),
+			'wrapper_classes'     => 'sm:wu-col-span-1',
+			'required'            => true,
+		);
+
+		$fields = wu_set_order_from_index($fields); // Adds missing order attributes
 
 		if ($zip_only) {
 
@@ -321,8 +322,56 @@ class Billing_Address {
 
 		} // end if;
 
+		/**
+		 * Allow plugin developers to filter the billing address fields.
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param array $fields Billing Address array.
+	   * @param bool  $zip_only If we only need zip and country.
+		 * @return array
+		 */
+		$fields = apply_filters('wu_billing_address_fields', $fields, $zip_only);
+
+		uasort($fields, 'wu_sort_by_order');
+
 		return $fields;
 
 	} // end fields;
+
+	/**
+	 * Billing Address fields array for REST API.
+	 *
+	 * @since 2.0.0
+	 * @param bool $zip_only If we only need zip and country.
+	 * @return array
+	 */
+	public static function fields_for_rest($zip_only = false) {
+
+		$fields_for_rest = array();
+
+		foreach (self::fields($zip_only) as $field_key => $field) {
+
+			$options = wu_get_isset($field, 'options', false);
+
+			$enum = is_callable($options) ? call_user_func($options) : false;
+
+			$fields_for_rest[$field_key] = array(
+				'description' => wu_get_isset($field, 'title', false) . '. ' . wu_get_isset($field, 'default_placeholder', false),
+				'type'        => 'string',
+				'required'    => wu_get_isset($field, 'required', false),
+			);
+
+			if ($enum) {
+
+				$fields_for_rest[$field_key]['enum'] = array_keys($enum);
+
+			} // end if;
+
+		} // end foreach;
+
+		return $fields_for_rest;
+
+	} // end fields_for_rest;
 
 } // end class Billing_Address;

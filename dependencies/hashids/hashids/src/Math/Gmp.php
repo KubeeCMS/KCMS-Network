@@ -10,7 +10,7 @@
  */
 namespace WP_Ultimo\Dependencies\Hashids\Math;
 
-class Gmp implements \WP_Ultimo\Dependencies\Hashids\Math\MathInterface
+class Gmp implements MathInterface
 {
     /**
      * Add two arbitrary-length integers.

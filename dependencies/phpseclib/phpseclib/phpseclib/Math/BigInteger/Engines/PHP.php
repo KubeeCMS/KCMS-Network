@@ -5,8 +5,6 @@
  *
  * PHP version 5 and 7
  *
- * @category  Math
- * @package   BigInteger
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -19,9 +17,7 @@ use phpseclib3\Exception\BadConfigurationException;
 /**
  * Pure-PHP Engine.
  *
- * @package PHP
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
 abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
 {
@@ -31,7 +27,6 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      * Rather than create a thousands and thousands of new BigInteger objects in repeated function calls to add() and
      * multiply() or whatever, we'll just work directly on arrays, taking them in as parameters and returning them.
      *
-     * @access protected
      */
     /**
      * $result[self::VALUE] contains the value.
@@ -47,7 +42,6 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      *
      * At what point do we switch between Karatsuba multiplication and schoolbook long multiplication?
      *
-     * @access private
      */
     const KARATSUBA_CUTOFF = 25;
     /**
@@ -55,14 +49,12 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      *
      * @see parent::bitwise_leftRotate()
      * @see parent::bitwise_rightRotate()
-     * @access protected
      */
     const FAST_BITWISE = \true;
     /**
      * Engine Directory
      *
      * @see parent::setModExpEngine
-     * @access protected
      */
     const ENGINE_DIR = 'PHP';
     /**
@@ -70,16 +62,16 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      *
      * @param mixed $x integer Base-10 number or base-$base number if $base set.
      * @param int $base
+     * @return PHP
      * @see parent::__construct()
-     * @return \phpseclib3\Math\BigInteger\Engines\PHP
      */
     public function __construct($x = 0, $base = 10)
     {
-        if (!isset(static::$isValidEngine)) {
-            static::$isValidEngine = static::isValidEngine();
+        if (!isset(static::$isValidEngine[static::class])) {
+            static::$isValidEngine[static::class] = static::isValidEngine();
         }
-        if (!static::$isValidEngine) {
-            throw new \phpseclib3\Exception\BadConfigurationException(static::class . ' is not setup correctly on this system');
+        if (!static::$isValidEngine[static::class]) {
+            throw new BadConfigurationException(static::class . ' is not setup correctly on this system');
         }
         $this->value = [];
         parent::__construct($x, $base);
@@ -95,7 +87,7 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
         switch (\abs($base)) {
             case 16:
                 $x = \strlen($this->value) & 1 ? '0' . $this->value : $this->value;
-                $temp = new static(\WP_Ultimo\Dependencies\ParagonIE\ConstantTime\Hex::decode($x), 256);
+                $temp = new static(Hex::decode($x), 256);
                 $this->value = $temp->value;
                 break;
             case 10:
@@ -248,7 +240,7 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      * @param bool $y_negative
      * @return array
      */
-    static function subtractHelper(array $x_value, $x_negative, array $y_value, $y_negative)
+    public static function subtractHelper(array $x_value, $x_negative, array $y_value, $y_negative)
     {
         $x_size = \count($x_value);
         $y_size = \count($y_value);
@@ -413,9 +405,9 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      * same.  If the remainder would be negative, the "common residue" is equal to the sum of the remainder
      * and the divisor (basically, the "common residue" is the first positive modulo).
      *
-     * @param \phpseclib3\Math\BigInteger\engines\PHP $y
-     * @return array
-     * @internal This function is based off of {@link http://www.cacr.math.uwaterloo.ca/hac/about/chap14.pdf#page=9 HAC 14.20}.
+     * @return array{static, static}
+     * @internal This function is based off of
+     *     {@link http://www.cacr.math.uwaterloo.ca/hac/about/chap14.pdf#page=9 HAC 14.20}.
      */
     protected function divideHelper(\phpseclib3\Math\BigInteger\Engines\PHP $y)
     {
@@ -438,14 +430,14 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
             $temp = new static();
             $temp->value = [1];
             $temp->is_negative = $x_sign != $y_sign;
-            return [$this->normalize($temp), $this->normalize(static::$zero)];
+            return [$this->normalize($temp), $this->normalize(static::$zero[static::class])];
         }
         if ($diff < 0) {
             // if $x is negative, "add" $y.
             if ($x_sign) {
                 $x = $y->subtract($x);
             }
-            return [$this->normalize(static::$zero), $this->normalize($x)];
+            return [$this->normalize(static::$zero[static::class]), $this->normalize($x)];
         }
         // normalize $x and $y as described in HAC 14.23 / 14.24
         $msb = $y->value[\count($y->value) - 1];
@@ -462,6 +454,11 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
         $quotient_value = self::array_repeat(0, $x_max - $y_max + 1);
         static $temp, $lhs, $rhs;
         if (!isset($temp)) {
+            $temp = new static();
+            $lhs = new static();
+            $rhs = new static();
+        }
+        if (static::class != \get_class($temp)) {
             $temp = new static();
             $lhs = new static();
             $rhs = new static();
@@ -503,7 +500,7 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
                 $temp_value = \array_merge($adjust, $temp_value);
             }
             $x = $x->subtract($temp);
-            if ($x->compare(static::$zero) < 0) {
+            if ($x->compare(static::$zero[static::class]) < 0) {
                 $temp_value = \array_merge($adjust, $y_value);
                 $x = $x->add($temp);
                 --$quotient_value[$q_index];
@@ -558,13 +555,14 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
             return (int) ($x / $y);
         }
         // static::BASE === 31
+        /** @var int */
         return ($x - $x % $y) / $y;
     }
-    /*
+    /**
      * Convert an array / boolean to a PHP BigInteger object
      *
      * @param array $arr
-     * @return \phpseclib3\Math\BigInteger\Engines\PHP
+     * @return static
      */
     protected function convertToObj(array $arr)
     {
@@ -579,11 +577,10 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      * Removes leading zeros and truncates (if necessary) to maintain the appropriate precision
      *
      * @param PHP $result
-     * @return PHP
+     * @return static
      */
     protected function normalize(\phpseclib3\Math\BigInteger\Engines\PHP $result)
     {
-        unset($result->reduce);
         $result->precision = $this->precision;
         $result->bitmask = $this->bitmask;
         $value =& $result->value;
@@ -598,10 +595,11 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
             for ($i = 0; $i < $length; ++$i) {
                 $value[$i] = $value[$i] & $result->bitmask->value[$i];
             }
+            $value = static::trim($value);
         }
         return $result;
     }
-    /*
+    /**
      * Compares two numbers.
      *
      * @param array $x_value
@@ -633,7 +631,7 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
     /**
      * Absolute value.
      *
-     * @return \phpseclib3\Math\BigInteger\Engines\PHP
+     * @return PHP
      */
     public function abs()
     {
@@ -646,8 +644,8 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      *
      * Removes leading zeros
      *
-     * @param array $value
-     * @return PHP
+     * @param list<static> $value
+     * @return list<static>
      */
     protected static function trim(array $value)
     {
@@ -665,7 +663,7 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      * Shifts BigInteger's by $shift bits, effectively dividing by 2**$shift.
      *
      * @param int $shift
-     * @return \phpseclib3\Math\BigInteger\Engines\PHP
+     * @return PHP
      */
     public function bitwise_rightShift($shift)
     {
@@ -682,7 +680,7 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      * Shifts BigInteger's by $shift bits, effectively multiplying by 2**$shift.
      *
      * @param int $shift
-     * @return \phpseclib3\Math\BigInteger\Engines\PHP
+     * @return PHP
      */
     public function bitwise_leftShift($shift)
     {
@@ -779,7 +777,7 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
     protected function powModInner(\phpseclib3\Math\BigInteger\Engines\PHP $e, \phpseclib3\Math\BigInteger\Engines\PHP $n)
     {
         try {
-            $class = static::$modexpEngine;
+            $class = static::$modexpEngine[static::class];
             return $class::powModHelper($this, $e, $n, static::class);
         } catch (\Exception $err) {
             return \phpseclib3\Math\BigInteger\Engines\PHP\DefaultEngine::powModHelper($this, $e, $n, static::class);
@@ -788,8 +786,8 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
     /**
      * Performs squaring
      *
-     * @param array $x
-     * @return array
+     * @param list<static> $x
+     * @return list<static>
      */
     protected static function square(array $x)
     {
@@ -885,7 +883,7 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
             return \false;
         }
         $value = $this->value;
-        foreach (static::$primes as $prime) {
+        foreach (static::PRIMES as $prime) {
             list(, $r) = self::divide_digit($value, $prime);
             if (!$r) {
                 return \count($value) == 1 && $value[0] == $prime;
@@ -898,9 +896,9 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      *
      * ie. $s = gmp_scan1($n, 0) and $r = gmp_div_q($n, gmp_pow(gmp_init('2'), $s));
      *
-     * @see self::isPrime()
      * @param PHP $r
      * @return int
+     * @see self::isPrime()
      */
     public static function scan1divide(\phpseclib3\Math\BigInteger\Engines\PHP $r)
     {
@@ -925,21 +923,21 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      */
     protected function powHelper(\phpseclib3\Math\BigInteger\Engines\PHP $n)
     {
-        if ($n->compare(static::$zero) == 0) {
+        if ($n->compare(static::$zero[static::class]) == 0) {
             return new static(1);
         }
         // n^0 = 1
         $temp = clone $this;
-        while (!$n->equals(static::$one)) {
+        while (!$n->equals(static::$one[static::class])) {
             $temp = $temp->multiply($this);
-            $n = $n->subtract(static::$one);
+            $n = $n->subtract(static::$one[static::class]);
         }
         return $temp;
     }
     /**
      * Is Odd?
      *
-     * @return boolean
+     * @return bool
      */
     public function isOdd()
     {
@@ -948,11 +946,11 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
     /**
      * Tests if a bit is set
      *
-     * @return boolean
+     * @return bool
      */
     public function testBit($x)
     {
-        $digit = \floor($x / static::BASE);
+        $digit = (int) \floor($x / static::BASE);
         $bit = $x % static::BASE;
         if (!isset($this->value[$digit])) {
             return \false;
@@ -962,7 +960,7 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
     /**
      * Is Negative?
      *
-     * @return boolean
+     * @return bool
      */
     public function isNegative()
     {
@@ -973,7 +971,7 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      *
      * Given $k, returns -$k
      *
-     * @return BigInteger
+     * @return static
      */
     public function negate()
     {
@@ -987,7 +985,7 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      * Splits BigInteger's into chunks of $split bits
      *
      * @param int $split
-     * @return \phpseclib3\Math\BigInteger\Engines\PHP[]
+     * @return list<static>
      */
     public function bitwise_split($split)
     {
@@ -1049,7 +1047,7 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
      * Bitwise Split where $split < static::BASE
      *
      * @param int $split
-     * @return \phpseclib3\Math\BigInteger\Engines\PHP[]
+     * @return list<int>
      */
     private function bitwise_small_split($split)
     {
@@ -1071,14 +1069,12 @@ abstract class PHP extends \phpseclib3\Math\BigInteger\Engines\Engine
                     $remaining = static::BASE;
                     $overflow = 0;
                 }
-            } else {
-                if (++$i != $len) {
-                    $tempmask = (1 << $overflow) - 1;
-                    $digit |= ($val[$i] & $tempmask) << $remaining;
-                    $val[$i] >>= $overflow;
-                    $remaining = static::BASE - $overflow;
-                    $overflow = $split <= $remaining ? 0 : $split - $remaining;
-                }
+            } elseif (++$i != $len) {
+                $tempmask = (1 << $overflow) - 1;
+                $digit |= ($val[$i] & $tempmask) << $remaining;
+                $val[$i] >>= $overflow;
+                $remaining = static::BASE - $overflow;
+                $overflow = $split <= $remaining ? 0 : $split - $remaining;
             }
             $vals[] = $digit;
         }

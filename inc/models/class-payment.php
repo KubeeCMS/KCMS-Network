@@ -10,9 +10,8 @@
 namespace WP_Ultimo\Models;
 
 use \WP_Ultimo\Models\Base_Model;
-use \WP_Ultimo\Models\Customer;
-use \WP_Ultimo\Models\Product;
 use \WP_Ultimo\Database\Payments\Payment_Status;
+use \WP_Ultimo\Checkout\Line_Item;
 
 // Exit if accessed directly
 defined('ABSPATH') || exit;
@@ -23,6 +22,8 @@ defined('ABSPATH') || exit;
  * @since 2.0.0
  */
 class Payment extends Base_Model {
+
+	use Traits\Notable;
 
 	/**
 	 * ID of the product of this payment.
@@ -44,7 +45,7 @@ class Payment extends Base_Model {
 	 * Membership ID.
 	 *
 	 * @since 2.0.0
-	 * @var mixed
+	 * @var int
 	 */
 	protected $membership_id;
 
@@ -52,7 +53,7 @@ class Payment extends Base_Model {
 	 * Parent payment.
 	 *
 	 * @since 2.0.0
-	 * @var mixed
+	 * @var int
 	 */
 	protected $parent_id;
 
@@ -71,6 +72,14 @@ class Payment extends Base_Model {
 	 * @var float
 	 */
 	protected $subtotal = 0;
+
+	/**
+	 * Refund total in this payment.
+	 *
+	 * @since 2.0.0
+	 * @var float
+	 */
+	protected $refund_total = 0;
 
 	/**
 	 * The total value in discounts.
@@ -147,6 +156,14 @@ class Payment extends Base_Model {
 	protected $invoice_number;
 
 	/**
+	 * Holds if we need to cancel the membership on refund.
+	 *
+	 * @since 2.0.0
+	 * @var bool
+	 */
+	protected $cancel_membership_on_refund;
+
+	/**
 	 * Query Class to the static query methods.
 	 *
 	 * @since 2.0.0
@@ -190,8 +207,28 @@ class Payment extends Base_Model {
 	 */
 	public function validation_rules() {
 
+		$currency = wu_get_setting('currency_symbol', 'USD');
+
+		$payment_types = new \WP_Ultimo\Database\Payments\Payment_Status();
+
+		$payment_types = $payment_types->get_allowed_list(true);
+
 		return array(
-			'parent_id' => 'integer',
+			'customer_id'                 => 'required|integer|exists:\WP_Ultimo\Models\Customer,id',
+			'membership_id'               => 'required|integer|exists:\WP_Ultimo\Models\Membership,id',
+			'parent_id'                   => 'integer|default:',
+			'currency'                    => "default:{$currency}",
+			'subtotal'                    => 'required|numeric',
+			'refund_total'                => 'numeric',
+			'tax_total'                   => 'numeric',
+			'discount_code'               => 'alpha_dash',
+			'total'                       => 'required|numeric',
+			'status'                      => "required|in:{$payment_types}",
+			'gateway'                     => 'default:',
+			'gateway_payment_id'          => 'default:',
+			'discount_total'              => 'integer',
+			'invoice_number'              => 'default:',
+			'cancel_membership_on_refund' => 'boolean|default:0',
 		);
 
 	} // end validation_rules;
@@ -213,11 +250,11 @@ class Payment extends Base_Model {
 	 * Get the value of customer_id.
 	 *
 	 * @since 2.0.0
-	 * @return mixed
+	 * @return int
 	 */
 	public function get_customer_id() {
 
-		return $this->customer_id;
+		return absint($this->customer_id);
 
 	} // end get_customer_id;
 
@@ -225,12 +262,12 @@ class Payment extends Base_Model {
 	 * Set the value of customer_id.
 	 *
 	 * @since 2.0.0
-	 * @param mixed $customer_id ID of the customer attached to this payment.
+	 * @param int $customer_id The ID of the customer attached to this payment.
 	 * @return void
 	 */
 	public function set_customer_id($customer_id) {
 
-		$this->customer_id = $customer_id;
+		$this->customer_id = absint($customer_id);
 
 	} // end set_customer_id;
 
@@ -251,7 +288,7 @@ class Payment extends Base_Model {
 	 * Get membership ID.
 	 *
 	 * @since 2.0.0
-	 * @return mixed
+	 * @return int
 	 */
 	public function get_membership_id() {
 
@@ -263,7 +300,7 @@ class Payment extends Base_Model {
 	 * Set membership ID.
 	 *
 	 * @since 2.0.0
-	 * @param mixed $membership_id Membership ID.
+	 * @param int $membership_id The ID of the membership attached to this payment.
 	 * @return void
 	 */
 	public function set_membership_id($membership_id) {
@@ -276,7 +313,7 @@ class Payment extends Base_Model {
 	 * Get parent payment ID.
 	 *
 	 * @since 2.0.0
-	 * @return mixed
+	 * @return int
 	 */
 	public function get_parent_id() {
 
@@ -288,7 +325,7 @@ class Payment extends Base_Model {
 	 * Set parent payment ID.
 	 *
 	 * @since 2.0.0
-	 * @param mixed $parent_id Parent payment.
+	 * @param int $parent_id The ID from another payment that this payment is related to.
 	 * @return void
 	 */
 	public function set_parent_id($parent_id) {
@@ -314,7 +351,7 @@ class Payment extends Base_Model {
 	 * Set currency for this payment. 3-letter currency code.
 	 *
 	 * @since 2.0.0
-	 * @param string $currency Currency for this payment. 3-letter currency code.
+	 * @param string $currency The currency of this payment. It's a 3-letter code. E.g. 'USD'.
 	 * @return void
 	 */
 	public function set_currency($currency) {
@@ -339,7 +376,7 @@ class Payment extends Base_Model {
 	 * Set value before taxes, discounts, fees and etc.
 	 *
 	 * @since 2.0.0
-	 * @param float $subtotal Value before taxes, discounts, fees and etc.
+	 * @param float $subtotal Value before taxes, discounts, fees and other changes.
 	 * @return void
 	 */
 	public function set_subtotal($subtotal) {
@@ -347,6 +384,31 @@ class Payment extends Base_Model {
 		$this->subtotal = $subtotal;
 
 	} // end set_subtotal;
+
+	/**
+	 * Get refund total in this payment.
+	 *
+	 * @since 2.0.0
+	 * @return float
+	 */
+	public function get_refund_total() {
+
+		return $this->refund_total;
+
+	} // end get_refund_total;
+
+	/**
+	 * Set refund total in this payment.
+	 *
+	 * @since 2.0.0
+	 * @param float $refund_total Total amount refunded.
+	 * @return void
+	 */
+	public function set_refund_total($refund_total) {
+
+		$this->refund_total = $refund_total;
+
+	} // end set_refund_total;
 
 	/**
 	 * Get the amount, in currency, of the tax.
@@ -414,7 +476,7 @@ class Payment extends Base_Model {
 	 * Set this takes into account fees, discounts, credits, etc.
 	 *
 	 * @since 2.0.0
-	 * @param float $total This takes into account fees, discounts, credits, etc.
+	 * @param float $total This takes into account fees, discounts and credits.
 	 * @return void
 	 */
 	public function set_total($total) {
@@ -467,7 +529,8 @@ class Payment extends Base_Model {
 	 * Set status of the status.
 	 *
 	 * @since 2.0.0
-	 * @param string $status Status of the status.
+	 * @param string $status The payment status: Can be 'pending', 'completed', 'refunded', 'partially-refunded', 'partially-paid', 'failed', 'cancelled' or other values added by third-party add-ons.
+	 * @options \WP_Ultimo\Database\Payments\Payment_Status
 	 * @return void
 	 */
 	public function set_status($status) {
@@ -492,7 +555,7 @@ class Payment extends Base_Model {
 	 * Set gateway used to process this payment.
 	 *
 	 * @since 2.0.0
-	 * @param string $gateway Gateway used to process this payment.
+	 * @param string $gateway ID of the gateway being used on this payment.
 	 * @return void
 	 */
 	public function set_gateway($gateway) {
@@ -595,6 +658,32 @@ class Payment extends Base_Model {
 	} // end set_line_items;
 
 	/**
+	 * Add a new line item.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param \WP_Ultimo\Checkout\Line_Item $line_item The line item.
+	 * @return void
+	 */
+	public function add_line_item($line_item) {
+
+		$line_items = $this->get_line_items();
+
+		if (!is_a($line_item, '\WP_Ultimo\Checkout\Line_Item')) {
+
+			return;
+
+		} // end if;
+
+		$line_items[$line_item->get_id()] = $line_item;
+
+		$this->set_line_items($line_items);
+
+		krsort($this->line_items);
+
+	} // end add_line_item;
+
+	/**
 	 * Returns an array containing the subtotal per tax rate.
 	 *
 	 * @since 2.0.0
@@ -648,6 +737,8 @@ class Payment extends Base_Model {
 
 		$sub_total = 0;
 
+		$refund_total = 0;
+
 		$total = 0;
 
 		foreach ($line_items as $line_item) {
@@ -660,12 +751,19 @@ class Payment extends Base_Model {
 
 			$total += $line_item->get_total();
 
+			if ($line_item->get_type() === 'refund') {
+
+				$refund_total += $line_item->get_subtotal();
+
+			} // end if;
+
 		} // end foreach;
 
 		$this->attributes(array(
-			'tax_total' => $tax_total,
-			'subtotal'  => $sub_total,
-			'total'     => $total,
+			'tax_total'    => $tax_total,
+			'subtotal'     => $sub_total,
+			'refund_total' => $refund_total,
+			'total'        => $total,
 		));
 
 		return $this;
@@ -723,7 +821,7 @@ class Payment extends Base_Model {
 	 * Set iD of the product of this payment.
 	 *
 	 * @since 2.0.0
-	 * @param int $product_id ID of the product of this payment.
+	 * @param int $product_id The ID of the product of this payment.
 	 * @return void
 	 */
 	public function set_product_id($product_id) {
@@ -766,7 +864,7 @@ class Payment extends Base_Model {
 	 * Set iD of the payment on the gateway, if it exists.
 	 *
 	 * @since 2.0.0
-	 * @param string $gateway_payment_id ID of the payment on the gateway, if it exists.
+	 * @param string $gateway_payment_id The ID of the payment on the gateway, if it exists.
 	 * @return void
 	 */
 	public function set_gateway_payment_id($gateway_payment_id) {
@@ -815,7 +913,7 @@ class Payment extends Base_Model {
 	 * Set the total value in discounts.
 	 *
 	 * @since 2.0.0
-	 * @param integer $discount_total The total value in discounts.
+	 * @param integer $discount_total The total value of the discounts applied to this payment.
 	 * @return void
 	 */
 	public function set_discount_total($discount_total) {
@@ -906,5 +1004,206 @@ class Payment extends Base_Model {
 		$this->invoice_number = $invoice_number;
 
 	} // end set_invoice_number;
+
+	/**
+	 * Remove all non-recurring items from the payment.
+	 *
+	 * This is usually used when creating a new pending payment for
+	 * a membership that needs to be manually renewed.
+	 *
+	 * @since 2.0.0
+	 * @return self
+	 */
+	public function remove_non_recurring_items() {
+
+		$line_items = $this->get_line_items();
+
+		foreach ($line_items as $line_item_id => $line_item) {
+
+			if (!$line_item->is_recurring()) {
+
+				unset($line_items[$line_item_id]);
+
+			} // end if;
+
+		} // end foreach;
+
+		$this->set_line_items($line_items);
+
+		$this->recalculate_totals();
+
+		return $this;
+
+	} // end remove_non_recurring_items;
+
+	/**
+	 * Get holds if we need to cancel the membership on refund..
+	 *
+	 * @since 2.0.0
+	 * @return bool
+	 */
+	public function should_cancel_membership_on_refund() {
+
+		if ($this->cancel_membership_on_refund === null) {
+
+			$this->cancel_membership_on_refund = $this->get_meta('wu_cancel_membership_on_refund', false);
+
+		} // end if;
+
+		return $this->cancel_membership_on_refund;
+
+	} // end should_cancel_membership_on_refund;
+
+	/**
+	 * Set holds if we need to cancel the membership on refund..
+	 *
+	 * @since 2.0.0
+	 * @param bool $cancel_membership_on_refund Holds if we need to cancel the membership on refund.
+	 * @return void
+	 */
+	public function set_cancel_membership_on_refund($cancel_membership_on_refund) {
+
+		$this->meta['wu_cancel_membership_on_refund'] = $cancel_membership_on_refund;
+
+		$this->cancel_membership_on_refund = $cancel_membership_on_refund;
+
+	} // end set_cancel_membership_on_refund;
+
+	/**
+	 * Handles a payment refund.
+	 *
+	 * This DOES NOT contact the gateway to refund a payment.
+	 * It only updates the payment status to respond to a refund
+	 * confirmation that originated from the gateway.
+	 *
+	 * An example of how that would work:
+	 * 1. Admin issues a refund on the admin panel;
+	 * 2. PayPal (for example), process the refund request
+	 *    and sends back a IPN (webhook call) telling WP Ultimo
+	 *    that the refund was issued successfully;
+	 * 3. The IPN handler listens for that event and calls this
+	 *    to reflect the refund in the original WU payment.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param boolean      $amount The amount to refund.
+	 * @param null|boolean $should_cancel_membership_on_refund If we should cancel a membership as well.
+	 * @return void|bool
+	 */
+	public function refund($amount = false, $should_cancel_membership_on_refund = null) {
+		/*
+		 * If no amount was passed,
+		 * refund the full amount.
+		 */
+		if (empty($amount)) {
+
+			$amount = $this->get_total();
+
+		} // end if;
+
+		$amount = wu_to_float($amount);
+
+		/*
+		 * Do the same for the behavior regarding memberships.
+		 */
+		if (is_null($should_cancel_membership_on_refund)) {
+
+			$should_cancel_membership_on_refund = $this->should_cancel_membership_on_refund();
+
+		} // end if;
+
+		/*
+		 * First, deal with the status.
+		 * The new status depends on the refund amount.
+		 *
+		 * If the amount is >= the total
+		 * this is a total refund, otherwise,
+		 * it is a partial refund.
+		 */
+		if ($amount >= $this->get_total()) {
+
+			$title = __('Full Refund', 'wp-ultimo');
+
+			$new_status = Payment_Status::REFUND;
+
+		} else {
+
+			$title = __('Partial Refund', 'wp-ultimo');
+
+			$new_status = Payment_Status::PARTIAL_REFUND;
+
+		} // end if;
+
+		$time = current_time('timestamp'); // phpcs:ignore
+
+		$formatted_value = date_i18n(get_option('date_format'), $time);
+
+		// translators: %s is the date of processing.
+		$description = sprintf(__('Processed on %s', 'wp-ultimo'), $formatted_value);
+
+		$line_item_data = array(
+			'type'         => 'refund',
+			'hash'         => uniqid(),
+			'title'        => $title,
+			'description'  => $description,
+			'discountable' => false,
+			'taxable'      => false,
+			'unit_price'   => -$amount,
+			'quantity'     => 1,
+		);
+
+		$refund_line_item = new Line_Item($line_item_data);
+
+		$this->add_line_item($refund_line_item);
+
+		$this->set_status($new_status);
+
+		$this->recalculate_totals();
+
+		$status = $this->save();
+
+		if (is_wp_error($status)) {
+
+			return $status;
+
+		} // end if;
+
+		/**
+		 * Updating the payment went well.
+		 * Let's deal with the membership, if needed.
+		 */
+		if ($should_cancel_membership_on_refund) {
+
+			$membership = $this->get_membership();
+
+			if ($membership) {
+
+				$membership->cancel();
+
+			} // end if;
+
+		} // end if;
+
+		return true;
+
+	} // end refund;
+
+	/**
+	 * Creates a copy of the given model adn resets it's id to a 'new' state.
+	 *
+	 * @since 2.0.0
+	 * @return \WP_Ultimo\Model\Base_Model
+	 */
+	public function duplicate() {
+
+		$line_items = $this->get_line_items();
+
+		$new_payment = parent::duplicate();
+
+		$new_payment->set_line_items($line_items);
+
+		return $new_payment;
+
+	} // end duplicate;
 
 } // end class Payment;

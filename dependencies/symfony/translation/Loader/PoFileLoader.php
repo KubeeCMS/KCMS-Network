@@ -59,7 +59,7 @@ class PoFileLoader extends \Symfony\Component\Translation\Loader\FileLoader
      *
      * {@inheritdoc}
      */
-    protected function loadResource($resource)
+    protected function loadResource(string $resource)
     {
         $stream = \fopen($resource, 'r');
         $defaults = ['ids' => [], 'translated' => null];

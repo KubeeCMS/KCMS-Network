@@ -4,7 +4,7 @@
  * Description: The Ultimate Website as a Service (WaaS) platform builder.
  * Plugin URI: https://github.com/KubeeCMS/KCMS-Network/
  * Text Domain: wp-ultimo
- * Version: 2.0.0-beta.2
+ * Version: 2.0.13
  * Author: Kubee
  * Author URI: https://github.com/KubeeCMS/
  * Network: true
@@ -27,7 +27,7 @@
  * @author   Arindo Duque and NextPress
  * @category Core
  * @package  WP_Ultimo
- * @version  2.0.0-beta.2
+ * @version  2.0.13
  */
 
 // Exit if accessed directly
@@ -48,7 +48,7 @@ require_once __DIR__ . '/dependencies/autoload.php';
 
 require_once __DIR__ . '/inc/class-autoloader.php';
 
-require_once __DIR__ . '/inc/action-scheduler/action-scheduler.php';
+require_once __DIR__ . '/dependencies/action-scheduler/action-scheduler/action-scheduler.php';
 
 require_once __DIR__ . '/inc/traits/trait-singleton.php';
 

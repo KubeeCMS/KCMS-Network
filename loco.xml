@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bundle name="WP Ultimo">
+  <domain name="wp-ultimo">
+    <project name="WP Ultimo" slug="wp-ultimo">
+      <source>
+        <directory>.</directory>
+      </source>
+      <target>
+        <directory>lang</directory>
+      </target>
+      <template>
+        <file>lang/wp-ultimo.pot</file>
+      </template>
+    </project>
+  </domain>
+  <exclude>
+    <directory>node_modules</directory>
+    <directory>vendor</directory>
+  </exclude>
+</bundle>

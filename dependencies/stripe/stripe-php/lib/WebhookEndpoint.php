@@ -28,7 +28,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property string $status The status of the webhook. It can be <code>enabled</code> or <code>disabled</code>.
  * @property string $url The URL of the webhook endpoint.
  */
-class WebhookEndpoint extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class WebhookEndpoint extends ApiResource
 {
     const OBJECT_NAME = 'webhook_endpoint';
     use ApiOperations\All;

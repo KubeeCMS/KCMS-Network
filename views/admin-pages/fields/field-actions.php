@@ -5,7 +5,7 @@
  * @since 2.0.0
  */
 ?>
-<li class="wu-bg-gray-200 <?php echo esc_attr($field->wrapper_classes); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
+<li class="wu-bg-gray-100 <?php echo esc_attr(trim($field->wrapper_classes)); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
 		<?php foreach ($field->actions as $action_slug => $action) : ?>
 

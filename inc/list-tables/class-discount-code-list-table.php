@@ -101,7 +101,7 @@ class Discount_Code_List_Table extends Base_List_Table {
 
 		if ($item->get_type() === 'percentage') {
 
-			$value = $item->get_value() . '%';
+			$value = number_format($item->get_value(), 0) . '%';
 
 		} // end if;
 
@@ -131,7 +131,7 @@ class Discount_Code_List_Table extends Base_List_Table {
 
 		if ($item->get_setup_fee_type() === 'percentage') {
 
-			$value = $item->get_setup_fee_value() . '%';
+			$value = number_format($item->get_setup_fee_value()) . '%';
 
 		} // end if;
 
@@ -176,13 +176,23 @@ class Discount_Code_List_Table extends Base_List_Table {
 	 * @param WP_Ultimo\Models\Discount_Code $item Discount_Code object.
 	 * @return string
 	 */
-	public function column_code($item) {
+	public function column_coupon_code($item) {
 
 		$code = $item->get_code();
 
-		return '<span class="wu-bg-gray-200 wu-text-gray-700 wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono wu-bg-gray-200 wu-text-gray-700">' . strtoupper($code) . '</span>';
+		$html = '<span class="wu-py-1 wu-px-2 wu-rounded-sm wu-text-xs wu-font-mono wu-bg-gray-200 wu-text-gray-700">' . strtoupper($code) . '</span>';
 
-	} // end column_code;
+		$valid = $item->is_valid();
+
+		if (is_wp_error($valid)) {
+
+			$html .= sprintf('<small class="wu-block wu-sans" %s>%s</small>', wu_tooltip_text($valid->get_error_message()), __('Inactive', 'wp-ultimo'));
+
+		} // end if;
+
+		return $html;
+
+	} // end column_coupon_code;
 
 	/**
 	 * Returns the list of columns for this particular List Table.
@@ -195,7 +205,7 @@ class Discount_Code_List_Table extends Base_List_Table {
 		$columns = array(
 			'cb'              => '<input type="checkbox" />',
 			'name'            => __('Name', 'wp-ultimo'),
-			'code'            => __('Code', 'wp-ultimo'),
+			'coupon_code'     => __('Code', 'wp-ultimo'),
 			'uses'            => __('Uses', 'wp-ultimo'),
 			'value'           => __('Value', 'wp-ultimo'),
 			'setup_fee_value' => __('Setup Fee Value', 'wp-ultimo'),
@@ -205,20 +215,6 @@ class Discount_Code_List_Table extends Base_List_Table {
 		return $columns;
 
 	} // end get_columns;
-
-	/**
-	 * Returns an associative array containing the bulk action
-	 *
-	 * @return array
-	 */
-	public function get_bulk_actions() {
-
-		return array(
-			'delete'   => __('Delete', 'wp-ultimo'),
-			'deactive' => __('Deactive', 'wp-ultimo'),
-		);
-
-	} // end get_bulk_actions;
 
 	/**
 	 * Returns the filters for this page.

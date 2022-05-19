@@ -26,11 +26,11 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property null|\Stripe\StripeObject $metadata Set of <a href="https://stripe.com/docs/api/metadata">key-value pairs</a> that you can attach to an object. This can be useful for storing additional information about the object in a structured format.
  * @property null|string $payment The ID of the payment created from the receiver, if any. Hidden when viewing the receiver with a publishable key.
  * @property null|string $refund_address The refund address of this bitcoin receiver.
- * @property \Stripe\Collection $transactions A list with one entry for each time that the customer sent bitcoin to the receiver. Hidden when viewing the receiver with a publishable key.
+ * @property \Stripe\Collection<\Stripe\BitcoinTransaction> $transactions A list with one entry for each time that the customer sent bitcoin to the receiver. Hidden when viewing the receiver with a publishable key.
  * @property bool $uncaptured_funds This receiver contains uncaptured funds that can be used for a payment or refunded.
  * @property null|bool $used_for_payment Indicate if this source is used for payment.
  */
-class BitcoinReceiver extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class BitcoinReceiver extends ApiResource
 {
     const OBJECT_NAME = 'bitcoin_receiver';
     use ApiOperations\All;
@@ -50,15 +50,15 @@ class BitcoinReceiver extends \WP_Ultimo\Dependencies\Stripe\ApiResource
     public function instanceUrl()
     {
         if ($this['customer']) {
-            $base = \WP_Ultimo\Dependencies\Stripe\Customer::classUrl();
+            $base = Customer::classUrl();
             $parent = $this['customer'];
             $path = 'sources';
-            $parentExtn = \urlencode(\WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($parent));
-            $extn = \urlencode(\WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($this['id']));
+            $parentExtn = \urlencode(Util\Util::utf8($parent));
+            $extn = \urlencode(Util\Util::utf8($this['id']));
             return "{$base}/{$parentExtn}/{$path}/{$extn}";
         }
-        $base = \WP_Ultimo\Dependencies\Stripe\BitcoinReceiver::classUrl();
-        $extn = \urlencode(\WP_Ultimo\Dependencies\Stripe\Util\Util::utf8($this['id']));
+        $base = BitcoinReceiver::classUrl();
+        $extn = \urlencode(Util\Util::utf8($this['id']));
         return "{$base}/{$extn}";
     }
 }

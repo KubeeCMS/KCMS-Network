@@ -51,6 +51,7 @@ class WPMUDEV_Host_Provider extends Base_Host_Provider {
 	 */
 	protected $supports = array(
 		'autossl',
+		'no-instructions',
 		'no-config',
 	);
 

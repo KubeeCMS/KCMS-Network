@@ -48,7 +48,7 @@ class Form implements \JsonSerializable {
 	 */
 	public function __construct($id, $fields, $atts = array()) {
 
-		$this->atts = wp_parse_args($atts, array(
+		$this->atts = apply_filters("wu_{$id}_form_atts", wp_parse_args($atts, array(
 			'id'                    => $id,
 			'method'                => 'post',
 			'before'                => '',
@@ -56,14 +56,20 @@ class Form implements \JsonSerializable {
 			'action'                => false,
 			'title'                 => false,
 			'wrap_in_form_tag'      => false,
+			'wrap_tag'              => 'div',
 			'classes'               => false,
 			'field_wrapper_classes' => false,
 			'field_classes'         => false,
 			'views'                 => 'settings/fields',
+			'variables'             => array(),
+			'step'                  => (object) array(
+				'classes'    => '',
+				'element_id' => '',
+			),
 			'html_attr'             => array(
 				'class' => '',
 			),
-		));
+		)));
 
 		$this->set_fields($fields);
 
@@ -130,6 +136,17 @@ class Form implements \JsonSerializable {
 	 */
 	public function set_fields($fields) {
 
+		$id = $this->id;
+
+		/**
+		 * Filters the fields on a form. The form is identified by the ID in the filter name.
+		 *
+		 * @since 2.0.0
+		 *
+		 * @param array $fields List of fields of the form.
+		 */
+		$fields = apply_filters("wu_{$id}_form_fields", $fields);
+
 		foreach ($fields as $field_slug => $field) {
 
 			$field['form'] = $this;
@@ -148,11 +165,27 @@ class Form implements \JsonSerializable {
 	 */
 	public function render() {
 
+		$variables = array_merge($this->variables, array(
+			'form_slug' => $this->id,
+			'form'      => $this,
+			'step'      => $this->step,
+		));
+
 		ob_start();
 
 		foreach ($this->get_fields() as $field_slug => $field) {
 
 			$template_name = $field->get_template_name();
+
+			if (wu_get_isset($field->wrapper_html_attr, 'id') === false) {
+
+				$new_wrapper_attributes = $field->wrapper_html_attr;
+
+				$new_wrapper_attributes['id'] = "wrapper-field-$field_slug";
+
+				$field->set_attribute('wrapper_html_attr', $new_wrapper_attributes);
+
+			} // end if;
 
 			wu_get_template("{$this->views}/field-{$template_name}", array(
 				'field_slug' => $field_slug,
@@ -163,11 +196,9 @@ class Form implements \JsonSerializable {
 
 		$rendered_fields = ob_get_clean();
 
-		wu_get_template("{$this->views}/form", array(
-			'form_slug'       => $this->id,
-			'form'            => $this,
-			'rendered_fields' => $rendered_fields,
-		));
+		$variables['rendered_fields'] = $rendered_fields;
+
+		wu_get_template("{$this->views}/form", $variables);
 
 	} // end render;
 
@@ -199,13 +230,7 @@ class Form implements \JsonSerializable {
 
 		} // end if;
 
-		$attributes = array_map(function($key, $value) {
-
-			return $key . '="' . htmlspecialchars($value) . '"';
-
-		}, array_keys($attributes), $attributes);
-
-		return implode(' ', $attributes);
+		return wu_array_to_html_attrs($attributes);
 
 	} // end get_html_attributes;
 

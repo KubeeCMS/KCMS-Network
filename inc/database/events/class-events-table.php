@@ -75,7 +75,7 @@ final class Events_Table extends Table {
 			object_type varchar(20) DEFAULT 'network',
 			slug varchar(255),
 			payload longtext,
-			date_created datetime NOT NULL default '0000-00-00 00:00:00',
+			date_created datetime NULL,
 			PRIMARY KEY (id),
 			KEY severity (severity),
 			KEY author_id (author_id),

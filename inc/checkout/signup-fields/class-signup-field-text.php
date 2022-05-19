@@ -71,9 +71,23 @@ class Signup_Field_Text extends Base_Signup_Field {
 	 */
 	public function get_description() {
 
-		return __('Text Description', 'wp-ultimo');
+		return __('Adds a text field that the customer can fill with arbitrary data.', 'wp-ultimo');
 
 	} // end get_description;
+
+	/**
+	 * Returns the tooltip of the field/element.
+	 *
+	 * This is used as the tooltip attribute of the selector.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function get_tooltip() {
+
+		return __('Adds a text field that the customer can fill with arbitrary data.', 'wp-ultimo');
+
+	} // end get_tooltip;
 
 	/**
 	 * Returns the icon to be used on the selector.
@@ -85,7 +99,7 @@ class Signup_Field_Text extends Base_Signup_Field {
 	 */
 	public function get_icon() {
 
-		return 'dashicons-wu-edit';
+		return 'dashicons-wu-edit-3';
 
 	} // end get_icon;
 
@@ -118,7 +132,7 @@ class Signup_Field_Text extends Base_Signup_Field {
 			'id',
 			'name',
 			'placeholder',
-			'default',
+			'default_value',
 			'tooltip',
 			'required',
 			'save_as',
@@ -160,17 +174,20 @@ class Signup_Field_Text extends Base_Signup_Field {
 	 */
 	public function to_fields_array($attributes) {
 
-		return array(
+		$fields = array(
 			$attributes['id'] => array(
-				'type'        => 'text',
-				'id'          => $attributes['id'],
-				'name'        => $attributes['name'],
-				'placeholder' => $attributes['placeholder'],
-				'tooltip'     => $attributes['tooltip'],
-				'default'     => $attributes['default'],
-				'required'    => $attributes['required'],
+				'type'            => 'text',
+				'id'              => $attributes['id'],
+				'name'            => $attributes['name'],
+				'placeholder'     => $attributes['placeholder'],
+				'tooltip'         => $attributes['tooltip'],
+				'required'        => $attributes['required'],
+				'wrapper_classes' => $attributes['element_classes'],
+				'value'           => $this->get_value(),
 			),
 		);
+
+		return $fields;
 
 	} // end to_fields_array;
 

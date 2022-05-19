@@ -9,8 +9,6 @@
 
 namespace WP_Ultimo;
 
-use WP_Ultimo\Logger;
-
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
@@ -35,7 +33,7 @@ class Requirements {
 	 * @since 2.0.0
 	 * @var string
 	 */
-	public static $php_version = '7.1.3';
+	public static $php_version = '7.3';
 
 	/**
 	 * Recommended PHP Version
@@ -43,7 +41,7 @@ class Requirements {
 	 * @since 2.0.0
 	 * @var string
 	 */
-	public static $php_recommended_version = '7.1.4';
+	public static $php_recommended_version = '7.4.1';
 
 	/**
 	 * Minimum WordPress version required to run WP Ultimo.
@@ -51,7 +49,7 @@ class Requirements {
 	 * @since 2.0.0
 	 * @var string
 	 */
-	public static $wp_version = '5.1.2';
+	public static $wp_version = '5.3';
 
 	/**
 	 * Recommended WP Version.
@@ -59,7 +57,7 @@ class Requirements {
 	 * @since 2.0.0
 	 * @var string
 	 */
-	public static $wp_recommended_version = '5.4.2';
+	public static $wp_recommended_version = '5.9.3';
 
 	/**
 	 * Static-only class.
@@ -250,12 +248,30 @@ class Requirements {
 	} // end is_multisite;
 
 	/**
-	 * Check if WP Ultimo is network active
+	 * Check if WP Ultimo is network active.
 	 *
 	 * @since 2.0.0
 	 * @return boolean
 	 */
 	public static function is_network_active() {
+
+		/**
+		 * Allow for developers to short-circuit this check.
+		 *
+		 * This is useful when using composer-based and other custom setups,
+		 * such as Bedrock, for example, where using plugins as mu-plugins
+		 * are the norm.
+		 *
+		 * @since 2.0.0
+		 * @return bool
+		 */
+		$skip_network_activation_check = apply_filters('wp_ultimo_skip_network_active_check', wu_is_must_use());
+
+		if ($skip_network_activation_check) {
+
+			return true;
+
+		} // end if;
 
 		if (!function_exists('is_plugin_active_for_network')) {
 

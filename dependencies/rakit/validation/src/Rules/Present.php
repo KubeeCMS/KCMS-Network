@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class Present extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class Present extends Rule
 {
     /** @var bool */
     protected $implicit = \true;

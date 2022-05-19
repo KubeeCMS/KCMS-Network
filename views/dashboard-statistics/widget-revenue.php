@@ -7,13 +7,13 @@
 ?>
 <div class="wu-styling">
 
-  <ul class="md:wu-flex wu-my-0 wu-mx-0">
+  <ul class="lg:wu-flex wu-my-0 wu-mx-0">
 
     <li class="wu-p-2 wu-w-full md:wu-w-4/12 wu-relative" <?php echo wu_tooltip_text(__('MRR stands for Monthly Recurring Revenue', 'wp-ultimo')); ?>>
 
       <div>
 
-        <strong class="wu-text-gray-800 wu-text-2xl">
+        <strong class="wu-text-gray-800 wu-text-2xl md:wu-text-xl">
           <?php echo wu_format_currency($mrr); ?>
         </strong>
 
@@ -29,7 +29,7 @@
 
       <div>
 
-        <strong class="wu-text-gray-800 wu-text-2xl">
+        <strong class="wu-text-gray-800 wu-text-2xl md:wu-text-xl">
           <?php echo wu_format_currency($gross_revenue); ?>
         </strong>
 
@@ -45,13 +45,13 @@
 
       <div>
 
-        <strong class="wu-text-gray-800 wu-text-2xl">
+        <strong class="wu-text-gray-800 wu-text-2xl md:wu-text-xl">
           <?php echo wu_format_currency($refunds); ?>
         </strong>
 
       </div>
 
-      <div class="wu-text-sm wu-text-gray-600">
+      <div class="wu-text-md wu-text-gray-600">
         <span class="wu-block"><?php _e('Refunded', 'wp-ultimo'); ?></span>
       </div>
 
@@ -66,8 +66,7 @@
         <thead>
           <tr>
             <th><?php _e('Product', 'wp-ultimo'); ?></th>
-            <th><?php _e('New MRR', 'wp-ultimo'); ?></th>
-            <th><?php _e('Refunds', 'wp-ultimo'); ?></th>
+            <th class="wu-text-right"><?php _e('Revenue', 'wp-ultimo'); ?></th>
           </tr>
         </thead>
 
@@ -75,14 +74,15 @@
 
           <?php if (wu_get_products()) : ?>
           
-            <?php foreach (wu_get_products() as $product) : ?>
+            <?php foreach ($product_stats as $stats) : ?>
 
               <tr>
                 <td>
-                  <?php echo $product->get_name(); ?>
+                  <?php echo $stats['label']; ?>
                 </td>
-                <td>--</td>
-                <td>--</td>
+                <td class="wu-text-right">
+                  <?php echo wu_format_currency($stats['revenue']); ?>
+                </td>
               </tr>
 
             <?php endforeach; ?>
@@ -90,7 +90,7 @@
           <?php else : ?>
 
             <tr>
-              <td colspan="3">
+              <td colspan="2">
                 <?php _e('No Products found.', 'wp-ultimo'); ?>
               </td>
             </tr>

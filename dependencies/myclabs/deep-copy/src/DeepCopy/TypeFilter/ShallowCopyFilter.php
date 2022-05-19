@@ -5,7 +5,7 @@ namespace WP_Ultimo\Dependencies\DeepCopy\TypeFilter;
 /**
  * @final
  */
-class ShallowCopyFilter implements \WP_Ultimo\Dependencies\DeepCopy\TypeFilter\TypeFilter
+class ShallowCopyFilter implements TypeFilter
 {
     /**
      * {@inheritdoc}

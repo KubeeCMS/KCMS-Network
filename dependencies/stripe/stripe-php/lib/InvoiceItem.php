@@ -33,10 +33,11 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property null|string|\Stripe\Subscription $subscription The subscription that this invoice item has been created for, if any.
  * @property string $subscription_item The subscription item that this invoice item has been created for, if any.
  * @property null|\Stripe\TaxRate[] $tax_rates The tax rates which apply to the invoice item. When set, the <code>default_tax_rates</code> on the invoice do not apply to this invoice item.
+ * @property null|string|\Stripe\TestHelpers\TestClock $test_clock ID of the test clock this invoice item belongs to.
  * @property null|int $unit_amount Unit amount (in the <code>currency</code> specified) of the invoice item.
  * @property null|string $unit_amount_decimal Same as <code>unit_amount</code>, but contains a decimal value with at most 12 decimal places.
  */
-class InvoiceItem extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class InvoiceItem extends ApiResource
 {
     const OBJECT_NAME = 'invoiceitem';
     use ApiOperations\All;

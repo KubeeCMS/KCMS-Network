@@ -1,8 +1,8 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Dns\Query;
+namespace React\Dns\Query;
 
-use WP_Ultimo\Dependencies\React\Promise\Promise;
+use React\Promise\Promise;
 /**
  * Send DNS queries over a UDP or TCP/IP stream transport.
  *
@@ -49,20 +49,20 @@ use WP_Ultimo\Dependencies\React\Promise\Promise;
  * );
  * ```
  */
-class SelectiveTransportExecutor implements \WP_Ultimo\Dependencies\React\Dns\Query\ExecutorInterface
+class SelectiveTransportExecutor implements \React\Dns\Query\ExecutorInterface
 {
     private $datagramExecutor;
     private $streamExecutor;
-    public function __construct(\WP_Ultimo\Dependencies\React\Dns\Query\ExecutorInterface $datagramExecutor, \WP_Ultimo\Dependencies\React\Dns\Query\ExecutorInterface $streamExecutor)
+    public function __construct(\React\Dns\Query\ExecutorInterface $datagramExecutor, \React\Dns\Query\ExecutorInterface $streamExecutor)
     {
         $this->datagramExecutor = $datagramExecutor;
         $this->streamExecutor = $streamExecutor;
     }
-    public function query(\WP_Ultimo\Dependencies\React\Dns\Query\Query $query)
+    public function query(\React\Dns\Query\Query $query)
     {
         $stream = $this->streamExecutor;
         $pending = $this->datagramExecutor->query($query);
-        return new \WP_Ultimo\Dependencies\React\Promise\Promise(function ($resolve, $reject) use(&$pending, $stream, $query) {
+        return new Promise(function ($resolve, $reject) use(&$pending, $stream, $query) {
             $pending->then($resolve, function ($e) use(&$pending, $stream, $query, $resolve, $reject) {
                 if ($e->getCode() === (\defined('SOCKET_EMSGSIZE') ? \SOCKET_EMSGSIZE : 90)) {
                     $pending = $stream->query($query)->then($resolve, $reject);

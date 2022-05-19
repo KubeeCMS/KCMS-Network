@@ -24,10 +24,10 @@ abstract class FileLoader extends \Symfony\Component\Translation\Loader\ArrayLoa
     public function load($resource, string $locale, string $domain = 'messages')
     {
         if (!\stream_is_local($resource)) {
-            throw new \Symfony\Component\Translation\Exception\InvalidResourceException(\sprintf('This is not a local file "%s".', $resource));
+            throw new InvalidResourceException(\sprintf('This is not a local file "%s".', $resource));
         }
         if (!\file_exists($resource)) {
-            throw new \Symfony\Component\Translation\Exception\NotFoundResourceException(\sprintf('File "%s" not found.', $resource));
+            throw new NotFoundResourceException(\sprintf('File "%s" not found.', $resource));
         }
         $messages = $this->loadResource($resource);
         // empty resource
@@ -36,20 +36,18 @@ abstract class FileLoader extends \Symfony\Component\Translation\Loader\ArrayLoa
         }
         // not an array
         if (!\is_array($messages)) {
-            throw new \Symfony\Component\Translation\Exception\InvalidResourceException(\sprintf('Unable to load file "%s".', $resource));
+            throw new InvalidResourceException(\sprintf('Unable to load file "%s".', $resource));
         }
         $catalogue = parent::load($messages, $locale, $domain);
-        if (\class_exists('WP_Ultimo\\Dependencies\\Symfony\\Component\\Config\\Resource\\FileResource')) {
-            $catalogue->addResource(new \WP_Ultimo\Dependencies\Symfony\Component\Config\Resource\FileResource($resource));
+        if (\class_exists(FileResource::class)) {
+            $catalogue->addResource(new FileResource($resource));
         }
         return $catalogue;
     }
     /**
-     * @param string $resource
-     *
      * @return array
      *
      * @throws InvalidResourceException if stream content has an invalid format
      */
-    protected abstract function loadResource($resource);
+    protected abstract function loadResource(string $resource);
 }

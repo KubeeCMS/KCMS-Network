@@ -67,6 +67,8 @@ final class Webhooks_Table extends Table {
 	 */
 	protected function set_schema() {
 
+		// phpcs:disable
+
 		$this->schema = "id bigint(20) NOT NULL auto_increment,
 			migrated_from_id bigint(20) DEFAULT NULL,
 			name varchar(191) NOT NULL,
@@ -77,10 +79,12 @@ final class Webhooks_Table extends Table {
 			hidden tinyint(4) default 0,
 			integration varchar(191) NOT NULL,
 			date_last_failed datetime NOT NULL,
-			date_created datetime NOT NULL default '0000-00-00 00:00:00',
-			date_modified datetime NOT NULL default '0000-00-00 00:00:00',
+			date_created datetime NULL,
+			date_modified datetime NULL,
 			PRIMARY KEY (id),
 			KEY event (event)";
+
+			// phpcs:enable
 
 	} // end set_schema;
 

@@ -5,25 +5,56 @@
  * @since 2.0.0
  */
 ?>
-<p class="<?php echo esc_attr($field->wrapper_classes); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
+<div class="<?php echo esc_attr(trim($field->wrapper_classes)); ?>" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
-  <label class="wu-block" for="field-<?php echo esc_attr($field->id); ?>">
+  <?php
 
-    <?php echo $field->title; ?>
+  /**
+   * Adds the partial title template.
+   * @since 2.0.0
+   */
+  wu_get_template('checkout/fields/partials/field-title', array(
+    'field' => $field,
+  ));
 
-    <?php if ($field->required): ?>
+  ?>
 
-      <span class="wu-text-red-500">*</span>
+  <?php if ($field->prefix) : ?>
 
-    <?php endif; ?>
+    <div class="sm:wu-flex wu-items-stretch wu-content-center">
 
-    <?php echo wu_tooltip($field->tooltip); ?>
+      <div <?php echo wu_array_to_html_attrs($field->prefix_html_attr ?? array()); ?>>
+        <?php echo $field->prefix; ?>
+      </div>
 
-  </label>
+  <?php endif; ?>
 
-  <input class="form-control wu-w-full wu-my-1 <?php echo esc_attr($field->classes); ?>" id="field-<?php echo esc_attr($field->id); ?>" name="<?php echo esc_attr($field->id); ?>" type="<?php echo esc_attr($field->type); ?>" placeholder="<?php echo esc_attr($field->placeholder); ?>" value="<?php echo esc_attr($field->value); ?>" <?php echo $field->get_html_attributes(); ?>>
+  <input class="form-control wu-w-full wu-my-1 <?php echo esc_attr(trim($field->classes)); ?>" id="field-<?php echo esc_attr($field->id); ?>" name="<?php echo esc_attr($field->id); ?>" type="<?php echo esc_attr($field->type); ?>" placeholder="<?php echo esc_attr($field->placeholder); ?>" value="<?php echo esc_attr($field->value); ?>" <?php echo $field->get_html_attributes(); ?>>
 
-  <span v-cloak class="wu-block wu-bg-red-100 wu-p-2 wu-mb-4" v-if="get_error('<?php echo esc_attr($field->id); ?>')" v-html="get_error('<?php echo esc_attr($field->id); ?>').message">
-  </span>
+  <?php if ($field->suffix) : ?>
 
-</p>
+    <div <?php echo wu_array_to_html_attrs($field->suffix_html_attr ?? array()); ?>>
+      <?php echo $field->suffix; ?>
+    </div>
+
+  <?php endif; ?>
+
+  <?php if ($field->prefix || $field->suffix) : ?>
+
+    </div>
+
+  <?php endif; ?>
+
+  <?php
+
+  /**
+   * Adds the partial error template.
+   * @since 2.0.0
+   */
+  wu_get_template('checkout/fields/partials/field-errors', array(
+    'field' => $field,
+  ));
+
+  ?>
+
+</div>

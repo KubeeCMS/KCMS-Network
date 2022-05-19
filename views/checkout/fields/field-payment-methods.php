@@ -4,37 +4,76 @@
  *
  * @since 2.0.0
  */
+
+$active_gateways = wu_get_active_gateway_as_options();
+
 ?>
-<p class="<?php echo esc_attr($field->wrapper_classes); ?>" v-cloak v-show="!(order && order.is_free)">
+<div class="<?php echo esc_attr(trim($field->wrapper_classes)); ?>" v-cloak v-show="order && order.should_collect_payment" <?php echo $field->get_wrapper_html_attributes(); ?>>
 
-  <label class="wu-block" for="field-<?php echo esc_attr($field->id); ?>">
+  <?php
 
-    <?php echo $field->title; ?>
+  /**
+   * Adds the partial title template.
+   * @since 2.0.0
+   */
+  wu_get_template('checkout/fields/partials/field-title', array(
+    'field' => $field,
+  ));
 
-  </label>
+  ?>
 
-  <?php foreach (wu_get_active_gateway_as_options() as $option_value => $option_name) : ?>
+  <?php foreach ($active_gateways as $option_value => $option_name) : ?>
 
-    <label class="wu-block" for="field-<?php echo esc_attr($field->id); ?>-<?php echo esc_attr($option_value); ?>">
+    <?php if (count($active_gateways) === 1) : ?>
 
-      <input id="field-gateway-<?php echo esc_attr($option_value); ?>" type="radio" name="gateway" value="<?php echo esc_attr($option_value); ?>" <?php echo $field->get_html_attributes(); ?> <?php checked($field->value == $option_value); ?> v-model="gateway">
+      <input 
+        id="field-gateway" 
+        type="hidden" 
+        name="gateway" 
+        value="<?php echo esc_attr($option_value); ?>"
+        v-model="gateway"
+        <?php echo $field->get_html_attributes(); ?>
+      >
 
-		<?php echo $option_name; ?>
+    <?php else : ?>
 
-    </label>
+      <label class="wu-block" for="field-<?php echo esc_attr($field->id); ?>-<?php echo esc_attr($option_value); ?>">
+
+        <input 
+          id="field-gateway-<?php echo esc_attr($option_value); ?>" 
+          type="radio" 
+          name="gateway" 
+          value="<?php echo esc_attr($option_value); ?>"
+          v-model="gateway"
+          class="<?php echo trim($field->classes); ?>"
+          <?php echo $field->get_html_attributes(); ?>
+          <?php checked($field->value == $option_value); ?> 
+        >
+
+        <?php echo $option_name; ?>
+
+      </label>
+
+    <?php endif; ?>
 
   <?php endforeach; ?>
 
-  <span v-cloak class="wu-block wu-bg-red-100 wu-p-2" v-if="get_error('<?php echo esc_attr($field->id); ?>')" v-html="get_error('<?php echo esc_attr($field->id); ?>').message">
-  </span>
-
-  <!-- <input class="form-control wu-w-full wu-my-1 <?php echo esc_attr($field->classes); ?>" id="field-<?php echo esc_attr($field->id); ?>" name="<?php echo esc_attr($field->id); ?>" type="<?php echo esc_attr($field->type); ?>" placeholder="<?php echo esc_attr($field->placeholder); ?>" value="<?php echo esc_attr($field->value); ?>" <?php echo $field->get_html_attributes(); ?>>
-
-  <span v-cloak class="wu-block wu-bg-red-100 wu-p-2" v-if="get_error('<?php echo esc_attr($field->id); ?>')" v-html="get_error('<?php echo esc_attr($field->id); ?>').message">
-  </span> -->
-
   <?php
-	do_action('wu_checkout_gateway_fields');
-	?>
 
-</p>
+  /**
+   * Adds the partial error template.
+   * @since 2.0.0
+   */
+  wu_get_template('checkout/fields/partials/field-errors', array(
+    'field' => $field,
+  ));
+
+  /**
+   * Load Gateway fields
+   * @since 2.0.0
+   */
+  do_action('wu_checkout_gateway_fields');
+
+  ?>
+
+</div>

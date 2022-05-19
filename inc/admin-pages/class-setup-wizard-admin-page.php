@@ -16,6 +16,7 @@ use \WP_Ultimo\License;
 use \WP_Ultimo\Installers\Migrator;
 use \WP_Ultimo\Installers\Core_Installer;
 use \WP_Ultimo\Installers\Default_Content_Installer;
+use \WP_Ultimo\Logger;
 
 /**
  * WP Ultimo Dashboard Admin Page.
@@ -113,6 +114,13 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 
 		if (!$this->is_core_loaded()) {
 
+			require_once wu_path('inc/functions/documentation.php');
+
+			/**
+			 * Loads the necessary apis.
+			 */
+			WP_Ultimo()->load_public_apis();
+
 			$this->highlight_menu_slug = false;
 
 			$this->type = 'menu';
@@ -126,6 +134,8 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 		} // end if;
 
 		parent::__construct();
+
+		add_action('admin_action_download_migration_logs', array($this, 'download_migration_logs'));
 
 		/*
 		 * Serve the installers
@@ -145,6 +155,34 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 		add_action('wu_activation', array($this, 'redirect_to_wizard'));
 
 	} // end __construct;
+
+	/**
+	 * Download the migration logs.
+	 *
+	 * @since 2.0.7
+	 * @return void
+	 */
+	public function download_migration_logs() {
+
+		check_admin_referer('download_migration_logs', 'nonce');
+
+		$path = Logger::get_logs_folder();
+
+		$file = $path . Migrator::LOG_FILE_NAME . '.log';
+
+		$file_name = str_replace($path, '', $file);
+
+		header('Content-Type: application/octet-stream');
+
+		header("Content-Disposition: attachment; filename=$file_name");
+
+		header('Pragma: no-cache');
+
+		readfile($file);
+
+		exit;
+
+	} // end download_migration_logs;
 
 	/**
 	 * Loads the extra elements we need on the wizard itself.
@@ -222,7 +260,15 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 
 		global $wpdb;
 
-		/**
+		if (!current_user_can('manage_network')) {
+
+			wp_send_json_error(new \WP_Error('not-allowed', __('Permission denied.', 'wp-ultimo')));
+
+			exit;
+
+		} // end if;
+
+		/*
 		 * Load tables.
 		 */
 		WP_Ultimo()->tables = \WP_Ultimo\Loaders\Table_Loader::get_instance();
@@ -300,12 +346,14 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 	 */
 	public function get_sections() {
 
+		$allowed = \WP_Ultimo\License::get_instance()->allowed();
+
 		$sections = array(
 			'welcome'      => array(
 				'title'       => __('Welcome', 'wp-ultimo'),
 				'description' => implode('<br><br>', array(
-					__('Thank you for choosing WP Ultimo!', 'wp-ultimo'),
-					__('This quick setup wizard will make sure your server is correctly setup, help you configure your new network, and migrate data, if necessary.', 'wp-ultimo'),
+					__('...and thanks for choosing WP Ultimo!', 'wp-ultimo'),
+					__('This quick setup wizard will make sure your server is correctly setup, help you configure your new network, and migrate data from previous WP Ultimo versions if necessary.', 'wp-ultimo'),
 					__('You will also have the option of importing default content. It should take 10 minutes or less!', 'wp-ultimo')
 				)),
 				'next_label'  => __('Get Started &rarr;', 'wp-ultimo'),
@@ -330,30 +378,34 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 				'handler'     => array($this, 'handle_activation'),
 				'next_label'  => __('Agree & Activate &rarr;', 'wp-ultimo'),
 				'back'        => false,
-				'skip'        => \WP_Ultimo\License::get_instance()->allowed(),
+				'skip'        => $allowed,
 				'fields'      => array(
 					'terms'       => array(
 						'type' => 'note',
 						'desc' => array($this, '_terms_of_support'),
 					),
 					'license_key' => array(
-						'type'        => 'text',
-						'title'       => __('License Key', 'wp-ultimo'),
-						'placeholder' => __('sk_***********', 'wp-ultimo'),
-						'tooltip'     => __('Your WP Ultimo License Key.', 'wp-ultimo'),
-						'html_attr'   => array(
-							\WP_Ultimo\License::get_instance()->allowed() ? 'disabled' : 'data-none' => 'disabled',
+						'type'            => 'text',
+						'title'           => __('License Key', 'wp-ultimo'),
+						'placeholder'     => __('E.g. sk_***********', 'wp-ultimo'),
+						'tooltip'         => __('Your WP Ultimo License Key', 'wp-ultimo'),
+						'desc'            => array($this, '_desc_and_validation_error'),
+						'wrapper_classes' => $allowed ? 'wu-hidden' : '',
+						'html_attr'       => array(
+							$allowed ? 'disabled' : 'data-none' => 'disabled',
 						),
 					),
 					'license'     => array(
-						'type' => 'note',
-						'desc' => array($this, '_current_license'),
+						'wrapper_classes' => $allowed ? 'sm:wu-w-auto sm:wu-block' : 'sm:wu-w-auto wu-hidden',
+						'classes'         => 'sm:wu--mx-6 sm:wu--mt-4 sm:wu--mb-6',
+						'type'            => 'note',
+						'desc'            => array($this, '_current_license'),
 					),
 				),
 			),
 			'installation' => array(
 				'title'       => __('Installation', 'wp-ultimo'),
-				'description' => __('Let\'s make sure you are able to keep your copy up-to-date with our latest updates via admin panel notifications and more.', 'wp-ultimo'),
+				'description' => __('Now, let\'s update your database and install the Sunrise.php file, which are necessary for the correct functioning of WP Ultimo.', 'wp-ultimo'),
 				'next_label'  => Core_Installer::get_instance()->all_done() ? __('Go to the Next Step &rarr;', 'wp-ultimo') : __('Install', 'wp-ultimo'),
 				'fields'      => array(
 					'terms' => array(
@@ -377,15 +429,17 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 
 			$errors = Migrator::get_instance()->get_errors();
 
+			$back_traces = Migrator::get_instance()->get_back_traces();
+
 			$next_label = __('Migrate!', 'wp-ultimo');
 
 			$description = __('No errors found during dry run! Now it is time to actually migrate! <br><br><strong>We strongly recommend creating a backup of your database before moving forward with the migration.</strong>', 'wp-ultimo');
 
 			if ($dry_run) {
 
-				$next_label = __('Dry Run', 'wp-ultimo');
+				$next_label = __('Run Check', 'wp-ultimo');
 
-				$description = __('It seems that you were running WP Ultimo 1.X on this install. This migrator will convert the data from the old version to the new one.', 'wp-ultimo') . '<br><br>' . __('First, let\'s run a test migration to see if we can spot any potential errors.', 'wp-ultimo');
+				$description = __('It seems that you were running WP Ultimo 1.X on this network. This migrator will convert the data from the old version to the new one.', 'wp-ultimo') . '<br><br>' . __('First, let\'s run a test migration to see if we can spot any potential errors.', 'wp-ultimo');
 
 			} // end if;
 
@@ -402,25 +456,56 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 
 			if ($errors) {
 
-				$description = __('The dry run test detected issues during the test migration. Please, <a class="wu-trigger-support" href="#">contact our support team</a> to get help migrating from 1.X to 2.0.', 'wp-ultimo');
+				$subject = 'Errors on migrating my network';
+
+				$user = wp_get_current_user();
+
+				$message_lines = array(
+					'Hi there,',
+					sprintf('My name is %s.', $user->display_name),
+					sprintf('License Key: %s', License::get_instance()->get_license_key(true)),
+					'I tried to migrate my network from version 1 to version 2, but was not able to do it successfully...',
+					'Here are the error messages I got:',
+					sprintf('```%s%s%s```', PHP_EOL, implode(PHP_EOL, $errors), PHP_EOL),
+					sprintf('```%s%s%s```', PHP_EOL, $back_traces ? implode(PHP_EOL, $back_traces) : 'No backtraces found.', PHP_EOL),
+					'Kind regards.'
+				);
+
+				$message = implode(PHP_EOL . PHP_EOL, $message_lines);
+
+				License::get_instance()->maybe_add_support_window($subject, $message);
+
+				$description = __('The dry run test detected issues during the test migration. Please, <a class="wu-trigger-support" href="#">contact our support team</a> to get help migrating from 1.X to version 2.', 'wp-ultimo');
 
 				$next = true;
 
 				$next_label = __('Try Again!', 'wp-ultimo');
 
-				$error_list = '<strong>' . __('List of detected errors:', 'wp-ultimo') . '</strong><br>';
+				$error_list = '<strong>' . __('List of errors detected:', 'wp-ultimo') . '</strong><br><br>';
+
+				$errors[] = sprintf('<br><a href="%2$s" class="wu-no-underline wu-text-red-500 wu-font-bold"><span class="dashicons-wu-download wu-mr-2"></span>%1$s</a>', __('Download migration error log', 'wp-ultimo'), add_query_arg(array(
+					'action' => 'download_migration_logs',
+					'nonce'  => wp_create_nonce('download_migration_logs'),
+				), network_admin_url('admin.php')));
+
+				$errors[] = sprintf('<br><a href="%2$s" class="wu-no-underline wu-text-red-500 wu-font-bold"><span class="dashicons-wu-back-in-time wu-mr-2"></span>%1$s</a>', __('Rollback to version 1.10.13', 'wp-ultimo'), add_query_arg(array(
+					'page'    => 'wp-ultimo-rollback',
+					'version' => '1.10.13',
+					'type'    => 'select-version',
+				), network_admin_url('admin.php')));
 
 				$error_list .= implode('<br>', $errors);
 
 				$fields = array_merge(array(
 					'errors' => array(
-						'type' => 'note',
-						'desc' => function() use ($error_list) {
+						'type'    => 'note',
+						'classes' => 'wu-flex-grow',
+						'desc'    => function() use ($error_list) {
 
 							/** Reset errors */
 							Migrator::get_instance()->session->set('errors', array());
 
-							return sprintf('<div class="wu-w-full wu-mt-0 wu-p-4 wu-bg-red-100 wu-border wu-border-solid wu-border-red-200 wu-rounded-sm wu-text-red-500">%s</div>', $error_list);
+							return sprintf('<div class="wu-mt-0 wu-p-4 wu-bg-red-100 wu-border wu-border-solid wu-border-red-200 wu-rounded-sm wu-text-red-500">%s</div>', $error_list);
 
 						},
 					),
@@ -432,7 +517,7 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 				'title'       => __('Migration', 'wp-ultimo'),
 				'description' => $description,
 				'next_label'  => $next_label,
-				'skip'        => true,
+				'skip'        => false,
 				'next'        => $next,
 				'handler'     => array($this, 'handle_migration'),
 				'fields'      => $fields,
@@ -552,6 +637,38 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 	} // end get_payment_settings;
 
 	/**
+	 * Shows the description and possible error.
+	 *
+	 * @since 2.0.0
+	 * @return string
+	 */
+	public function _desc_and_validation_error() {
+
+		ob_start();
+
+		echo __('Your license key starts with "sk_".', 'wp-ultimo');
+
+		$error = wu_request('error', false);
+
+		if ($error) :
+
+		// phpcs:disable ?>
+
+			<span class="wu-text-red-500 wu-ml-1">
+
+				&mdash; <?php echo is_string($error) ? $error : __('Invalid License Key.', 'wp-ultimo'); ?>
+
+			</span>
+
+			<?php
+
+		endif;
+
+		return ob_get_clean();
+
+	} // end _desc_and_validation_error;
+
+	/**
 	 * Displays the block about the current license.
 	 *
 	 * @since 2.0.0
@@ -561,29 +678,11 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 
 		ob_start();
 
-		$error = wu_request('error', false);
-
-		if ($error) :
-
-		// phpcs:disable
-
-		?>
-
-			<div class="wu-w-full wu-mt-4 wu-p-4 wu-bg-red-100 wu-border wu-border-solid wu-border-red-200 wu-rounded-sm wu-text-red-500">
-
-				<?php echo is_string($error) ? $error : __('Invalid License Key.', 'wp-ultimo'); ?>
-
-			</div>
-
-			<?php
-
-		endif;
-
 		if (\WP_Ultimo\License::get_instance()->allowed()) : // phpcs:ignore ?>
 
-			<div class="wu-w-full wu-mt-4 wu-p-4 wu-bg-green-100 wu-border wu-border-solid wu-border-green-200 wu-rounded-sm wu-text-green-500">
-			<?php printf(__('You license key was already validated, %1$s. To change your license, go to the <a href="%2$s" class="wu-no-underline">Account Page</a>.', 'wp-ultimo'), $this->customer->first, wu_network_admin_url('wp-ultimo-account')); ?>
-			</div>
+			<span class="wu-py-4 wu-px-6 wu-bg-green-100 wu-block wu-text-green-500">
+			<?php printf(__('Your license key was already validated, %1$s. To change your license, go to the <a href="%2$s" class="wu-no-underline">Account Page</a>.', 'wp-ultimo'), $this->customer->first, wu_network_admin_url('wp-ultimo-account')); ?>
+			</span>
 
 			<?php
 
@@ -609,7 +708,8 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 		wp_localize_script('wu-setup-wizard', 'wu_setup', $steps);
 
 		wp_localize_script('wu-setup-wizard', 'wu_setup_settings', array(
-			'dry_run' => wu_request('dry-run', true),
+			'dry_run'               => wu_request('dry-run', true),
+			'generic_error_message' => __('A server error happened while processing this item.', 'wp-ultimo'),
 		));
 
 		wp_enqueue_script('wu-setup-wizard');
@@ -675,8 +775,8 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 			'wp-ultimo' => array(
 				'name'              => __('WP Ultimo', 'wp-ultimo'),
 				'help'              => wu_get_documentation_url('wp-ultimo-requirements'),
-				'condition'         => __('Network Activated', 'wp-ultimo'),
-				'pass_requirements' => is_plugin_active_for_network(WP_ULTIMO_PLUGIN_BASENAME),
+				'condition'         => apply_filters('wp_ultimo_skip_network_active_check', false) ? __('Bypassed via filter', 'wp-ultimo') : __('Network Activated', 'wp-ultimo'),
+				'pass_requirements' => \WP_Ultimo\Requirements::is_network_active(),
 			),
 			'wp-cron'   => array(
 				'name'              => __('WordPress Cron', 'wp-ultimo'),
@@ -702,6 +802,21 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 	public function section_ready() {
 
 		update_network_option(null, 'wu_setup_finished', true);
+
+		/**
+		 * Mark the migration as done, if this was a migration.
+		 *
+		 * @since 2.0.7
+		 */
+		if (Migrator::is_legacy_network()) {
+
+			update_network_option(null, 'wu_is_migration_done', true);
+
+		} // end if;
+
+		wu_enqueue_async_action('wu_async_take_screenshot', array(
+			'site_id' => wu_get_main_site_id(),
+		), 'site');
 
 		wu_get_template('wizards/setup/ready', array(
 			'screen' => get_current_screen(),
@@ -766,7 +881,7 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 
 		exit;
 
-	}  // end handle_save_settings;
+	} // end handle_save_settings;
 
 	/**
 	 * Handles the migration step and checks for a test run.
@@ -778,21 +893,25 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 
 		$dry_run = wu_request('dry-run', true);
 
+		$errors = Migrator::get_instance()->get_errors();
+
 		if ($dry_run) {
 
-			$errors = Migrator::get_instance()->get_errors();
+			$url = add_query_arg('dry-run', empty($errors) ? 0 : 1);
 
-			$dry_run = empty($errors) ? '0' : '1';
+		} else {
 
-			$url = add_query_arg('dry-run', $dry_run);
+			if (empty($errors)) {
 
-			wp_redirect($url);
+				$url = remove_query_arg('dry-run', $this->get_next_section_link());
 
-			exit;
+			} else {
+
+				$url = add_query_arg('dry-run', 0);
+
+			} // end if;
 
 		} // end if;
-
-		$url = remove_query_arg('dry-run', $this->get_next_section_link());
 
 		wp_redirect($url);
 
@@ -908,9 +1027,40 @@ class Setup_Wizard_Admin_Page extends Wizard_Admin_Page {
 			*/
 			wp_enqueue_script('wu-block-ui', wu_get_asset('lib/jquery.blockUI.js', 'js'), array('jquery'));
 
+			wp_register_script('wu-fields', wu_get_asset('fields.js', 'js'), array('jquery'));
+
+			/*
+			* Localize components
+			*/
+			wp_localize_script('wu-fields', 'wu_fields', array(
+				'l10n' => array(
+					'image_picker_title'       => __('Select an Image.', 'wp-ultimo'),
+					'image_picker_button_text' => __('Use this image', 'wp-ultimo'),
+				),
+			));
+
+			wp_register_script('wu-functions', wu_get_asset('functions.js', 'js'), array('jquery'));
+
+			wp_register_script('wubox', wu_get_asset('wubox.js', 'js/lib'), array('jquery', 'wu-functions'));
+
+			wp_localize_script('wubox', 'wuboxL10n', array(
+				'next'             => __('Next &gt;'),
+				'prev'             => __('&lt; Prev'),
+				'image'            => __('Image'),
+				'of'               => __('of'),
+				'close'            => __('Close'),
+				'noiframes'        => __('This feature requires inline frames. You have iframes disabled or your browser does not support them.'),
+				'loadingAnimation' => includes_url('js/thickbox/loadingAnimation.gif'),
+			));
+
+			wp_add_inline_script('wu-setup-wizard-polyfill', 'jQuery(document).ready(() => 
+    wu_initialize_imagepicker());', 'after');
+
 		} // end if;
 
-		wp_enqueue_script('wu-setup-wizard-polyfill', wu_get_asset('setup-wizard-polyfill.js', 'js'), array('jquery'), wu_get_version());
+		wp_enqueue_script('wu-setup-wizard-polyfill', wu_get_asset('setup-wizard-polyfill.js', 'js'), array('jquery', 'wu-fields', 'wu-functions', 'wubox'), wu_get_version());
+
+		wp_enqueue_media();
 
 		wp_register_script('wu-setup-wizard', wu_get_asset('setup-wizard.js', 'js'), array('jquery'), wu_get_version());
 

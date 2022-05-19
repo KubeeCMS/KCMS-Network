@@ -17,11 +17,13 @@ use WP_Ultimo\Dependencies\ScssPhp\ScssPhp\SourceMap\SourceMapGenerator;
  * Base formatter
  *
  * @author Leaf Corcoran <leafot@gmail.com>
+ *
+ * @internal
  */
 abstract class Formatter
 {
     /**
-     * @var integer
+     * @var int
      */
     public $indentLevel;
     /**
@@ -49,33 +51,31 @@ abstract class Formatter
      */
     public $assignSeparator;
     /**
-     * @var boolean
+     * @var bool
      */
     public $keepSemicolons;
     /**
-     * @var \ScssPhp\ScssPhp\Formatter\OutputBlock
+     * @var OutputBlock
      */
-    protected $currentBlock;
+    private $currentBlock;
     /**
-     * @var integer
+     * @var int
      */
-    protected $currentLine;
+    private $currentLine;
     /**
-     * @var integer
+     * @var int
      */
-    protected $currentColumn;
+    private $currentColumn;
     /**
-     * @var \ScssPhp\ScssPhp\SourceMap\SourceMapGenerator
+     * @var SourceMapGenerator|null
      */
-    protected $sourceMapGenerator;
+    private $sourceMapGenerator;
     /**
      * @var string
      */
-    protected $strippedSemicolon;
+    private $strippedSemicolon;
     /**
      * Initialize formatter
-     *
-     * @api
      */
     public abstract function __construct();
     /**
@@ -83,21 +83,19 @@ abstract class Formatter
      *
      * @return string
      */
-    protected function indentStr()
+    protected function indentStr() : string
     {
         return '';
     }
     /**
      * Return property assignment
      *
-     * @api
-     *
      * @param string $name
-     * @param mixed  $value
+     * @param string  $value
      *
      * @return string
      */
-    public function property($name, $value)
+    public function property(string $name, string $value) : string
     {
         return \rtrim($name) . $this->assignSeparator . $value . ';';
     }
@@ -105,23 +103,23 @@ abstract class Formatter
      * Return custom property assignment
      * differs in that you have to keep spaces in the value as is
      *
-     * @api
-     *
      * @param string $name
-     * @param mixed  $value
+     * @param string  $value
      *
      * @return string
      */
-    public function customProperty($name, $value)
+    public function customProperty(string $name, string $value) : string
     {
         return \rtrim($name) . \trim($this->assignSeparator) . $value . ';';
     }
     /**
      * Output lines inside a block
      *
-     * @param \ScssPhp\ScssPhp\Formatter\OutputBlock $block
+     * @param OutputBlock $block
+     *
+     * @return void
      */
-    protected function blockLines(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Formatter\OutputBlock $block)
+    protected function blockLines(OutputBlock $block) : void
     {
         $inner = $this->indentStr();
         $glue = $this->break . $inner;
@@ -133,19 +131,24 @@ abstract class Formatter
     /**
      * Output block selectors
      *
-     * @param \ScssPhp\ScssPhp\Formatter\OutputBlock $block
+     * @param OutputBlock $block
+     *
+     * @return void
      */
-    protected function blockSelectors(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Formatter\OutputBlock $block)
+    protected function blockSelectors(OutputBlock $block) : void
     {
+        \assert(!empty($block->selectors));
         $inner = $this->indentStr();
         $this->write($inner . \implode($this->tagSeparator, $block->selectors) . $this->open . $this->break);
     }
     /**
      * Output block children
      *
-     * @param \ScssPhp\ScssPhp\Formatter\OutputBlock $block
+     * @param OutputBlock $block
+     *
+     * @return void
      */
-    protected function blockChildren(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Formatter\OutputBlock $block)
+    private function blockChildren(OutputBlock $block)
     {
         foreach ($block->children as $child) {
             $this->block($child);
@@ -154,9 +157,11 @@ abstract class Formatter
     /**
      * Output non-empty block
      *
-     * @param \ScssPhp\ScssPhp\Formatter\OutputBlock $block
+     * @param OutputBlock $block
+     *
+     * @return void
      */
-    protected function block(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Formatter\OutputBlock $block)
+    private function block(OutputBlock $block)
     {
         if (empty($block->lines) && empty($block->children)) {
             return;
@@ -187,11 +192,11 @@ abstract class Formatter
     /**
      * Test and clean safely empty children
      *
-     * @param \ScssPhp\ScssPhp\Formatter\OutputBlock $block
+     * @param OutputBlock $block
      *
-     * @return boolean
+     * @return bool
      */
-    protected function testEmptyChildren($block)
+    private function testEmptyChildren(OutputBlock $block) : bool
     {
         $isEmpty = empty($block->lines);
         if ($block->children) {
@@ -200,7 +205,7 @@ abstract class Formatter
                     $isEmpty = \false;
                     continue;
                 }
-                if ($child->type === \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Type::T_MEDIA || $child->type === \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Type::T_DIRECTIVE) {
+                if ($child->type === Type::T_MEDIA || $child->type === Type::T_DIRECTIVE) {
                     $child->children = [];
                     $child->selectors = null;
                 }
@@ -211,14 +216,12 @@ abstract class Formatter
     /**
      * Entry point to formatting a block
      *
-     * @api
-     *
-     * @param \ScssPhp\ScssPhp\Formatter\OutputBlock             $block              An abstract syntax tree
-     * @param \ScssPhp\ScssPhp\SourceMap\SourceMapGenerator|null $sourceMapGenerator Optional source map generator
+     * @param OutputBlock             $block              An abstract syntax tree
+     * @param SourceMapGenerator|null $sourceMapGenerator Optional source map generator
      *
      * @return string
      */
-    public function format(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Formatter\OutputBlock $block, \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\SourceMap\SourceMapGenerator $sourceMapGenerator = null)
+    public function format(OutputBlock $block, SourceMapGenerator $sourceMapGenerator = null) : string
     {
         $this->sourceMapGenerator = null;
         if ($sourceMapGenerator) {
@@ -228,16 +231,27 @@ abstract class Formatter
         }
         $this->testEmptyChildren($block);
         \ob_start();
-        $this->block($block);
+        try {
+            $this->block($block);
+        } catch (\Exception $e) {
+            \ob_end_clean();
+            throw $e;
+        } catch (\Throwable $e) {
+            \ob_end_clean();
+            throw $e;
+        }
         $out = \ob_get_clean();
+        \assert($out !== \false);
         return $out;
     }
     /**
      * Output content
      *
      * @param string $str
+     *
+     * @return void
      */
-    protected function write($str)
+    protected function write(string $str) : void
     {
         if (!empty($this->strippedSemicolon)) {
             echo $this->strippedSemicolon;
@@ -258,6 +272,8 @@ abstract class Formatter
                 // If the written line starts is empty, adding a mapping would add it for
                 // a non-existent column as we are at the end of the line
                 if ($line !== '') {
+                    \assert($this->currentBlock->sourceLine !== null);
+                    \assert($this->currentBlock->sourceName !== null);
                     $this->sourceMapGenerator->addMapping(
                         $this->currentLine,
                         $this->currentColumn,
@@ -271,6 +287,8 @@ abstract class Formatter
                 $this->currentColumn = 0;
             }
             if ($lastLine !== '') {
+                \assert($this->currentBlock->sourceLine !== null);
+                \assert($this->currentBlock->sourceName !== null);
                 $this->sourceMapGenerator->addMapping(
                     $this->currentLine,
                     $this->currentColumn,
@@ -280,7 +298,7 @@ abstract class Formatter
                     $this->currentBlock->sourceName
                 );
             }
-            $this->currentColumn = \strlen($lastLine);
+            $this->currentColumn += \strlen($lastLine);
         }
         echo $str;
     }

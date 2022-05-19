@@ -125,7 +125,7 @@ class Session
      * to invoke when deleting the session cookie. Defaults to `null`.
      *
      */
-    public function __construct(\WP_Ultimo\Dependencies\Aura\Session\SegmentFactory $segment_factory, \WP_Ultimo\Dependencies\Aura\Session\CsrfTokenFactory $csrf_token_factory, \WP_Ultimo\Dependencies\Aura\Session\Phpfunc $phpfunc, array $cookies = array(), $delete_cookie = null)
+    public function __construct(SegmentFactory $segment_factory, CsrfTokenFactory $csrf_token_factory, Phpfunc $phpfunc, array $cookies = array(), $delete_cookie = null)
     {
         $this->segment_factory = $segment_factory;
         $this->csrf_token_factory = $csrf_token_factory;
@@ -254,11 +254,11 @@ class Session
      */
     protected function moveFlash()
     {
-        if (!isset($_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT])) {
-            $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT] = array();
+        if (!isset($_SESSION[Session::FLASH_NEXT])) {
+            $_SESSION[Session::FLASH_NEXT] = array();
         }
-        $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NOW] = $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT];
-        $_SESSION[\WP_Ultimo\Dependencies\Aura\Session\Session::FLASH_NEXT] = array();
+        $_SESSION[Session::FLASH_NOW] = $_SESSION[Session::FLASH_NEXT];
+        $_SESSION[Session::FLASH_NEXT] = array();
         $this->flash_moved = \true;
     }
     /**

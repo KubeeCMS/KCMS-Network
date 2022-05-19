@@ -1,6 +1,6 @@
 <?php
 
-namespace WP_Ultimo\Dependencies\React\Dns\Model;
+namespace React\Dns\Model;
 
 /**
  * This class represents a single resulting record in a response message

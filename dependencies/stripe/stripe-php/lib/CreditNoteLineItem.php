@@ -19,7 +19,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property null|int $unit_amount The cost of each unit of product being credited.
  * @property null|string $unit_amount_decimal Same as <code>unit_amount</code>, but contains a decimal value with at most 12 decimal places.
  */
-class CreditNoteLineItem extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class CreditNoteLineItem extends ApiResource
 {
     const OBJECT_NAME = 'credit_note_line_item';
 }

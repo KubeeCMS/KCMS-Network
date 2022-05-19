@@ -5,8 +5,6 @@
  *
  * PHP version 5 and 7
  *
- * @category  Math
- * @package   BigInteger
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2017 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
@@ -18,11 +16,9 @@ use phpseclib3\Math\BigInteger\Engines\PHP\Montgomery as Progenitor;
 /**
  * PHP Montgomery Modular Exponentiation Engine
  *
- * @package PHP
  * @author  Jim Wigginton <terrafrost@php.net>
- * @access  public
  */
-abstract class Montgomery extends \phpseclib3\Math\BigInteger\Engines\PHP\Montgomery
+abstract class Montgomery extends Progenitor
 {
     /**
      * Prepare a number for use in Montgomery Modular Reductions

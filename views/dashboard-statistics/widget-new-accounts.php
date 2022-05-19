@@ -13,7 +13,7 @@
 
       <div>
 
-        <strong class="wu-text-gray-800 wu-text-2xl">
+        <strong class="wu-text-gray-800 wu-text-2xl md:wu-text-xl">
           <?php echo $new_accounts; ?>
         </strong>
 
@@ -35,7 +35,7 @@
       <thead>
         <tr>
           <th><?php _e('Product Name', 'wp-ultimo'); ?></th>
-          <th><?php _e('New Memberships', 'wp-ultimo'); ?></th>
+          <th class="wu-text-right"><?php _e('New Memberships', 'wp-ultimo'); ?></th>
         </tr>
       </thead>
 
@@ -49,7 +49,7 @@
               <td>
                 <?php echo $product->name; ?>
               </td>
-              <td>
+              <td class="wu-text-right">
                 <?php echo $product->count; ?>
               </td>
             </tr>

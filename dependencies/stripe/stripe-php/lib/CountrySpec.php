@@ -20,7 +20,7 @@ namespace WP_Ultimo\Dependencies\Stripe;
  * @property string[] $supported_transfer_countries Countries that can accept transfers from the specified country.
  * @property \Stripe\StripeObject $verification_fields
  */
-class CountrySpec extends \WP_Ultimo\Dependencies\Stripe\ApiResource
+class CountrySpec extends ApiResource
 {
     const OBJECT_NAME = 'country_spec';
     use ApiOperations\All;

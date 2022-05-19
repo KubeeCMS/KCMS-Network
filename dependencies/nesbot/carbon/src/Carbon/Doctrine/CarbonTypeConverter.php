@@ -1,8 +1,12 @@
 <?php
 
 /**
- * Thanks to https://github.com/flaushi for his suggestion:
- * https://github.com/doctrine/dbal/issues/2873#issuecomment-534956358
+ * This file is part of the Carbon package.
+ *
+ * (c) Brian Nesbitt <brian@nesbot.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 namespace WP_Ultimo\Dependencies\Carbon\Doctrine;
 
@@ -12,60 +16,79 @@ use DateTimeInterface;
 use WP_Ultimo\Dependencies\Doctrine\DBAL\Platforms\AbstractPlatform;
 use WP_Ultimo\Dependencies\Doctrine\DBAL\Types\ConversionException;
 use Exception;
+/**
+ * @template T of CarbonInterface
+ */
 trait CarbonTypeConverter
 {
+    /**
+     * @return class-string<T>
+     */
     protected function getCarbonClassName() : string
     {
-        return \WP_Ultimo\Dependencies\Carbon\Carbon::class;
+        return Carbon::class;
     }
-    public function getSQLDeclaration(array $fieldDeclaration, \WP_Ultimo\Dependencies\Doctrine\DBAL\Platforms\AbstractPlatform $platform)
+    /**
+     * @return string
+     */
+    public function getSQLDeclaration(array $fieldDeclaration, AbstractPlatform $platform)
     {
-        $precision = ($fieldDeclaration['precision'] ?: 10) === 10 ? \WP_Ultimo\Dependencies\Carbon\Doctrine\DateTimeDefaultPrecision::get() : $fieldDeclaration['precision'];
+        $precision = $fieldDeclaration['precision'] ?: 10;
+        if ($fieldDeclaration['secondPrecision'] ?? \false) {
+            $precision = 0;
+        }
+        if ($precision === 10) {
+            $precision = DateTimeDefaultPrecision::get();
+        }
         $type = parent::getSQLDeclaration($fieldDeclaration, $platform);
         if (!$precision) {
             return $type;
         }
-        if (\strpos($type, '(') !== \false) {
+        if (\str_contains($type, '(')) {
             return \preg_replace('/\\(\\d+\\)/', "({$precision})", $type);
         }
-        list($before, $after) = \explode(' ', "{$type} ");
+        [$before, $after] = \explode(' ', "{$type} ");
         return \trim("{$before}({$precision}) {$after}");
     }
     /**
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+     *
+     * @return T|null
      */
-    public function convertToPHPValue($value, \WP_Ultimo\Dependencies\Doctrine\DBAL\Platforms\AbstractPlatform $platform)
+    public function convertToPHPValue($value, AbstractPlatform $platform)
     {
         $class = $this->getCarbonClassName();
         if ($value === null || \is_a($value, $class)) {
             return $value;
         }
-        if ($value instanceof \DateTimeInterface) {
+        if ($value instanceof DateTimeInterface) {
             return $class::instance($value);
         }
         $date = null;
         $error = null;
         try {
             $date = $class::parse($value);
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             $error = $exception;
         }
         if (!$date) {
-            throw \WP_Ultimo\Dependencies\Doctrine\DBAL\Types\ConversionException::conversionFailedFormat($value, $this->getName(), 'Y-m-d H:i:s.u or any format supported by ' . $class . '::parse()', $error);
+            throw ConversionException::conversionFailedFormat($value, $this->getName(), 'Y-m-d H:i:s.u or any format supported by ' . $class . '::parse()', $error);
         }
         return $date;
     }
     /**
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+     *
+     * @return string|null
      */
-    public function convertToDatabaseValue($value, \WP_Ultimo\Dependencies\Doctrine\DBAL\Platforms\AbstractPlatform $platform)
+    public function convertToDatabaseValue($value, AbstractPlatform $platform)
     {
         if ($value === null) {
             return $value;
         }
-        if ($value instanceof \DateTimeInterface || $value instanceof \WP_Ultimo\Dependencies\Carbon\CarbonInterface) {
+        if ($value instanceof DateTimeInterface) {
             return $value->format('Y-m-d H:i:s.u');
         }
-        throw \WP_Ultimo\Dependencies\Doctrine\DBAL\Types\ConversionException::conversionFailedInvalidType($value, $this->getName(), ['null', 'DateTime', 'Carbon']);
+        throw ConversionException::conversionFailedInvalidType($value, $this->getName(), ['null', 'DateTime', 'Carbon']);
     }
 }

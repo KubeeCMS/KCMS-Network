@@ -14,22 +14,25 @@ use WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\Compiler\Compil
 use WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\Compiler\ServiceLocatorTagPass;
 use WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\ContainerBuilder;
 use WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\Reference;
-class TranslatorPass implements \WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface
+class TranslatorPass implements CompilerPassInterface
 {
     private $translatorServiceId;
     private $readerServiceId;
     private $loaderTag;
     private $debugCommandServiceId;
     private $updateCommandServiceId;
-    public function __construct(string $translatorServiceId = 'translator.default', string $readerServiceId = 'translation.reader', string $loaderTag = 'translation.loader', string $debugCommandServiceId = 'console.command.translation_debug', string $updateCommandServiceId = 'console.command.translation_update')
+    public function __construct(string $translatorServiceId = 'translator.default', string $readerServiceId = 'translation.reader', string $loaderTag = 'translation.loader', string $debugCommandServiceId = 'console.command.translation_debug', string $updateCommandServiceId = 'console.command.translation_extract')
     {
+        if (0 < \func_num_args()) {
+            trigger_deprecation('symfony/translation', '5.3', 'Configuring "%s" is deprecated.', __CLASS__);
+        }
         $this->translatorServiceId = $translatorServiceId;
         $this->readerServiceId = $readerServiceId;
         $this->loaderTag = $loaderTag;
         $this->debugCommandServiceId = $debugCommandServiceId;
         $this->updateCommandServiceId = $updateCommandServiceId;
     }
-    public function process(\WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\ContainerBuilder $container)
+    public function process(ContainerBuilder $container)
     {
         if (!$container->hasDefinition($this->translatorServiceId)) {
             return;
@@ -37,7 +40,7 @@ class TranslatorPass implements \WP_Ultimo\Dependencies\Symfony\Component\Depend
         $loaders = [];
         $loaderRefs = [];
         foreach ($container->findTaggedServiceIds($this->loaderTag, \true) as $id => $attributes) {
-            $loaderRefs[$id] = new \WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\Reference($id);
+            $loaderRefs[$id] = new Reference($id);
             $loaders[$id][] = $attributes[0]['alias'];
             if (isset($attributes[0]['legacy-alias'])) {
                 $loaders[$id][] = $attributes[0]['legacy-alias'];
@@ -51,7 +54,7 @@ class TranslatorPass implements \WP_Ultimo\Dependencies\Symfony\Component\Depend
                 }
             }
         }
-        $container->findDefinition($this->translatorServiceId)->replaceArgument(0, \WP_Ultimo\Dependencies\Symfony\Component\DependencyInjection\Compiler\ServiceLocatorTagPass::register($container, $loaderRefs))->replaceArgument(3, $loaders);
+        $container->findDefinition($this->translatorServiceId)->replaceArgument(0, ServiceLocatorTagPass::register($container, $loaderRefs))->replaceArgument(3, $loaders);
         if (!$container->hasParameter('twig.default_path')) {
             return;
         }

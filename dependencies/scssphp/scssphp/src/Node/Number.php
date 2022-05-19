@@ -11,10 +11,13 @@
  */
 namespace WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node;
 
+use WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Base\Range;
 use WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Compiler;
+use WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\RangeException;
 use WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\SassScriptException;
 use WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node;
 use WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Type;
+use WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Util;
 /**
  * Dimension + optional units
  *
@@ -25,21 +28,19 @@ use WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Type;
  * }}
  *
  * @author Anthon Pang <anthon.pang@gmail.com>
+ *
+ * @template-implements \ArrayAccess<int, mixed>
  */
-class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \ArrayAccess
+final class Number extends Node implements \ArrayAccess
 {
     const PRECISION = 10;
-    /**
-     * @var integer
-     * @deprecated use {Number::PRECISION} instead to read the precision. Configuring it is not supported anymore.
-     */
-    public static $precision = self::PRECISION;
     /**
      * @see http://www.w3.org/TR/2012/WD-css3-values-20120308/
      *
      * @var array
+     * @phpstan-var array<string, array<string, float|int>>
      */
-    protected static $unitTable = ['in' => ['in' => 1, 'pc' => 6, 'pt' => 72, 'px' => 96, 'cm' => 2.54, 'mm' => 25.4, 'q' => 101.6], 'turn' => [
+    private static $unitTable = ['in' => ['in' => 1, 'pc' => 6, 'pt' => 72, 'px' => 96, 'cm' => 2.54, 'mm' => 25.4, 'q' => 101.6], 'turn' => [
         'deg' => 360,
         'grad' => 400,
         'rad' => 6.283185307179586,
@@ -47,7 +48,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
         'turn' => 1,
     ], 's' => ['s' => 1, 'ms' => 1000], 'Hz' => ['Hz' => 1, 'kHz' => 0.001], 'dpi' => ['dpi' => 1, 'dpcm' => 1 / 2.54, 'dppx' => 1 / 96]];
     /**
-     * @var integer|float
+     * @var int|float
      */
     private $dimension;
     /**
@@ -63,7 +64,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
     /**
      * Initialize number
      *
-     * @param integer|float   $dimension
+     * @param int|float       $dimension
      * @param string[]|string $numeratorUnits
      * @param string[]        $denominatorUnits
      *
@@ -105,8 +106,9 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
         return $this->denominatorUnits;
     }
     /**
-     * {@inheritdoc}
+     * @return bool
      */
+    #[\ReturnTypeWillChange]
     public function offsetExists($offset)
     {
         if ($offset === -3) {
@@ -121,8 +123,9 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
         return \false;
     }
     /**
-     * {@inheritdoc}
+     * @return mixed
      */
+    #[\ReturnTypeWillChange]
     public function offsetGet($offset)
     {
         switch ($offset) {
@@ -133,7 +136,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
             case -1:
                 return $this->sourceIndex;
             case 0:
-                return \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Type::T_NUMBER;
+                return Type::T_NUMBER;
             case 1:
                 return $this->dimension;
             case 2:
@@ -141,15 +144,17 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
         }
     }
     /**
-     * {@inheritdoc}
+     * @return void
      */
+    #[\ReturnTypeWillChange]
     public function offsetSet($offset, $value)
     {
         throw new \BadMethodCallException('Number is immutable');
     }
     /**
-     * {@inheritdoc}
+     * @return void
      */
+    #[\ReturnTypeWillChange]
     public function offsetUnset($offset)
     {
         throw new \BadMethodCallException('Number is immutable');
@@ -157,7 +162,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
     /**
      * Returns true if the number is unitless
      *
-     * @return boolean
+     * @return bool
      */
     public function unitless()
     {
@@ -187,6 +192,22 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
         return self::getUnitString($this->numeratorUnits, $this->denominatorUnits);
     }
     /**
+     * @param float|int $min
+     * @param float|int $max
+     * @param string|null $name
+     *
+     * @return float|int
+     * @throws SassScriptException
+     */
+    public function valueInRange($min, $max, $name = null)
+    {
+        try {
+            return Util::checkRange('', new Range($min, $max), $this);
+        } catch (RangeException $e) {
+            throw SassScriptException::forArgument(\sprintf('Expected %s to be within %s%s and %s%3$s', $this, $min, $this->unitStr(), $max), $name);
+        }
+    }
+    /**
      * @param string|null $varName
      *
      * @return void
@@ -196,14 +217,27 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
         if ($this->unitless()) {
             return;
         }
-        throw \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\SassScriptException::forArgument(\sprintf('Expected %s to have no units', $this), $varName);
+        throw SassScriptException::forArgument(\sprintf('Expected %s to have no units.', $this), $varName);
+    }
+    /**
+     * @param string      $unit
+     * @param string|null $varName
+     *
+     * @return void
+     */
+    public function assertUnit($unit, $varName = null)
+    {
+        if ($this->hasUnit($unit)) {
+            return;
+        }
+        throw SassScriptException::forArgument(\sprintf('Expected %s to have unit "%s".', $this, $unit), $varName);
     }
     /**
      * @param Number $other
      *
      * @return void
      */
-    public function assertSameUnitOrUnitless(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other)
+    public function assertSameUnitOrUnitless(Number $other)
     {
         if ($other->unitless()) {
             return;
@@ -211,14 +245,36 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
         if ($this->numeratorUnits === $other->numeratorUnits && $this->denominatorUnits === $other->denominatorUnits) {
             return;
         }
-        throw new \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\SassScriptException(\sprintf('Incompatible units %s and %s.', self::getUnitString($this->numeratorUnits, $this->denominatorUnits), self::getUnitString($other->numeratorUnits, $other->denominatorUnits)));
+        throw new SassScriptException(\sprintf('Incompatible units %s and %s.', self::getUnitString($this->numeratorUnits, $this->denominatorUnits), self::getUnitString($other->numeratorUnits, $other->denominatorUnits)));
+    }
+    /**
+     * Returns a copy of this number, converted to the units represented by $newNumeratorUnits and $newDenominatorUnits.
+     *
+     * This does not throw an error if this number is unitless and
+     * $newNumeratorUnits/$newDenominatorUnits are not empty, or vice versa. Instead,
+     * it treats all unitless numbers as convertible to and from all units without
+     * changing the value.
+     *
+     * @param string[] $newNumeratorUnits
+     * @param string[] $newDenominatorUnits
+     *
+     * @return Number
+     *
+     * @phpstan-param list<string> $newNumeratorUnits
+     * @phpstan-param list<string> $newDenominatorUnits
+     *
+     * @throws SassScriptException if this number's units are not compatible with $newNumeratorUnits and $newDenominatorUnits
+     */
+    public function coerce(array $newNumeratorUnits, array $newDenominatorUnits)
+    {
+        return new Number($this->valueInUnits($newNumeratorUnits, $newDenominatorUnits), $newNumeratorUnits, $newDenominatorUnits);
     }
     /**
      * @param Number $other
      *
      * @return bool
      */
-    public function isComparableTo(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other)
+    public function isComparableTo(Number $other)
     {
         if ($this->unitless() || $other->unitless()) {
             return \true;
@@ -226,7 +282,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
         try {
             $this->greaterThan($other);
             return \true;
-        } catch (\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\SassScriptException $e) {
+        } catch (SassScriptException $e) {
             return \false;
         }
     }
@@ -235,7 +291,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      *
      * @return bool
      */
-    public function lessThan(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other)
+    public function lessThan(Number $other)
     {
         return $this->coerceUnits($other, function ($num1, $num2) {
             return $num1 < $num2;
@@ -246,7 +302,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      *
      * @return bool
      */
-    public function lessThanOrEqual(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other)
+    public function lessThanOrEqual(Number $other)
     {
         return $this->coerceUnits($other, function ($num1, $num2) {
             return $num1 <= $num2;
@@ -257,7 +313,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      *
      * @return bool
      */
-    public function greaterThan(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other)
+    public function greaterThan(Number $other)
     {
         return $this->coerceUnits($other, function ($num1, $num2) {
             return $num1 > $num2;
@@ -268,7 +324,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      *
      * @return bool
      */
-    public function greaterThanOrEqual(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other)
+    public function greaterThanOrEqual(Number $other)
     {
         return $this->coerceUnits($other, function ($num1, $num2) {
             return $num1 >= $num2;
@@ -279,7 +335,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      *
      * @return Number
      */
-    public function plus(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other)
+    public function plus(Number $other)
     {
         return $this->coerceNumber($other, function ($num1, $num2) {
             return $num1 + $num2;
@@ -290,7 +346,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      *
      * @return Number
      */
-    public function minus(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other)
+    public function minus(Number $other)
     {
         return $this->coerceNumber($other, function ($num1, $num2) {
             return $num1 - $num2;
@@ -301,14 +357,14 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      */
     public function unaryMinus()
     {
-        return new \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number(-$this->dimension, $this->numeratorUnits, $this->denominatorUnits);
+        return new Number(-$this->dimension, $this->numeratorUnits, $this->denominatorUnits);
     }
     /**
      * @param Number $other
      *
      * @return Number
      */
-    public function modulo(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other)
+    public function modulo(Number $other)
     {
         return $this->coerceNumber($other, function ($num1, $num2) {
             if ($num2 == 0) {
@@ -329,7 +385,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      *
      * @return Number
      */
-    public function times(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other)
+    public function times(Number $other)
     {
         return $this->multiplyUnits($this->dimension * $other->dimension, $this->numeratorUnits, $this->denominatorUnits, $other->numeratorUnits, $other->denominatorUnits);
     }
@@ -338,7 +394,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      *
      * @return Number
      */
-    public function dividedBy(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other)
+    public function dividedBy(Number $other)
     {
         if ($other->dimension == 0) {
             if ($this->dimension == 0) {
@@ -358,7 +414,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      *
      * @return bool
      */
-    public function equals(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other)
+    public function equals(Number $other)
     {
         // Unitless numbers are convertable to unit numbers, but not equal, so we special-case unitless here.
         if ($this->unitless() !== $other->unitless()) {
@@ -375,7 +431,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
             return $this->coerceUnits($other, function ($num1, $num2) {
                 return \round($num1, self::PRECISION) == \round($num2, self::PRECISION);
             });
-        } catch (\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\SassScriptException $e) {
+        } catch (SassScriptException $e) {
             return \false;
         }
     }
@@ -386,7 +442,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      *
      * @return string
      */
-    public function output(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Compiler $compiler = null)
+    public function output(Compiler $compiler = null)
     {
         $dimension = \round($this->dimension, self::PRECISION);
         if (\is_nan($dimension)) {
@@ -423,13 +479,13 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      *
      * @phpstan-param callable(int|float, int|float): (int|float) $operation
      */
-    private function coerceNumber(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other, $operation)
+    private function coerceNumber(Number $other, $operation)
     {
         $result = $this->coerceUnits($other, $operation);
         if (!$this->unitless()) {
-            return new \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number($result, $this->numeratorUnits, $this->denominatorUnits);
+            return new Number($result, $this->numeratorUnits, $this->denominatorUnits);
         }
-        return new \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number($result, $other->numeratorUnits, $other->denominatorUnits);
+        return new Number($result, $other->numeratorUnits, $other->denominatorUnits);
     }
     /**
      * @param Number $other
@@ -441,7 +497,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      * @phpstan-param callable(int|float, int|float): T $operation
      * @phpstan-return T
      */
-    private function coerceUnits(\WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number $other, $operation)
+    private function coerceUnits(Number $other, $operation)
     {
         if (!$this->unitless()) {
             $num1 = $this->dimension;
@@ -460,6 +516,8 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
      *
      * @phpstan-param list<string> $numeratorUnits
      * @phpstan-param list<string> $denominatorUnits
+     *
+     * @throws SassScriptException if this number's units are not compatible with $numeratorUnits and $denominatorUnits
      */
     private function valueInUnits(array $numeratorUnits, array $denominatorUnits)
     {
@@ -478,7 +536,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
                 unset($oldNumerators[$key]);
                 continue 2;
             }
-            throw new \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\SassScriptException(\sprintf('Incompatible units %s and %s.', self::getUnitString($this->numeratorUnits, $this->denominatorUnits), self::getUnitString($numeratorUnits, $denominatorUnits)));
+            throw new SassScriptException(\sprintf('Incompatible units %s and %s.', self::getUnitString($this->numeratorUnits, $this->denominatorUnits), self::getUnitString($numeratorUnits, $denominatorUnits)));
         }
         $oldDenominators = $this->denominatorUnits;
         foreach ($denominatorUnits as $newDenominator) {
@@ -491,10 +549,10 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
                 unset($oldDenominators[$key]);
                 continue 2;
             }
-            throw new \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\SassScriptException(\sprintf('Incompatible units %s and %s.', self::getUnitString($this->numeratorUnits, $this->denominatorUnits), self::getUnitString($numeratorUnits, $denominatorUnits)));
+            throw new SassScriptException(\sprintf('Incompatible units %s and %s.', self::getUnitString($this->numeratorUnits, $this->denominatorUnits), self::getUnitString($numeratorUnits, $denominatorUnits)));
         }
         if (\count($oldNumerators) || \count($oldDenominators)) {
-            throw new \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\SassScriptException(\sprintf('Incompatible units %s and %s.', self::getUnitString($this->numeratorUnits, $this->denominatorUnits), self::getUnitString($numeratorUnits, $denominatorUnits)));
+            throw new SassScriptException(\sprintf('Incompatible units %s and %s.', self::getUnitString($this->numeratorUnits, $this->denominatorUnits), self::getUnitString($numeratorUnits, $denominatorUnits)));
         }
         return $value;
     }
@@ -540,7 +598,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
             $newNumerators[] = $numerator;
         }
         $newDenominators = \array_values(\array_merge($denominators1, $denominators2));
-        return new \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number($value, $newNumerators, $newDenominators);
+        return new Number($value, $newNumerators, $newDenominators);
     }
     /**
      * Returns the number of [unit1]s per [unit2].
@@ -557,7 +615,7 @@ class Number extends \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node implements \Ar
         if ($unit1 === $unit2) {
             return 1;
         }
-        foreach (static::$unitTable as $unitVariants) {
+        foreach (self::$unitTable as $unitVariants) {
             if (isset($unitVariants[$unit1]) && isset($unitVariants[$unit2])) {
                 return $unitVariants[$unit1] / $unitVariants[$unit2];
             }

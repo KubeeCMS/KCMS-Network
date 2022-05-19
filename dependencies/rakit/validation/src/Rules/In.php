@@ -4,7 +4,7 @@ namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Helper;
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class In extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class In extends Rule
 {
     /** @var string */
     protected $message = "The :attribute only allows :allowed_values";
@@ -16,7 +16,7 @@ class In extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
      * @param array $params
      * @return self
      */
-    public function fillParameters(array $params) : \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+    public function fillParameters(array $params) : Rule
     {
         if (\count($params) == 1 && \is_array($params[0])) {
             $params = $params[0];
@@ -45,7 +45,7 @@ class In extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
         $this->requireParameters(['allowed_values']);
         $allowedValues = $this->parameter('allowed_values');
         $or = $this->validation ? $this->validation->getTranslation('or') : 'or';
-        $allowedValuesText = \WP_Ultimo\Dependencies\Rakit\Validation\Helper::join(\WP_Ultimo\Dependencies\Rakit\Validation\Helper::wraps($allowedValues, "'"), ', ', ", {$or} ");
+        $allowedValuesText = Helper::join(Helper::wraps($allowedValues, "'"), ', ', ", {$or} ");
         $this->setParameterText('allowed_values', $allowedValuesText);
         return \in_array($value, $allowedValues, $this->strict);
     }

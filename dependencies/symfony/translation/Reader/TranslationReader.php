@@ -23,7 +23,7 @@ class TranslationReader implements \Symfony\Component\Translation\Reader\Transla
     /**
      * Loaders used for import.
      *
-     * @var array
+     * @var array<string, LoaderInterface>
      */
     private $loaders = [];
     /**
@@ -31,21 +31,21 @@ class TranslationReader implements \Symfony\Component\Translation\Reader\Transla
      *
      * @param string $format The format of the loader
      */
-    public function addLoader(string $format, \Symfony\Component\Translation\Loader\LoaderInterface $loader)
+    public function addLoader(string $format, LoaderInterface $loader)
     {
         $this->loaders[$format] = $loader;
     }
     /**
      * {@inheritdoc}
      */
-    public function read(string $directory, \Symfony\Component\Translation\MessageCatalogue $catalogue)
+    public function read(string $directory, MessageCatalogue $catalogue)
     {
         if (!\is_dir($directory)) {
             return;
         }
         foreach ($this->loaders as $format => $loader) {
             // load any existing translation files
-            $finder = new \WP_Ultimo\Dependencies\Symfony\Component\Finder\Finder();
+            $finder = new Finder();
             $extension = $catalogue->getLocale() . '.' . $format;
             $files = $finder->files()->name('*.' . $extension)->in($directory);
             foreach ($files as $file) {

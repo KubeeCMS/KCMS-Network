@@ -20,7 +20,7 @@ class Name
      */
     public function guessFormat($name, $size = null)
     {
-        $name = \Faker\Provider\Base::toLower($name);
+        $name = Base::toLower($name);
         $generator = $this->generator;
         if (\preg_match('/^is[_A-Z]/', $name)) {
             return function () use($generator) {

@@ -20,7 +20,7 @@
             aria-label="<?php esc_attr_e('Breadcrumb', 'wp-ultimo'); ?>"
           >
 
-            <ol class="wu-p-0 wu-m-0 wu-max-w-screen-xl wu-w-full wu-mx-auto wu-flex">
+            <ol class="wu-p-0 wu-m-0 wu-w-full wu-mx-auto wu-flex">
 
               <li class="wu-flex wu-m-0 wu-p-0">
 

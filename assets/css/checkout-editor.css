@@ -1,0 +1,41 @@
+.is-dragging .postbox-header {
+  border-bottom: none;
+}
+
+.is-dragging .inside {
+  display: none;
+}
+
+.wu-hide-inside .postbox-header {
+  border-bottom: none;
+}
+
+.wu-hide-inside .inside {
+  display: none;
+}
+
+.wu-draggable-ghost {
+  border-style: dashed !important;
+  border-width: 1px !important;
+  border-color: #939393 !important;
+  opacity: 75%;
+}
+.wu-draggable-ghost .postbox-header {
+  background: #edf2f6;
+  border: none;
+}
+
+.wu-draggable-field-ghost {
+  content: " ";
+  text-indent: -9999999px;
+  background-color: #ffffff !important;
+}
+.wu-draggable-field-ghost td {
+  border: dashed 1px #c3c4c7;
+  border-width: 1px 0;
+  opacity: .9;
+  padding: 10px;
+}
+.wu-draggable-field-ghost .wu-placeholder-sortable {
+  display: none;
+}

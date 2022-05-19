@@ -44,7 +44,7 @@ class Site_Duplicator {
 	 * @param int    $from_site_id ID of the site you wish to copy.
 	 * @param string $title Title of the new site.
 	 * @param array  $args List of duplication parameters, check Site_Duplicator::process_duplication for reference.
-	 * @return int|false ID of the newly created site.
+	 * @return int|\WP_Error ID of the newly created site or error.
 	 */
 	public static function duplicate_site($from_site_id, $title, $args = array()) {
 
@@ -60,7 +60,7 @@ class Site_Duplicator {
 
 			wu_log_add('site-duplication', $message);
 
-			return false;
+			return $duplicate_site;
 
 		} // end if;
 
@@ -85,15 +85,29 @@ class Site_Duplicator {
 	 */
 	public static function override_site($from_site_id, $to_site_id, $args = array()) {
 
-		$args['from_site_id'] = $from_site_id;
-		$args['to_site_id']   = $to_site_id;
+		$to_site = wu_get_site($to_site_id);
 
-		$duplicate_site = Site_Duplicator::process_duplication($args);
+		$to_site_membership_id = $to_site->get_membership_id();
 
-		if (is_wp_error($duplicate_site)) {
+		$to_site_membership = $to_site->get_membership();
+
+		$to_site_customer = $to_site_membership->get_customer();
+
+		$args = wp_parse_args($args, array(
+			'email'         => $to_site_customer->get_email_address(),
+			'title'         => $to_site->get_title(),
+			'path'          => $to_site->get_path(),
+			'from_site_id'  => $from_site_id,
+			'to_site_id'    => $to_site_id,
+			'meta'          => $to_site->meta
+		));
+
+		$duplicate_site_id = Site_Duplicator::process_duplication($args);
+
+		if (is_wp_error($duplicate_site_id)) {
 
 			// translators: %s id the template site id and %s is the error message returned.
-			$message = sprintf(__('Attempt to override site %1$d with date from site %2$d failed: %3$s', 'wp-ultimo'), $from_site_id, $to_site_id, $duplicate_site->get_error_message());
+			$message = sprintf(__('Attempt to override site %1$d with data from site %2$d failed: %3$s', 'wp-ultimo'), $from_site_id, $to_site_id, $duplicate_site->get_error_message());
 
 			wu_log_add('site-duplication', $message);
 
@@ -101,12 +115,28 @@ class Site_Duplicator {
 
 		} // end if;
 
-		// translators: %1$d is the ID of the site template used, and %2$d is the ID of the overriden site.
-		$message = sprintf(__('Attempt to override site %1$d with data from site %2$d successful.', 'wp-ultimo'), $from_site_id, $duplicate_site);
+		$new_to_site = wu_get_site($duplicate_site_id);
 
-		wu_log_add('site-duplication', $message);
+		$new_to_site->set_membership_id($to_site_membership_id);
 
-		return $duplicate_site;
+		$new_to_site->set_customer_id($to_site->get_customer_id());
+
+		$new_to_site->set_template_id($from_site_id);
+
+		$new_to_site->set_type('customer_owned');
+
+		$saved = $new_to_site->save();
+
+		if ($saved) {
+
+			// translators: %1$d is the ID of the site template used, and %2$d is the ID of the overriden site.
+			$message = sprintf(__('Attempt to override site %1$d with data from site %2$d successful.', 'wp-ultimo'), $from_site_id, $duplicate_site_id);
+
+			wu_log_add('site-duplication', $message);
+
+			return $saved;
+
+		} // end if;
 
 	} // end override_site;
 
@@ -126,7 +156,7 @@ class Site_Duplicator {
 	 *                    - public       If the (new or not) site should be public. Defaults to true.
 	 *                    - domain       The domain of the new site.
 	 *                    - network_id   The network ID to allow for multi-network support.
-	 * @return int|WP_Error
+	 * @return int|WP_Error The Site ID.
 	 */
 	protected static function process_duplication($args) {
 
@@ -197,7 +227,7 @@ class Site_Duplicator {
 
 		\MUCD_Duplicate::bypass_server_limit();
 
-		if ($args->copy_file) {
+		if ($args->copy_files) {
 
 			$result = \MUCD_Files::copy_files($args->from_site_id, $args->to_site_id);
 

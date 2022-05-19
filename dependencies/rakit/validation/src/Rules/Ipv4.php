@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class Ipv4 extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class Ipv4 extends Rule
 {
     /** @var string */
     protected $message = "The :attribute is not valid IPv4 Address";

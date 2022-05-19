@@ -81,7 +81,14 @@ class Domain_List_Admin_Page extends List_Admin_Page {
 	 * @since 2.0.0
 	 * @return void
 	 */
-	function render_add_new_domain_modal() {
+	public function render_add_new_domain_modal() {
+
+		$addon_url = wu_network_admin_url('wp-ultimo-addons', array(
+			's' => 'Domain Seller'
+		));
+
+		// translators: %s is the URL to the add-on.
+		$note_desc = sprintf(__('To activate this feature you need to install the <a href="%s" target="_blank" class="wu-no-underline">WP Ultimo: Domain Seller</a> add-on.', 'wp-ultimo'), $addon_url);
 
 		$fields = array(
 			'type'                   => array(
@@ -95,15 +102,19 @@ class Domain_List_Admin_Page extends List_Admin_Page {
 				),
 			),
 			'domain'                 => array(
-				'type'        => 'text',
-				'title'       => __('Domain', 'wp-ultimo'),
-				'placeholder' => __('mydomain.com', 'wp-ultimo'),
+				'type'              => 'text',
+				'title'             => __('Domain', 'wp-ultimo'),
+				'placeholder'       => __('E.g. mydomain.com', 'wp-ultimo'),
+				'desc'              => __('Be sure the domain has the right DNS setup in place before adding it.', 'wp-ultimo'),
+				'wrapper_html_attr' => array(
+					'v-show' => "require('type', 'add')",
+				),
 			),
 			'blog_id'                => array(
 				'type'        => 'model',
 				'title'       => __('Apply to Site', 'wp-ultimo'),
-				'placeholder' => __('Search sites', 'wp-ultimo'),
-				'tooltip'     => __('The site selected will be used as a started point.', 'wp-ultimo'),
+				'placeholder' => __('Search Sites...', 'wp-ultimo'),
+				'desc'        => __('The target site of the domain being added.', 'wp-ultimo'),
 				'html_attr'   => array(
 					'data-model'        => 'site',
 					'data-value-field'  => 'blog_id',
@@ -111,11 +122,15 @@ class Domain_List_Admin_Page extends List_Admin_Page {
 					'data-search-field' => 'title',
 					'data-max-items'    => 1,
 				),
+				'wrapper_html_attr' => array(
+					'v-show' => "require('type', 'add')",
+				),
 			),
 			'stage'                  => array(
 				'type'        => 'select',
 				'title'       => __('Stage', 'wp-ultimo'),
 				'placeholder' => __('Select Stage', 'wp-ultimo'),
+				'desc'        => __('The stage in the domain check lifecycle. Leave "Checking DNS" to have the domain go through WP Ultimo\'s automated tests.', 'wp-ultimo'),
 				'options'     => Domain_Stage::to_array(),
 				'value'       => Domain_Stage::CHECKING_DNS,
 			),
@@ -131,20 +146,7 @@ class Domain_List_Admin_Page extends List_Admin_Page {
 				'type'              => 'note',
 				'desc'              => __('By making this the primary domain, we will convert the previous primary domain for this site, if one exists, into an alias domain.', 'wp-ultimo'),
 				'wrapper_html_attr' => array(
-					'v-if' => "require('primary_domain', true)",
-				),
-			),
-			'submit_button_register' => array(
-				'type'              => 'submit',
-				'title'             => __('Register and Add Domain (soon)', 'wp-ultimo'),
-				'value'             => 'save',
-				'classes'           => 'button button-primary wu-w-full',
-				'wrapper_classes'   => 'wu-items-end',
-				'wrapper_html_attr' => array(
-					'v-if' => "require('type', 'register')",
-				),
-				'html_attr'         => array(
-					'disabled' => 'disabled',
+					'v-show' => "require('primary_domain', true)",
 				),
 			),
 			'submit_button_new'      => array(
@@ -154,7 +156,28 @@ class Domain_List_Admin_Page extends List_Admin_Page {
 				'classes'           => 'button button-primary wu-w-full',
 				'wrapper_classes'   => 'wu-items-end',
 				'wrapper_html_attr' => array(
-					'v-if' => "require('type', 'add')",
+					'v-show' => "require('type', 'add')",
+				),
+			),
+			'addon_note'             => array(
+				'type'              => 'note',
+				'desc'              => $note_desc,
+				'classes'           => 'wu-p-2 wu-bg-blue-100 wu-text-gray-600 wu-rounded wu-w-full',
+				'wrapper_html_attr' => array(
+					'v-show' => "require('type', 'register')",
+				),
+			),
+			'submit_button_register' => array(
+				'type'              => 'submit',
+				'title'             => __('Register and Add Domain (soon)', 'wp-ultimo'),
+				'value'             => 'save',
+				'classes'           => 'button button-primary wu-w-full',
+				'wrapper_classes'   => 'wu-items-end',
+				'wrapper_html_attr' => array(
+					'v-show' => "require('type', 'register')",
+				),
+				'html_attr'         => array(
+					'disabled' => 'disabled',
 				),
 			),
 		);
@@ -184,55 +207,72 @@ class Domain_List_Admin_Page extends List_Admin_Page {
 	 */
 	public function handle_add_new_domain_modal() {
 
-		if (wu_request('type', 'existing') === 'register') {
+		/**
+		 * Fires before handle the add new domain modal request.
+		 *
+		 * @since 2.0.0
+		 */
+		do_action('wu_handle_add_new_domain_modal');
+
+		if (wu_request('type', 'add') === 'add') {
 			/*
-			 * @todo We need to integrate domain name registrars here.
+			 * Tries to create the domain
 			 */
-			wp_send_json_error(new \WP_Error('not-supported', __('Domain registering is not yet supported', 'wp-ultimo')));
-
-		} // end if;
-
-		/*
-		* Tries to create the domain
-		*/
-		$domain = wu_create_domain(array(
-			'domain'         => wu_request('domain'),
-			'stage'          => wu_request('stage'),
-			'blog_id'        => (int) wu_request('blog_id'),
-			'primary_domain' => (bool) wu_request('primary_domain'),
-		));
-
-		if (is_wp_error($domain)) {
-
-			wp_send_json_error($domain);
-
-		} // end if;
-
-		if (wu_request('primary_domain')) {
-
-			$old_primary_domains = wu_get_domains(array(
-				'primary_domain' => true,
-				'blog_id'        => wu_request('blog_id'),
-				'id__not_in'     => array($domain->get_id()),
-				'fields'         => 'ids',
+			$domain = wu_create_domain(array(
+				'domain'         => wu_request('domain'),
+				'stage'          => wu_request('stage'),
+				'blog_id'        => (int) wu_request('blog_id'),
+				'primary_domain' => (bool) wu_request('primary_domain'),
 			));
 
-			/*
-			 * Trigger async action to update the old primary domains.
-			 */
-			wu_enqueue_async_action('wu_async_remove_old_primary_domains', array($old_primary_domains), 'domains');
+			if (is_wp_error($domain)) {
+
+				wp_send_json_error($domain);
+
+			} // end if;
+
+			if (wu_request('primary_domain')) {
+
+				$old_primary_domains = wu_get_domains(array(
+					'primary_domain' => true,
+					'blog_id'        => wu_request('blog_id'),
+					'id__not_in'     => array($domain->get_id()),
+					'fields'         => 'ids',
+				));
+
+				/*
+				 * Trigger async action to update the old primary domains.
+				 */
+				do_action('wu_async_remove_old_primary_domains', array($old_primary_domains));
+
+			} // end if;
+
+			wu_enqueue_async_action('wu_async_process_domain_stage', array('domain_id' => $domain->get_id()), 'domain');
+
+			wp_send_json_success(array(
+				'redirect_url' => wu_network_admin_url('wp-ultimo-edit-domain', array(
+					'id' => $domain->get_id(),
+				))
+			));
 
 		} // end if;
 
-		wu_enqueue_async_action('wu_async_process_domain_stage', array('domain_id' => $domain->get_id()), 'domain');
-
-		wp_send_json_success(array(
-			'redirect_url' => wu_network_admin_url('wp-ultimo-edit-domain', array(
-				'id' => $domain->get_id(),
-			))
-		));
-
 	} // end handle_add_new_domain_modal;
+
+	/**
+	 * Returns an array with the labels for the edit page.
+	 *
+	 * @since 1.8.2
+	 * @return array
+	 */
+	public function get_labels() {
+
+		return array(
+			'deleted_message' => __('Domains removed successfully.', 'wp-ultimo'),
+			'search_label'    => __('Search Domains', 'wp-ultimo'),
+		);
+
+	} // end get_labels;
 
 	/**
 	 * Returns the title of the page.

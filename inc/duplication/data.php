@@ -64,6 +64,7 @@ if( !class_exists( 'MUCD_Data' ) ) {
 
             // Options that should be preserved in the new blog.
             $saved_options = MUCD_Option::get_saved_option();
+
             foreach($saved_options as $option_name => $option_value) {
                 $saved_options[$option_name] = get_blog_option( $to_site_id, $option_name );
             }
@@ -83,6 +84,17 @@ if( !class_exists( 'MUCD_Data' ) ) {
                 $from_site_table =  self::do_sql_query($sql_query, 'col'); 
             }
 
+            // var_dump($from_site_table);
+
+            // $a = 6;
+            // $b = 9;
+
+            // [$from_site_table[$a], $from_site_table[$b]] = [$from_site_table[$b], $from_site_table[$a]];
+
+            // var_dump($from_site_table);
+
+            // die;
+
             foreach ($from_site_table as $table) {
 
                 $table_name = $to_site_prefix . substr( $table, $from_site_prefix_length );
@@ -91,10 +103,24 @@ if( !class_exists( 'MUCD_Data' ) ) {
                 self::do_sql_query('DROP TABLE IF EXISTS `' . $table_name . '`');
 
                 // Create new table from source table
-                self::do_sql_query('CREATE TABLE IF NOT EXISTS `' . $table_name . '` LIKE `' . $schema . '`.`' . $table . '`');
+                // self::do_sql_query('CREATE TABLE IF NOT EXISTS `' . $table_name . '` LIKE `' . $schema . '`.`' . $table . '`');
+
+                $create_statement = self::do_sql_query('SHOW CREATE TABLE `' . $table . '`', 'row_array');
+
+                $create_statement_sql = str_replace($from_site_prefix, $to_site_prefix, $create_statement[1]);
+
+                $wpdb->get_results('SET foreign_key_checks = 0');
+
+                self::do_sql_query($create_statement_sql);
+
+                // echo($create_statement_sql);
+
+                // die;
 
                 // Populate database with data from source table
                 self::do_sql_query('INSERT `' . $table_name . '` SELECT * FROM `' . $schema . '`.`' . $table . '`');
+
+                $wpdb->get_results('SET foreign_key_checks = 1');
 
             }
 
@@ -130,17 +156,22 @@ if( !class_exists( 'MUCD_Data' ) ) {
          * @param  int $to_site_id   new site id
          */
         public static function db_update_data( $from_site_id, $to_site_id, $saved_options ) {
+
             global $wpdb ;  
 
             $to_blog_prefix = $wpdb->get_blog_prefix( $to_site_id );
 
             // Looking for uploads dirs
             switch_to_blog($from_site_id);
+
             $dir = wp_upload_dir();
             $from_upload_url = str_replace(network_site_url(), get_bloginfo('url').'/',$dir['baseurl']);
             $from_blog_url = get_blog_option( $from_site_id, 'siteurl' );
-            
+
+            restore_current_blog();
+
             switch_to_blog($to_site_id);
+
             $dir = wp_upload_dir();
             $to_upload_url = str_replace(network_site_url(), get_bloginfo('url').'/', $dir['baseurl']);
             $to_blog_url = get_blog_option( $to_site_id, 'siteurl' );
@@ -180,8 +211,8 @@ if( !class_exists( 'MUCD_Data' ) ) {
             $to_site_prefix = $wpdb->get_blog_prefix( $to_site_id );
 
             $string_to_replace = array (
-                $from_upload_url => $to_upload_url,
-                $from_blog_url => $to_blog_url,
+                wu_replace_scheme($from_upload_url) => wu_replace_scheme($to_upload_url),
+                wu_replace_scheme($from_blog_url)   => wu_replace_scheme($to_blog_url),
                 $from_site_prefix => $to_site_prefix
             );
 
@@ -207,7 +238,13 @@ if( !class_exists( 'MUCD_Data' ) ) {
            switch_to_blog( $to_site_id );
 
            foreach ( $saved_options as $option_name => $option_value ) {
-               update_option( $option_name, $option_value );
+               
+            try {
+                update_option( $option_name, $option_value );
+            } catch (\Throwable $th) {
+                // ...nothing
+            }
+            
            }
 
            restore_current_blog();
@@ -222,7 +259,8 @@ if( !class_exists( 'MUCD_Data' ) ) {
          * @param  string $to_string new string
          */
         public static function update($table, $fields, $from_string, $to_string) {
-            if(is_array($fields) || !empty($fields)) {
+            if (is_array($fields) || !empty($fields)) {
+               
                 global $wpdb;
 
                 foreach($fields as $field) {
@@ -230,10 +268,16 @@ if( !class_exists( 'MUCD_Data' ) ) {
                     // Bugfix : escape '_' , '%' and '/' character for mysql 'like' queries
                     $from_string_like = $wpdb->esc_like($from_string);
 
-                    $sql_query = $wpdb->prepare('SELECT `' .$field. '` FROM `'.$table.'` WHERE `' .$field. '` LIKE "%s" ', '%' . $from_string_like . '%');  
-                    $results = self::do_sql_query($sql_query, 'results', FALSE);
+                    $results = $wpdb->query("SET SQL_MODE='ALLOW_INVALID_DATES';");
 
-                    if($results) {
+                    $sql_query = $wpdb->prepare('
+                        SELECT `' .$field. '` FROM `'.$table.'` WHERE `' .$field. '` LIKE "%s" ', 
+                        '%' . $from_string_like . '%'
+                    );  
+                    
+                    $results = self::do_sql_query($sql_query, 'results', false);
+
+                    if ($results) {
                         $update = 'UPDATE `'.$table.'` SET `'.$field.'` = "%s" WHERE `'.$field.'` = "%s"';
 
                          foreach($results as $result => $row) {
@@ -348,7 +392,8 @@ if( !class_exists( 'MUCD_Data' ) ) {
          */
         public static function do_sql_query($sql_query, $type = '', $log = TRUE) {
             global $wpdb;
-            $wpdb->hide_errors();
+
+            $wpdb->suppress_errors();
 
             switch ($type) {
                 case 'col':
@@ -356,6 +401,9 @@ if( !class_exists( 'MUCD_Data' ) ) {
                     break;
                 case 'row':
                     $results = $wpdb->get_row($sql_query);
+                    break;
+                case 'row_array':
+                    $results = $wpdb->get_row($sql_query, ARRAY_N);
                     break;
                 case 'var':
                     $results = $wpdb->get_var($sql_query);
@@ -377,6 +425,8 @@ if( !class_exists( 'MUCD_Data' ) ) {
                 self::sql_error($sql_query, $wpdb->last_error);
            }
 
+           $wpdb->suppress_errors(false);
+
             return $results;
         }
 
@@ -387,17 +437,7 @@ if( !class_exists( 'MUCD_Data' ) ) {
          * @param  string  $sql_error the error
          */
         public static function sql_error($sql_query, $sql_error) {
-            $error_1 = 'ERROR SQL ON : ' . $sql_query;
-            MUCD_Duplicate::write_log($error_1 );
-            $error_2 = 'WPDB ERROR : ' . $sql_error;
-            MUCD_Duplicate::write_log($error_2 );
-            MUCD_Duplicate::write_log('Duplication interrupted on SQL ERROR');
-            echo '<br />Duplication failed :<br /><br />' . $error_1 . '<br /><br />' . $error_2 . '<br /><br />';
-            if( $log_url = MUCD_Duplicate::log_url() ) {
-                echo '<a href="' . $log_url . '">' . MUCD_NETWORK_PAGE_DUPLICATE_VIEW_LOG . '</a>';
-            }
-            MUCD_Functions::remove_blog(self::$to_site_id);
-            wp_die();
+            wu_log_add('site-duplication-errors', sprintf('Got error "%s" while running: %s', $sql_error, $sql_query));
         }
 
     }

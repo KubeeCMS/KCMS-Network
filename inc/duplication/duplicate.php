@@ -6,6 +6,7 @@ if( !class_exists( 'MUCD_Duplicate' ) ) {
     require_once WP_ULTIMO_PLUGIN_DIR . '/inc/duplication/files.php';
     require_once WP_ULTIMO_PLUGIN_DIR . '/inc/duplication/data.php';
     require_once WP_ULTIMO_PLUGIN_DIR . '/inc/duplication/log.php';
+    require_once WP_ULTIMO_PLUGIN_DIR . '/inc/duplication/functions.php';
 
     class MUCD_Duplicate {
 

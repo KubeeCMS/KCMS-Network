@@ -42,7 +42,7 @@ class Stripe
     private static $maxRetryAfter = 60.0;
     /** @var float Initial delay between retries, in seconds */
     private static $initialNetworkRetryDelay = 0.5;
-    const VERSION = '7.62.0';
+    const VERSION = '7.128.0';
     /**
      * @return string the API key used for requests
      */
@@ -64,7 +64,7 @@ class Stripe
     public static function getLogger()
     {
         if (null === self::$logger) {
-            return new \WP_Ultimo\Dependencies\Stripe\Util\DefaultLogger();
+            return new Util\DefaultLogger();
         }
         return self::$logger;
     }
@@ -145,7 +145,7 @@ class Stripe
         self::$verifySslCerts = $verify;
     }
     /**
-     * @return string | null The Stripe account ID for connected account
+     * @return null|string The Stripe account ID for connected account
      *   requests
      */
     public static function getAccountId()
@@ -161,7 +161,7 @@ class Stripe
         self::$accountId = $accountId;
     }
     /**
-     * @return array | null The application's information
+     * @return null|array The application's information
      */
     public static function getAppInfo()
     {

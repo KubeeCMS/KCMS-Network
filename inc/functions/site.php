@@ -2,13 +2,12 @@
 /**
  * Site Functions
  *
- * Public APIs to load and deal with WP Ultimo sites.
- *
- * @author      Arindo Duque
- * @category    Admin
- * @package     WP_Ultimo/Site
- * @version     2.0.0
+ * @package WP_Ultimo\Functions
+ * @since   2.0.0
  */
+
+// Exit if accessed directly
+defined('ABSPATH') || exit;
 
 /**
  * Returns the current site.
@@ -85,14 +84,20 @@ function wu_get_sites($query = array()) {
 } // end wu_get_sites;
 
 /**
- * Returns the list of Site Templates..
+ * Returns the list of Site Templates.
  *
  * @since 2.0.0
+ *
+ * @param array $query Query arguments.
  * @return array
  */
-function wu_get_site_templates() {
+function wu_get_site_templates($query = array()) {
 
-	return \WP_Ultimo\Models\Site::get_all_by_type('site_template');
+	$query = wp_parse_args($query, array(
+		'number' => 9999, // By default, we try to get ALL available templates.
+	));
+
+	return \WP_Ultimo\Models\Site::get_all_by_type('site_template', $query);
 
 } // end wu_get_site_templates;
 
@@ -126,7 +131,7 @@ function wu_handle_site_domain($domain) {
  * @since 2.0.0
  *
  * @param array $site_data Site data.
- * @return \WP_Error|\WP_Ultimo\Models\Product
+ * @return \WP_Error|\WP_Ultimo\Models\Site
  */
 function wu_create_site($site_data) {
 
@@ -138,6 +143,7 @@ function wu_create_site($site_data) {
 		'title'                 => false,
 		'type'                  => false,
 		'template_id'           => false,
+		'featured_image_id'     => 0,
 		'duplication_arguments' => false,
 		'public'                => true,
 	));
@@ -157,20 +163,27 @@ function wu_create_site($site_data) {
  *
  * @since 2.0.0
  *
- * @param string $path_or_subdomain The site path.
+ * @param string      $path_or_subdomain The site path.
+ * @param string|bool $base_domain The domain selected.
  * @return object Object with a domain and path properties.
  */
-function wu_get_site_domain_and_path($path_or_subdomain = '/') {
+function wu_get_site_domain_and_path($path_or_subdomain = '/', $base_domain = false) {
 
 	global $current_site;
 
 	$path_or_subdomain = trim($path_or_subdomain, '/');
 
+	$domain = $base_domain ? $base_domain : $current_site->domain;
+
 	$d = new \stdClass;
 
 	if (is_multisite() && is_subdomain_install()) {
+		/*
+		 * Treat for the www. case.
+		 */
+		$domain = str_replace('www.', '', $domain);
 
-		$d->domain = "{$path_or_subdomain}.{$current_site->domain}";
+		$d->domain = "{$path_or_subdomain}.{$domain}";
 
 		$d->path = '/';
 
@@ -178,10 +191,21 @@ function wu_get_site_domain_and_path($path_or_subdomain = '/') {
 
 	} // end if;
 
-	$d->domain = $current_site->domain;
+	$d->domain = $domain;
 
 	$d->path = "/{$path_or_subdomain}";
 
-	return $d;
+	/**
+	 * Allow developers to manipulate the domain/path pairs.
+	 *
+	 * This can be useful for a number of things, such as implementing some
+	 * sort of staging solution, different servers, etc.
+	 *
+	 * @since 2.0.0
+	 * @param object $d The current object containing a domain and path keys.
+	 * @param string $path_or_subdomain The original path/subdomain passed to the function.
+	 * @return object An object containing a domain and path keys.
+	 */
+	return apply_filters('wu_get_site_domain_and_path', $d, $path_or_subdomain);
 
 } // end wu_get_site_domain_and_path;

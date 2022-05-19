@@ -7,12 +7,13 @@
  * @copyright Copyright (c) 2020 Setasign GmbH & Co. KG (https://www.setasign.com)
  * @license   http://opensource.org/licenses/mit-license The MIT License
  */
+
 namespace setasign\Fpdi\PdfParser\Type;
 
 /**
  * Class representing PDF token object
  */
-class PdfToken extends \setasign\Fpdi\PdfParser\Type\PdfType
+class PdfToken extends PdfType
 {
     /**
      * Helper method to create an instance.
@@ -24,8 +25,10 @@ class PdfToken extends \setasign\Fpdi\PdfParser\Type\PdfType
     {
         $v = new self();
         $v->value = $token;
+
         return $v;
     }
+
     /**
      * Ensures that the passed value is a PdfToken instance.
      *
@@ -35,6 +38,6 @@ class PdfToken extends \setasign\Fpdi\PdfParser\Type\PdfType
      */
     public static function ensure($token)
     {
-        return \setasign\Fpdi\PdfParser\Type\PdfType::ensureType(self::class, $token, 'Token value expected.');
+        return PdfType::ensureType(self::class, $token, 'Token value expected.');
     }
 }

@@ -12,6 +12,8 @@ namespace WP_Ultimo\Builders\Block_Editor;
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
+use \WP_Ultimo\Database\Sites\Site_Type;
+
 /**
  * Handles Block Editor Widget Support.
  *
@@ -86,6 +88,12 @@ class Block_Editor_Widget_Manager {
 	 */
 	public function handle_element($element) {
 
+		if (wu_get_current_site()->get_type() === Site_Type::CUSTOMER_OWNED) {
+
+			return;
+
+		} // end if;
+
 		$this->register_block($element);
 
 		add_filter('wu_blocks', function($blocks) use ($element) {
@@ -123,6 +131,77 @@ class Block_Editor_Widget_Manager {
 	} // end register_block;
 
 	/**
+	 * Consolidate field attributes that are callables for blocks.
+	 *
+	 * @since 2.0.9
+	 *
+	 * @param array $fields The list of fields.
+	 * @return array
+	 */
+	protected function consolidate_callables($fields) {
+
+		$callable_keys = array(
+			'options',
+			'value',
+		);
+
+		$fields_to_ignore = array(
+			'note',
+		);
+
+		foreach ($fields as $field_slug => &$field) {
+			/*
+			 * Discard fields that are notes and start with _
+			 */
+			if (in_array($field['type'], $fields_to_ignore, true) && strpos($field_slug, '_') === 0) {
+
+				unset($fields[$field_slug]);
+
+			} // end if;
+
+			/*
+			 * Deal with the group type.
+			 * On those, we need to loop the sub-fields.
+			 */
+			if ($field['type'] === 'group') {
+
+				foreach ($field['fields'] as &$sub_field) {
+
+					foreach ($sub_field as $sub_item => &$sub_value) {
+
+						if (in_array($sub_item, $callable_keys, true) && is_callable($sub_value)) {
+
+							$sub_value = call_user_func($sub_value);
+
+						} // end if;
+
+					} // end foreach;
+
+				} // end foreach;
+
+			} // end if;
+
+			/*
+			 * Deal with the regular field types and its
+			 * callables.
+			 */
+			foreach ($field as $item => &$value) {
+
+				if (in_array($item, $callable_keys, true) && is_callable($value)) {
+
+					$value = call_user_func($value);
+
+				} // end if;
+
+			} // end foreach;
+
+		} // end foreach;
+
+		return $fields;
+
+	} // end consolidate_callables;
+
+	/**
 	 * Registers the block so WP Ultimo can add it on the JS side.
 	 *
 	 * @since 2.0.0
@@ -133,11 +212,13 @@ class Block_Editor_Widget_Manager {
 	 */
 	public function load_block_settings($blocks, $element) {
 
+		$fields = $this->consolidate_callables($element->fields());
+
 		$blocks[] = array(
 			'id'          => $element->get_id(),
 			'title'       => $element->get_title(),
 			'description' => $element->get_description(),
-			'fields'      => $element->fields(),
+			'fields'      => $fields,
 			'keywords'    => $element->keywords(),
 		);
 
@@ -156,7 +237,11 @@ class Block_Editor_Widget_Manager {
 
 		$fields = $element->fields();
 
-		return array_map(function($field) {
+		$defaults = $element->defaults();
+
+		$_fields = array();
+
+		foreach ($fields as $field_id => $field) {
 
 			$type = 'string';
 
@@ -172,12 +257,16 @@ class Block_Editor_Widget_Manager {
 
 			} // end if;
 
-			return array(
-				'default' => isset($field['value']) ? $field['value'] : false,
+			$default_value = wu_get_isset($defaults, $field_id, '');
+
+			$_fields[$field_id] = array(
+				'default' => wu_get_isset($field, 'value', $default_value),
 				'type'    => $type,
 			);
 
-		}, $fields);
+		} // end foreach;
+
+		return $_fields;
 
 	} // end get_attributes_from_fields;
 

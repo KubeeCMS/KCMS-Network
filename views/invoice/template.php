@@ -196,7 +196,7 @@
                             /**
                              * Displays the clients address.
                              */
-                            echo nl2br(implode(PHP_EOL, $billing_address));
+                            echo nl2br(implode(PHP_EOL, (array) $billing_address));
 
                             ?>
                            
@@ -236,8 +236,8 @@
 
                 <td>
                     <span class="font-weight: medium;"><?php echo $line_item->get_title(); ?></span>
-                    <!-- <br>
-                    <small><?php echo $line_item->get_description(); ?></small> -->
+                    <br>
+                    <small><?php echo $line_item->get_description(); ?></small>
                 </td>
 
                 <td style="text-align: right;">

@@ -6,7 +6,7 @@ use WP_Ultimo\Dependencies\DeepCopy\Reflection\ReflectionHelper;
 /**
  * @final
  */
-class SetNullFilter implements \WP_Ultimo\Dependencies\DeepCopy\Filter\Filter
+class SetNullFilter implements Filter
 {
     /**
      * Sets the object property to null.
@@ -15,7 +15,7 @@ class SetNullFilter implements \WP_Ultimo\Dependencies\DeepCopy\Filter\Filter
      */
     public function apply($object, $property, $objectCopier)
     {
-        $reflectionProperty = \WP_Ultimo\Dependencies\DeepCopy\Reflection\ReflectionHelper::getProperty($object, $property);
+        $reflectionProperty = ReflectionHelper::getProperty($object, $property);
         $reflectionProperty->setAccessible(\true);
         $reflectionProperty->setValue($object, null);
     }

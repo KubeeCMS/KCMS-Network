@@ -45,7 +45,7 @@
 
   <span class="wu-self-center wu-content-center wu-flex">
 
-    <button name="submit" value="1" class="wu-ml-2 button button-primary button-large">
+    <button name="submit" value="3" class="wu-ml-2 button button-primary button-large">
       <?php _e('Test Integration &rarr;', 'wp-ultimo') ; ?>
     </button>
 

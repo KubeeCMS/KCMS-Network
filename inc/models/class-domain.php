@@ -9,7 +9,6 @@
 
 namespace WP_Ultimo\Models;
 
-use WP_Ultimo\Logger;
 use WP_Ultimo\Models\Base_Model;
 use WP_Ultimo\Domain_Mapping\Helper;
 use WP_Ultimo\Database\Domains\Domain_Stage;
@@ -92,6 +91,7 @@ class Domain extends Base_Model {
 	 */
 	const INACTIVE_STAGES = array(
 		'checking-dns',
+		'checking-ssl-cert',
 		'failed',
 	);
 
@@ -118,9 +118,9 @@ class Domain extends Base_Model {
 		$id = $this->get_id();
 
 		return array(
-			'blog_id'        => 'required|numeric',
+			'blog_id'        => 'required|integer',
 			'domain'         => "required|domain|unique:\WP_Ultimo\Models\Domain,domain,{$id}",
-			'stage'          => 'required|default:checking-dns',
+			'stage'          => 'required|in:checking-dns,checking-ssl-cert,done-without-ssl,done,failed|default:checking-dns',
 			'active'         => 'default:1',
 			'secure'         => 'default:0',
 			'primary_domain' => 'default:0',
@@ -145,7 +145,7 @@ class Domain extends Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $domain Domain name.
+	 * @param string $domain Your Domain name. You don't need to put http or https in front of your domain in this field. e.g: example.com.
 	 * @return void
 	 */
 	public function set_domain($domain) {
@@ -194,7 +194,7 @@ class Domain extends Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param int $blog_id The new blog ID.
+	 * @param int $blog_id The blog ID attached to this domain.
 	 * @return void
 	 */
 	public function set_blog_id($blog_id) {
@@ -263,7 +263,7 @@ class Domain extends Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param boolean $active Wether or not this domain is active.
+	 * @param boolean $active Set this domain as active (true), which means available to be used, or inactive (false).
 	 * @return void
 	 */
 	public function set_active($active) {
@@ -289,7 +289,7 @@ class Domain extends Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param boolean $primary_domain Wether or not this domain is primary_domain.
+	 * @param boolean $primary_domain Define true to set this as primary domain of a site, meaning it's the main url, or set false.
 	 * @return void
 	 */
 	public function set_primary_domain($primary_domain) {
@@ -315,7 +315,7 @@ class Domain extends Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param boolean $secure Wether or not this domain is secure.
+	 * @param boolean $secure If this domain has some SSL security or not.
 	 * @return void
 	 */
 	public function set_secure($secure) {
@@ -343,7 +343,7 @@ class Domain extends Base_Model {
 	 *
 	 * @since 2.0.0
 	 *
-	 * @param string $stage The state of the domain model object. Can be one of three: checking-dns, checking-ssl-cert, or done.
+	 * @param string $stage The state of the domain model object. Can be one of this options: checking-dns, checking-ssl-cert, done-without-ssl, done and failed.
 	 * @return void
 	 */
 	public function set_stage($stage) {
@@ -393,7 +393,7 @@ class Domain extends Base_Model {
 	} // end get_stage_class;
 
 	/**
-	 * Get date when this was created..
+	 * Get date when this was created.
 	 *
 	 * @since 2.0.0
 	 * @return string
@@ -405,10 +405,10 @@ class Domain extends Base_Model {
 	} // end get_date_created;
 
 	/**
-	 * Set date when this was created..
+	 * Set date when this was created.
 	 *
 	 * @since 2.0.0
-	 * @param string $date_created Date when this was created.
+	 * @param string $date_created Date when the domain was created. If no date is set, the current date and time will be used.
 	 * @return void
 	 */
 	public function set_date_created($date_created) {
@@ -431,7 +431,7 @@ class Domain extends Base_Model {
 
 		$network_ip_address = Helper::get_network_public_ip();
 
-		$results = \WP_Ultimo\Managers\Domain_Manager::dns_get_record($domain_url, DNS_ANY);
+		$results = \WP_Ultimo\Managers\Domain_Manager::dns_get_record($domain_url);
 
 		$domains_and_ips = array_column($results, 'data');
 
@@ -447,7 +447,20 @@ class Domain extends Base_Model {
 
 		} // end if;
 
-		return false;
+		$result = false;
+
+		/**
+		 * Allow plugin developers to add new checks in order to define the results.
+		 *
+		 * @since 2.0.4
+		 * @param bool $result the current result.
+		 * @param self $this The current domain instance.
+		 * @param array $domains_and_ips The list of domains and IPs found on the DNS lookup.
+		 * @return bool If the DNS is correctly setup or not.
+		 */
+		$result = apply_filters('wu_domain_has_correct_dns', $result, $this, $domains_and_ips);
+
+		return $result;
 
 	} // end has_correct_dns;
 
@@ -462,6 +475,122 @@ class Domain extends Base_Model {
 		return Helper::has_valid_ssl_certificate($this->get_domain());
 
 	} // end has_valid_ssl_certificate;
+
+	/**
+	 * Save (create or update) the model on the database.
+	 *
+	 * Needs to override the parent implementation
+	 * to clear the cache.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return bool
+	 */
+	public function save() {
+
+		$new_domain = $this->exists();
+
+		$before_changes = clone $this;
+
+		$results = parent::save();
+
+		if (is_wp_error($results) === false) {
+
+			if ($new_domain) {
+
+				if (has_action('mercator.mapping.created')) {
+
+					$deprecated_args = array(
+						$this,
+					);
+
+					/**
+					 * Deprecated: Mercator created domain.
+					 *
+					 * @since 2.0.0
+					 * @param self The domain object after saving.
+					 * @param self The domain object before the changes.
+					 * @return void.
+					 */
+					do_action_deprecated('mercator.mapping.created', $deprecated_args, '2.0.0', 'wu_domain_post_save');
+
+				} // end if;
+
+			} else {
+
+				if (has_action('mercator.mapping.updated')) {
+
+					$deprecated_args = array(
+						$this,
+						$before_changes,
+					);
+
+					/**
+					 * Deprecated: Mercator updated domain.
+					 *
+					 * @since 2.0.0
+					 * @param self The domain object after saving.
+					 * @param self The domain object before the changes.
+					 * @return void.
+					 */
+					do_action_deprecated('mercator.mapping.updated', $deprecated_args, '2.0.0', 'wu_domain_post_save');
+
+				} // end if;
+
+			} // end if;
+
+			/*
+			 * Resets cache.
+			 *
+			 * This will make sure the list of domains gets rebuild
+			 * after a change is made.
+			 */
+			wp_cache_flush();
+
+		} // end if;
+
+		return $results;
+
+	} // end save;
+
+	/**
+	 * Delete the model from the database.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @return WP_Error|bool
+	 */
+	public function delete() {
+
+		$results = parent::delete();
+
+		if (is_wp_error($results) === false && has_action('mercator.mapping.deleted')) {
+
+			$deprecated_args = array(
+				$this,
+			);
+
+			/**
+			 * Deprecated: Mercator Deleted domain.
+			 *
+			 * @since 2.0.0
+			 * @param self The domain object just deleted.
+			 * @return void.
+			 */
+			do_action_deprecated('mercator.mapping.deleted', $deprecated_args, '2.0.0', 'wu_domain_post_delete');
+
+		} // end if;
+
+		/*
+		 * Delete log file.
+		 */
+		wu_log_clear("domain-{$this->get_domain()}");
+
+		wu_log_add("domain-{$this->get_domain()}", __('Domain deleted and logs cleared...', 'wp-ultimo'));
+
+		return $results;
+
+	} // end delete;
 
 	/**
 	 * Get mapping by site ID
@@ -493,6 +622,12 @@ class Domain extends Base_Model {
 		// Check cache first
 		$mappings = wp_cache_get('id:' . $site, 'domain_mapping');
 
+		if ($mappings === 'none') {
+
+			return false;
+
+		} // end if;
+
 		if (!empty($mappings)) {
 
 			return static::to_instances($mappings);
@@ -504,13 +639,16 @@ class Domain extends Base_Model {
 		$suppress = $wpdb->suppress_errors();
 
 		$domain_table = "{$wpdb->base_prefix}wu_domain_mappings";
-		$mappings     = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . $domain_table . ' WHERE blog_id = %d', $site)); //phpcs:ignore
+
+		$mappings = $wpdb->get_results($wpdb->prepare('SELECT * FROM ' . $domain_table . ' WHERE blog_id = %d ORDER BY primary_domain DESC, active DESC, secure DESC', $site)); //phpcs:ignore
 
 		$wpdb->suppress_errors($suppress);
 
 		if (!$mappings) {
 
-			return null;
+			wp_cache_set('id:' . $site, 'none', 'domain_mapping');
+
+			return false;
 
 		} // end if;
 
@@ -528,7 +666,7 @@ class Domain extends Base_Model {
 	 * @since 2.0.0
 	 *
 	 * @param array|string $domains Domain names to search for.
-	 * @return array
+	 * @return object
 	 */
 	public static function get_by_domain($domains) {
 
@@ -568,7 +706,7 @@ class Domain extends Base_Model {
 		$placeholders_in = implode(',', $placeholders);
 
 		// Prepare the query
-		$query = "SELECT * FROM {$wpdb->wu_dmtable} WHERE domain IN ($placeholders_in) ORDER BY CHAR_LENGTH(domain) DESC LIMIT 1";
+		$query = "SELECT * FROM {$wpdb->wu_dmtable} WHERE domain IN ($placeholders_in) AND active = 1 ORDER BY primary_domain DESC, active DESC, secure DESC LIMIT 1";
 
 		$query = $wpdb->prepare($query, $domains); // phpcs:ignore
 

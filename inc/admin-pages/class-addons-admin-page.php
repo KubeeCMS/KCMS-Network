@@ -9,10 +9,6 @@
 
 namespace WP_Ultimo\Admin_Pages;
 
-use WP_Ultimo\Settings;
-use WP_Ultimo\UI\Form;
-use WP_Ultimo\UI\Field;
-
 // Exit if accessed directly
 defined('ABSPATH') || exit;
 
@@ -71,7 +67,7 @@ class Addons_Admin_Page extends Wizard_Admin_Page {
 	 * @var array
 	 */
 	protected $supported_panels = array(
-		'network_admin_menu' => 'manage_network',
+		'network_admin_menu' => 'wu_read_settings',
 	);
 
 	/**
@@ -144,7 +140,6 @@ class Addons_Admin_Page extends Wizard_Admin_Page {
 
 	} // end register_forms;
 
-
 	/**
 	 * Displays the more info tab.
 	 *
@@ -175,8 +170,6 @@ class Addons_Admin_Page extends Wizard_Admin_Page {
 
 		do_action('wu_form_scripts', false);
 
-		do_action('admin_print_scripts'); // phpcs:ignore
-
 	} // end display_more_info;
 
 	/**
@@ -200,9 +193,10 @@ class Addons_Admin_Page extends Wizard_Admin_Page {
 		$addon = wu_get_isset($this->get_addons_list(), $addon_slug);
 
 		$download_url = add_query_arg(array(
-			'action'      => 'download',
-			'slug'        => $addon_slug,
-			'license_key' => rawurlencode(\WP_Ultimo\License::get_instance()->get_license_key()),
+			'action'       => 'download',
+			'slug'         => $addon_slug,
+			'beta_program' => 2,
+			'license_key'  => rawurlencode(\WP_Ultimo\License::get_instance()->get_license_key(true)),
 		), 'https://versions.nextpress.co/updates/');
 
 		/**
@@ -246,7 +240,11 @@ class Addons_Admin_Page extends Wizard_Admin_Page {
 
 			$upgrader = new \Plugin_Upgrader($skin);
 
+			add_filter('https_ssl_verify', '__return_false', 2000);
+
 			$results = $upgrader->install($download_url);
+
+			remove_filter('https_ssl_verify', '__return_false', 2000);
 
 			if (is_wp_error($results)) {
 
@@ -256,9 +254,9 @@ class Addons_Admin_Page extends Wizard_Admin_Page {
 
 			$messages = $upgrader->skin->get_upgrade_messages();
 
-			if (in_array($upgrader->strings['process_failed'], $messages, true)) {
+			if (!in_array($upgrader->strings['process_success'], $messages, true)) {
 
-				$error = new \WP_Error('error', $upgrader->strings['process_failed']);
+				$error = new \WP_Error('error', array_pop($messages));
 
 				wp_send_json_error($error);
 
@@ -266,7 +264,7 @@ class Addons_Admin_Page extends Wizard_Admin_Page {
 
 			wp_send_json_success(array(
 				'redirect_url' => add_query_arg(array(
-					's' => $addon['name'],
+					's' => urlencode($addon['name']),
 				), network_admin_url('plugins.php')),
 			));
 
@@ -293,6 +291,7 @@ class Addons_Admin_Page extends Wizard_Admin_Page {
 		wp_register_script('wu-addons', wu_get_asset('addons.js', 'js'), array('jquery', 'wu-vue', 'underscore'), wu_get_version(), true);
 
 		wp_localize_script('wu-addons', 'wu_addons', array(
+			'search'   => wu_request('s', ''),
 			'category' => wu_request('tab', 'all'),
 			'i18n'     => array(
 				'all' => __('All Add-ons', 'wp-ultimo'),
@@ -350,7 +349,9 @@ class Addons_Admin_Page extends Wizard_Admin_Page {
 
 		} // end if;
 
-		$response = wp_remote_get($remote_url);
+		$response = wp_remote_get($remote_url, array(
+			'sslverify' => false,
+		));
 
 		if (is_wp_error($response)) {
 
@@ -361,6 +362,12 @@ class Addons_Admin_Page extends Wizard_Admin_Page {
 		$data = wp_remote_retrieve_body($response);
 
 		$data = json_decode($data, true);
+
+		if (!is_array($data)) {
+
+			return array();
+
+		} // end if;
 
 		/*
 		 * Adds missing keys
@@ -492,6 +499,10 @@ class Addons_Admin_Page extends Wizard_Admin_Page {
 				'title' => __('Gateways', 'wp-ultimo'),
 				'icon'  => 'dashicons-wu-credit-card',
 			),
+			'growth'      => array(
+				'title' => __('Growth & Scaling', 'wp-ultimo'),
+				'icon'  => 'dashicons-wu-line-graph',
+			),
 			'integrations'  => array(
 				'title' => __('Integrations', 'wp-ultimo'),
 				'icon'  => 'dashicons-wu-power-plug',
@@ -512,9 +523,8 @@ class Addons_Admin_Page extends Wizard_Admin_Page {
 				'title' => __('Migrators', 'wp-ultimo'),
 				'icon'  => 'dashicons-wu-publish',
 			),
-			''              => array(
-				'title' => '',
-				'icon'  => '',
+			'separator' => array(
+				'separator' => true,
 			),
 			'marketplace'   => array(
 				'title' => __('Marketplace', 'wp-ultimo'),

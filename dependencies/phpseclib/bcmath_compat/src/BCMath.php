@@ -75,7 +75,7 @@ abstract class BCMath
      */
     private static function isNegative($x)
     {
-        return $x->compare(new \phpseclib3\Math\BigInteger()) < 0;
+        return $x->compare(new BigInteger()) < 0;
     }
     /**
      * Add two arbitrary precision numbers
@@ -140,7 +140,7 @@ abstract class BCMath
             throw new \DivisionByZeroError('Division by zero');
         }
         $temp = '1' . \str_repeat('0', $scale);
-        $temp = new \phpseclib3\Math\BigInteger($temp);
+        $temp = new BigInteger($temp);
         list($q) = $x->multiply($temp)->divide($y);
         return self::format($q, $scale, $scale);
     }
@@ -176,8 +176,8 @@ abstract class BCMath
      */
     private static function comp($x, $y, $scale, $pad)
     {
-        $x = new \phpseclib3\Math\BigInteger($x[0] . \substr($x[1], 0, $scale));
-        $y = new \phpseclib3\Math\BigInteger($y[0] . \substr($y[1], 0, $scale));
+        $x = new BigInteger($x[0] . \substr($x[1], 0, $scale));
+        $y = new BigInteger($y[0] . \substr($y[1], 0, $scale));
         return $x->compare($y);
     }
     /**
@@ -201,17 +201,17 @@ abstract class BCMath
         }
         $min = \defined('PHP_INT_MIN') ? \PHP_INT_MIN : ~\PHP_INT_MAX;
         if (\bccomp($y, \PHP_INT_MAX) > 0 || \bccomp($y, $min) <= 0) {
-            throw new \WP_Ultimo\Dependencies\ValueError('bcpow(): Argument #2 ($exponent) is too large');
+            throw new \ValueError('bcpow(): Argument #2 ($exponent) is too large');
         }
         $sign = self::isNegative($x) ? '-' : '';
         $x = $x->abs();
-        $r = new \phpseclib3\Math\BigInteger(1);
+        $r = new BigInteger(1);
         for ($i = 0; $i < \abs($y); $i++) {
             $r = $r->multiply($x);
         }
         if ($y < 0) {
             $temp = '1' . \str_repeat('0', $scale + $pad * \abs($y));
-            $temp = new \phpseclib3\Math\BigInteger($temp);
+            $temp = new BigInteger($temp);
             list($r) = $temp->divide($r);
             $pad = $scale;
         } else {
@@ -233,7 +233,7 @@ abstract class BCMath
         if ($e[0] == '-' || $n == '0') {
             // < PHP 8.0 returned false
             // >= PHP 8.0 throws an exception
-            throw new \WP_Ultimo\Dependencies\ValueError('bcpowmod(): Argument #2 ($exponent) must be greater than or equal to 0');
+            throw new \ValueError('bcpowmod(): Argument #2 ($exponent) must be greater than or equal to 0');
         }
         if ($n[0] == '-') {
             $n = \substr($n, 1);
@@ -241,9 +241,9 @@ abstract class BCMath
         if ($e == '0') {
             return $scale ? '1.' . \str_repeat('0', $scale) : '1';
         }
-        $x = new \phpseclib3\Math\BigInteger($x);
-        $e = new \phpseclib3\Math\BigInteger($e);
-        $n = new \phpseclib3\Math\BigInteger($n);
+        $x = new BigInteger($x);
+        $e = new BigInteger($e);
+        $n = new BigInteger($n);
         $z = $x->powMod($e, $n);
         return $scale ? "{$z}." . \str_repeat('0', $scale) : "{$z}";
     }
@@ -347,23 +347,29 @@ abstract class BCMath
             $pos = \strpos($int, '.');
             if ($pos !== \false) {
                 $int = \substr($int, 0, $pos);
-                throw new \WP_Ultimo\Dependencies\ValueError("bc{$name}(): Argument #2 (\${$names[$i]}) cannot have a fractional part");
+                throw new \ValueError("bc{$name}(): Argument #2 (\${$names[$i]}) cannot have a fractional part");
             }
         }
         foreach ($numbers as $i => $arg) {
+            $num = $i + 1;
             switch (\true) {
                 case \is_bool($arg):
                 case \is_numeric($arg):
                 case \is_string($arg):
                 case \is_object($arg) && \method_exists($arg, '__toString'):
-                case \is_null($arg):
-                    if (!\is_bool($arg) && !\is_null($arg) && !\is_numeric("{$arg}")) {
-                        \trigger_error("bc{$name}: bcmath function argument is not well-formed", \E_USER_WARNING);
+                    if (!\is_bool($arg) && !\is_numeric("{$arg}")) {
+                        throw new \ValueError("bc{$name}: bcmath function argument is not well-formed");
                     }
+                    break;
+                // PHP >= 8.1 has deprecated the passing of nulls to string parameters
+                case \is_null($arg):
+                    $error = "bc{$name}(): Passing null to parameter #{$num} (\${$names[$i]}) of type string is deprecated";
+                    \trigger_error($error, \E_USER_DEPRECATED);
                     break;
                 default:
                     $type = \is_object($arg) ? \get_class($arg) : \gettype($arg);
-                    throw new \TypeError("bc{$name}(): Argument #{$i} (\${$names[$i]}) must be of type string, {$type} given");
+                    $error = "bc{$name}(): Argument #{$num} (\${$names[$i]}) must be of type string, {$type} given";
+                    throw new \TypeError($error);
             }
         }
         if (!isset(self::$scale)) {
@@ -383,7 +389,7 @@ abstract class BCMath
         }
         $scale = (int) $scale;
         if ($scale < 0) {
-            throw new \WP_Ultimo\Dependencies\ValueError("bc{$name}(): Argument #{$params[$name]} (\$scale) must be between 0 and 2147483647");
+            throw new \ValueError("bc{$name}(): Argument #{$params[$name]} (\$scale) must be between 0 and 2147483647");
         }
         $pad = 0;
         foreach ($numbers as &$num) {
@@ -409,7 +415,7 @@ abstract class BCMath
                         $num[1] = '';
                     }
                     $num[1] = \str_pad($num[1], $pad, '0');
-                    $num = new \phpseclib3\Math\BigInteger($num[0] . $num[1]);
+                    $num = new BigInteger($num[0] . $num[1]);
                 }
                 break;
             case 'comp':
@@ -424,6 +430,7 @@ abstract class BCMath
                 $numbers = [$arguments[0]];
         }
         $arguments = \array_merge($numbers, $ints, [$scale, $pad]);
-        return \call_user_func_array('self::' . $name, $arguments);
+        $result = \call_user_func_array('self::' . $name, $arguments);
+        return \preg_match('#^-0\\.?0*$#', $result) ? \substr($result, 1) : $result;
     }
 }

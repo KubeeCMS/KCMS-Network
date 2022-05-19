@@ -3,7 +3,7 @@
 namespace WP_Ultimo\Dependencies\Rakit\Validation\Rules;
 
 use WP_Ultimo\Dependencies\Rakit\Validation\Rule;
-class Numeric extends \WP_Ultimo\Dependencies\Rakit\Validation\Rule
+class Numeric extends Rule
 {
     /** @var string */
     protected $message = "The :attribute must be numeric";

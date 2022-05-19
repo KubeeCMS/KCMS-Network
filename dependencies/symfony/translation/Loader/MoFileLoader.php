@@ -17,31 +17,31 @@ use Symfony\Component\Translation\Exception\InvalidResourceException;
 class MoFileLoader extends \Symfony\Component\Translation\Loader\FileLoader
 {
     /**
-     * Magic used for validating the format of a MO file as well as
+     * Magic used for validating the format of an MO file as well as
      * detecting if the machine used to create that file was little endian.
      */
-    const MO_LITTLE_ENDIAN_MAGIC = 0x950412de;
+    public const MO_LITTLE_ENDIAN_MAGIC = 0x950412de;
     /**
-     * Magic used for validating the format of a MO file as well as
+     * Magic used for validating the format of an MO file as well as
      * detecting if the machine used to create that file was big endian.
      */
-    const MO_BIG_ENDIAN_MAGIC = 0xde120495;
+    public const MO_BIG_ENDIAN_MAGIC = 0xde120495;
     /**
-     * The size of the header of a MO file in bytes.
+     * The size of the header of an MO file in bytes.
      */
-    const MO_HEADER_SIZE = 28;
+    public const MO_HEADER_SIZE = 28;
     /**
      * Parses machine object (MO) format, independent of the machine's endian it
      * was created on. Both 32bit and 64bit systems are supported.
      *
      * {@inheritdoc}
      */
-    protected function loadResource($resource)
+    protected function loadResource(string $resource)
     {
         $stream = \fopen($resource, 'r');
         $stat = \fstat($stream);
         if ($stat['size'] < self::MO_HEADER_SIZE) {
-            throw new \Symfony\Component\Translation\Exception\InvalidResourceException('MO stream content has an invalid format.');
+            throw new InvalidResourceException('MO stream content has an invalid format.');
         }
         $magic = \unpack('V1', \fread($stream, 4));
         $magic = \hexdec(\substr(\dechex(\current($magic)), -8));
@@ -50,7 +50,7 @@ class MoFileLoader extends \Symfony\Component\Translation\Loader\FileLoader
         } elseif (self::MO_BIG_ENDIAN_MAGIC == $magic) {
             $isBigEndian = \true;
         } else {
-            throw new \Symfony\Component\Translation\Exception\InvalidResourceException('MO stream content has an invalid format.');
+            throw new InvalidResourceException('MO stream content has an invalid format.');
         }
         // formatRevision
         $this->readLong($stream, $isBigEndian);
@@ -73,7 +73,7 @@ class MoFileLoader extends \Symfony\Component\Translation\Loader\FileLoader
             }
             \fseek($stream, $offset);
             $singularId = \fread($stream, $length);
-            if (\false !== \strpos($singularId, "\0")) {
+            if (\str_contains($singularId, "\0")) {
                 [$singularId, $pluralId] = \explode("\0", $singularId);
             }
             \fseek($stream, $offsetTranslated + $i * 8);
@@ -84,7 +84,7 @@ class MoFileLoader extends \Symfony\Component\Translation\Loader\FileLoader
             }
             \fseek($stream, $offset);
             $translated = \fread($stream, $length);
-            if (\false !== \strpos($translated, "\0")) {
+            if (\str_contains($translated, "\0")) {
                 $translated = \explode("\0", $translated);
             }
             $ids = ['singular' => $singularId, 'plural' => $pluralId];

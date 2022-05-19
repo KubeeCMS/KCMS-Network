@@ -13,7 +13,7 @@ class ScheduledQueryRunService extends \WP_Ultimo\Dependencies\Stripe\Service\Ab
      *
      * @throws \Stripe\Exception\ApiErrorException if the request fails
      *
-     * @return \Stripe\Collection
+     * @return \Stripe\Collection<\Stripe\Sigma\ScheduledQueryRun>
      */
     public function all($params = null, $opts = null)
     {

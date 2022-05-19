@@ -378,7 +378,7 @@ trait Boundaries
         $ucfUnit = \ucfirst(static::singularUnit($unit));
         $method = "startOf{$ucfUnit}";
         if (!\method_exists($this, $method)) {
-            throw new \WP_Ultimo\Dependencies\Carbon\Exceptions\UnknownUnitException($unit);
+            throw new UnknownUnitException($unit);
         }
         return $this->{$method}(...$params);
     }
@@ -402,7 +402,7 @@ trait Boundaries
         $ucfUnit = \ucfirst(static::singularUnit($unit));
         $method = "endOf{$ucfUnit}";
         if (!\method_exists($this, $method)) {
-            throw new \WP_Ultimo\Dependencies\Carbon\Exceptions\UnknownUnitException($unit);
+            throw new UnknownUnitException($unit);
         }
         return $this->{$method}(...$params);
     }

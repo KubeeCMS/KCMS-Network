@@ -13,32 +13,35 @@ namespace WP_Ultimo\Dependencies\ScssPhp\ScssPhp;
 
 use WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Base\Range;
 use WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\RangeException;
+use WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Node\Number;
 /**
- * Utilty functions
+ * Utility functions
  *
  * @author Anthon Pang <anthon.pang@gmail.com>
+ *
+ * @internal
  */
-class Util
+final class Util
 {
     /**
      * Asserts that `value` falls within `range` (inclusive), leaving
      * room for slight floating-point errors.
      *
-     * @param string                    $name  The name of the value. Used in the error message.
-     * @param \ScssPhp\ScssPhp\Base\Range $range Range of values.
-     * @param array                     $value The value to check.
-     * @param string                    $unit  The unit of the value. Used in error reporting.
+     * @param string       $name  The name of the value. Used in the error message.
+     * @param Range        $range Range of values.
+     * @param array|Number $value The value to check.
+     * @param string       $unit  The unit of the value. Used in error reporting.
      *
      * @return mixed `value` adjusted to fall within range, if it was outside by a floating-point margin.
      *
-     * @throws \ScssPhp\ScssPhp\Exception\RangeException
+     * @throws RangeException
      */
-    public static function checkRange($name, \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Base\Range $range, $value, $unit = '')
+    public static function checkRange(string $name, Range $range, $value, string $unit = '')
     {
         $val = $value[1];
-        $grace = new \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Base\Range(-1.0E-5, 1.0E-5);
+        $grace = new Range(-1.0E-5, 1.0E-5);
         if (!\is_numeric($val)) {
-            throw new \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\RangeException("{$name} {$val} is not a number.");
+            throw new RangeException("{$name} {$val} is not a number.");
         }
         if ($range->includes($val)) {
             return $val;
@@ -49,7 +52,7 @@ class Util
         if ($grace->includes($val - $range->last)) {
             return $range->last;
         }
-        throw new \WP_Ultimo\Dependencies\ScssPhp\ScssPhp\Exception\RangeException("{$name} {$val} must be between {$range->first} and {$range->last}{$unit}");
+        throw new RangeException("{$name} {$val} must be between {$range->first} and {$range->last}{$unit}");
     }
     /**
      * Encode URI component
@@ -58,19 +61,47 @@ class Util
      *
      * @return string
      */
-    public static function encodeURIComponent($string)
+    public static function encodeURIComponent(string $string) : string
     {
         $revert = ['%21' => '!', '%2A' => '*', '%27' => "'", '%28' => '(', '%29' => ')'];
         return \strtr(\rawurlencode($string), $revert);
     }
     /**
-     * mb_chr() wrapper
+     * Returns $name without a vendor prefix.
      *
-     * @param integer $code
+     * If $name has no vendor prefix, it's returned as-is.
+     *
+     * @param string $name
      *
      * @return string
      */
-    public static function mbChr($code)
+    public static function unvendor(string $name) : string
+    {
+        $length = \strlen($name);
+        if ($length < 2) {
+            return $name;
+        }
+        if ($name[0] !== '-') {
+            return $name;
+        }
+        if ($name[1] === '-') {
+            return $name;
+        }
+        for ($i = 2; $i < $length; $i++) {
+            if ($name[$i] === '-') {
+                return \substr($name, $i + 1);
+            }
+        }
+        return $name;
+    }
+    /**
+     * mb_chr() wrapper
+     *
+     * @param int $code
+     *
+     * @return string
+     */
+    public static function mbChr(int $code) : string
     {
         // Use the native implementation if available, but not on PHP 7.2 as mb_chr(0) is buggy there
         if (\PHP_VERSION_ID > 70300 && \function_exists('mb_chr')) {
@@ -88,21 +119,52 @@ class Util
         return $s;
     }
     /**
+     * mb_ord() wrapper
+     *
+     * @param string $string
+     *
+     * @return int
+     */
+    public static function mbOrd(string $string) : int
+    {
+        if (\function_exists('mb_ord')) {
+            return \mb_ord($string, 'UTF-8');
+        }
+        if (1 === \strlen($string)) {
+            return \ord($string);
+        }
+        $s = \unpack('C*', \substr($string, 0, 4));
+        if (!$s) {
+            return 0;
+        }
+        $code = $s[1];
+        if (0xf0 <= $code) {
+            return ($code - 0xf0 << 18) + ($s[2] - 0x80 << 12) + ($s[3] - 0x80 << 6) + $s[4] - 0x80;
+        }
+        if (0xe0 <= $code) {
+            return ($code - 0xe0 << 12) + ($s[2] - 0x80 << 6) + $s[3] - 0x80;
+        }
+        if (0xc0 <= $code) {
+            return ($code - 0xc0 << 6) + $s[2] - 0x80;
+        }
+        return $code;
+    }
+    /**
      * mb_strlen() wrapper
      *
      * @param string $string
      * @return int
      */
-    public static function mbStrlen($string)
+    public static function mbStrlen(string $string) : int
     {
         // Use the native implementation if available.
         if (\function_exists('mb_strlen')) {
             return \mb_strlen($string, 'UTF-8');
         }
         if (\function_exists('iconv_strlen')) {
-            return @\iconv_strlen($string, 'UTF-8');
+            return (int) @\iconv_strlen($string, 'UTF-8');
         }
-        return \strlen($string);
+        throw new \LogicException('Either mbstring (recommended) or iconv is necessary to use Scssphp.');
     }
     /**
      * mb_substr() wrapper
@@ -111,7 +173,7 @@ class Util
      * @param null|int $length
      * @return string
      */
-    public static function mbSubstr($string, $start, $length = null)
+    public static function mbSubstr(string $string, int $start, ?int $length = null) : string
     {
         // Use the native implementation if available.
         if (\function_exists('mb_substr')) {
@@ -134,7 +196,7 @@ class Util
             }
             return (string) \iconv_substr($string, $start, $length, 'UTF-8');
         }
-        return \substr($string, $start, $length);
+        throw new \LogicException('Either mbstring (recommended) or iconv is necessary to use Scssphp.');
     }
     /**
      * mb_strpos wrapper
@@ -144,7 +206,7 @@ class Util
      *
      * @return int|false
      */
-    public static function mbStrpos($haystack, $needle, $offset = 0)
+    public static function mbStrpos(string $haystack, string $needle, int $offset = 0)
     {
         if (\function_exists('mb_strpos')) {
             return \mb_strpos($haystack, $needle, $offset, 'UTF-8');
@@ -152,6 +214,6 @@ class Util
         if (\function_exists('iconv_strpos')) {
             return \iconv_strpos($haystack, $needle, $offset, 'UTF-8');
         }
-        return \strpos($haystack, $needle, $offset);
+        throw new \LogicException('Either mbstring (recommended) or iconv is necessary to use Scssphp.');
     }
 }

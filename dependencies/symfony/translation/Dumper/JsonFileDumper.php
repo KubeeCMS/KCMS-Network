@@ -21,7 +21,7 @@ class JsonFileDumper extends \Symfony\Component\Translation\Dumper\FileDumper
     /**
      * {@inheritdoc}
      */
-    public function formatCatalogue(\Symfony\Component\Translation\MessageCatalogue $messages, string $domain, array $options = [])
+    public function formatCatalogue(MessageCatalogue $messages, string $domain, array $options = [])
     {
         $flags = $options['json_encoding'] ?? \JSON_PRETTY_PRINT;
         return \json_encode($messages->all($domain), $flags);

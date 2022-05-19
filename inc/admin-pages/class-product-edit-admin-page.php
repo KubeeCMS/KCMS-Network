@@ -13,7 +13,6 @@ namespace WP_Ultimo\Admin_Pages;
 defined('ABSPATH') || exit;
 
 use \WP_Ultimo\Models\Product;
-use \WP_Ultimo\Managers\Product_Manager;
 use \WP_Ultimo\Database\Products\Product_Type;
 
 /**
@@ -96,7 +95,52 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 
 		add_action('wu_after_delete_product_modal', array($this, 'product_after_delete_actions'));
 
+		add_filter("wu_page_{$this->id}_load", array($this, 'add_new_product_warning_message'));
+
 	} // end register_forms;
+
+	/**
+	 * Adds the new product warning.
+	 *
+	 * @since 2.0.0
+	 * @return void
+	 */
+	public function add_new_product_warning_message() {
+
+		if (wu_request('wu-new-model')) {
+
+			if (!$this->get_object() || $this->get_object()->get_type() !== Product_Type::PLAN) {
+
+				return;
+
+			} // end if;
+
+			\WP_Ultimo\UI\Tours::get_instance()->create_tour('new_product_warning', array(
+				array(
+					'id'       => 'new-product-warning',
+					'title'    => __('On adding a new product...', 'wp-ultimo'),
+					'text'     => array(
+						__("You just successfully added a new product to your WP Ultimo network and that's awesome!", 'wp-ultimo'),
+						__('Keep in mind that newly created products do not appear automatically in your checkout forms.', 'wp-ultimo'),
+						__('To make a product available on registration, you will need to manually add it to the pricing table field of your checkout forms.', 'wp-ultimo'),
+					),
+					'buttons'  => array(
+						array(
+							'classes' => 'button wu-text-xs sm:wu-normal-case wu-float-left',
+							'text'    => __('Go to Checkout Forms', 'wp-ultimo'),
+							'url'     => wu_network_admin_url('wp-ultimo-checkout-forms'),
+						)
+					),
+					'attachTo' => array(
+						'element' => '#message.updated',
+						'on'      => 'top',
+					),
+				),
+			));
+
+		} // end if;
+
+	} // end add_new_product_warning_message;
 
 	/**
 	 * Adds the extra delete fields to the delete form.
@@ -194,6 +238,7 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 					'type'        => 'textarea',
 					'title'       => __('Product Description', 'wp-ultimo'),
 					'placeholder' => __('Tell your customers what this product is about.', 'wp-ultimo'),
+					'tooltip'     => __('This description is made available for layouts and can be shown to end customers.', 'wp-ultimo'),
 					'value'       => $this->get_object()->get_description(),
 					'html_attr'   => array(
 						'rows' => 3,
@@ -209,7 +254,7 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 		));
 
 		/*
-		 * Handle legacy options for backcompat.
+		 * Handle legacy options for back-compat.
 		 */
 		$this->handle_legacy_options();
 
@@ -227,17 +272,19 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 					'pricing_type'  => $this->get_object()->get_pricing_type(),
 					'has_trial'     => $this->get_object()->get_trial_duration() > 0,
 					'has_setup_fee' => $this->get_object()->has_setup_fee(),
-					'amount'        => $this->get_object()->get_amount(),
+					'setup_fee'     => $this->get_object()->get_setup_fee(),
+					'amount'        => $this->get_object()->get_formatted_amount(),
 					'duration'      => $this->get_object()->get_duration(),
 					'duration_unit' => $this->get_object()->get_duration_unit(),
 				)),
 			),
 			'fields'    => array(
 				// Fields for price
-				'pricing_type'   => array(
+				'pricing_type'     => array(
 					'type'              => 'select',
 					'title'             => __('Pricing Type', 'wp-ultimo'),
 					'placeholder'       => __('Select Pricing Type', 'wp-ultimo'),
+					'desc'              => __('Products can be free, paid, or require further contact for pricing.', 'wp-ultimo'),
 					'value'             => $this->get_object()->get_pricing_type(),
 					'tooltip'           => '',
 					'options'           => array(
@@ -251,11 +298,30 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 					'html_attr'         => array(
 						'v-model' => 'pricing_type',
 					),
+				),
+				'contact_us_label' => array(
+					'type'              => 'text',
+					'title'             => __('Button Label', 'wp-ultimo'),
+					'placeholder'       => __('E.g. Contact us', 'wp-ultimo'),
+					'desc'              => __('This will be used on the pricing table CTA button, as the label.', 'wp-ultimo'),
+					'value'             => $this->get_object()->get_contact_us_label(),
 					'wrapper_html_attr' => array(
+						'v-show'  => "pricing_type == 'contact_us'",
 						'v-cloak' => '1',
 					),
 				),
-				'recurring'      => array(
+				'contact_us_link'  => array(
+					'type'              => 'url',
+					'title'             => __('Button Link', 'wp-ultimo'),
+					'placeholder'       => __('E.g. https://contactus.page.com', 'wp-ultimo'),
+					'desc'              => __('This will be used on the pricing table CTA button.', 'wp-ultimo'),
+					'value'             => $this->get_object()->get_contact_us_link(),
+					'wrapper_html_attr' => array(
+						'v-show'  => "pricing_type == 'contact_us'",
+						'v-cloak' => '1',
+					),
+				),
+				'recurring'        => array(
 					'type'              => 'toggle',
 					'title'             => __('Is Recurring?', 'wp-ultimo'),
 					'desc'              => __('Check this if this product has a recurring charge.', 'wp-ultimo'),
@@ -268,36 +334,47 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 						'v-model' => 'is_recurring',
 					),
 				),
-				'amount'         => array(
+				'amount'           => array(
+					'type'      => 'hidden',
+					'html_attr' => array(
+						'v-model' => 'amount',
+					),
+				),
+				'_amount'          => array(
 					'type'              => 'text',
 					'title'             => __('Price', 'wp-ultimo'),
 					'placeholder'       => __('Price', 'wp-ultimo'),
-					'value'             => $this->get_object()->get_amount(),
+					'value'             => $this->get_object()->get_formatted_amount(),
 					'tooltip'           => '',
 					'money'             => true,
 					'wrapper_html_attr' => array(
 						'v-show'  => "pricing_type == 'paid' && !is_recurring ",
 						'v-cloak' => '1',
 					),
+					'html_attr'         => array(
+						'v-bind:name' => '""',
+						'v-model'     => 'amount',
+					),
 				),
-				'amount_group'   => array(
+				'amount_group'     => array(
 					'type'              => 'group',
 					'title'             => __('Price', 'wp-ultimo'),
-					'desc'              => __('The customer will be charged {{ wu_format_money(amount) }} every {{ duration }} {{ duration_unit }}(s).', 'wp-ultimo'),
+					// translators: placeholder %1$s is the amount, %2$s is the duration (such as 1, 2, 3), and %3$s is the unit (such as month, year, week)
+					'desc'              => sprintf(__('The customer will be charged %1$s every %2$s %3$s(s).', 'wp-ultimo'), '{{ wu_format_money(amount) }}', '{{ duration }}', '{{ duration_unit }}'),
 					'tooltip'           => '',
 					'wrapper_html_attr' => array(
 						'v-show'  => "is_recurring && pricing_type == 'paid'",
 						'v-cloak' => '1',
 					),
 					'fields'            => array(
-						'amount'        => array(
+						'_amount'       => array(
 							'type'            => 'text',
-							'value'           => $this->get_object()->get_amount(),
+							'value'           => $this->get_object()->get_formatted_amount(),
 							'placeholder'     => wu_format_currency('99'),
 							'wrapper_classes' => '',
 							'money'           => true,
 							'html_attr'       => array(
-								'v-bind:name' => "is_recurring ? 'amount' : '_amount'",
+								'v-bind:name' => '""',
 								'v-model'     => 'amount',
 							),
 						),
@@ -329,10 +406,11 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 						),
 					),
 				),
-				'billing_cycles' => array(
+				'billing_cycles'   => array(
 					'type'              => 'number',
 					'title'             => __('Billing Cycles', 'wp-ultimo'),
-					'placeholder'       => __('Billing Cycles', 'wp-ultimo'),
+					'placeholder'       => __('E.g. 1', 'wp-ultimo'),
+					'desc'              => __('How many times should we bill this customer. Leave 0 to charge until cancelled.', 'wp-ultimo'),
 					'value'             => $this->get_object()->get_billing_cycles(),
 					'tooltip'           => '',
 					'wrapper_html_attr' => array(
@@ -340,7 +418,7 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 						'v-cloak' => '1',
 					),
 				),
-				'has_trial'      => array(
+				'has_trial'        => array(
 					'type'              => 'toggle',
 					'title'             => __('Offer Trial', 'wp-ultimo'),
 					'desc'              => __('Check if you want to add a trial period to this product.', 'wp-ultimo'),
@@ -353,7 +431,7 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 						'v-model' => 'has_trial',
 					),
 				),
-				'trial_group'    => array(
+				'trial_group'      => array(
 					'type'              => 'group',
 					'title'             => __('Trial', 'wp-ultimo'),
 					'tooltip'           => '',
@@ -382,7 +460,7 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 						),
 					),
 				),
-				'has_setup_fee'  => array(
+				'has_setup_fee'    => array(
 					'type'              => 'toggle',
 					'title'             => __('Add Setup Fee?', 'wp-ultimo'),
 					'desc'              => __('Check if you want to add a setup fee.', 'wp-ultimo'),
@@ -395,16 +473,25 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 						'v-model' => 'has_setup_fee',
 					),
 				),
-				'setup_fee'      => array(
+				'setup_fee'        => array(
+					'type'      => 'hidden',
+					'html_attr' => array(
+						'v-model' => 'setup_fee',
+					),
+				),
+				'_setup_fee'       => array(
 					'type'              => 'text',
 					'money'             => true,
 					'title'             => __('Setup Fee', 'wp-ultimo'),
-					'placeholder'       => __('Setup Fee', 'wp-ultimo'),
-					'value'             => $this->get_object()->get_setup_fee(),
-					'tooltip'           => __('The setup fee will be added to the first charge of the membership, along side with the first regular cycle payment.', 'wp-ultimo'),
+					'desc'              => __('The setup fee will be added to the first charge, in addition to the regular price of the product.', 'wp-ultimo'),
+					'placeholder'       => sprintf(__('E.g. %s', 'wp-ultimo'), wu_format_currency(199)),
+					'value'             => $this->get_object()->get_formatted_amount('setup_fee'),
 					'wrapper_html_attr' => array(
 						'v-show'  => "has_setup_fee && pricing_type == 'paid'",
 						'v-cloak' => '1',
+					),
+					'html_attr'         => array(
+						'v-model' => 'setup_fee',
 					),
 				),
 			),
@@ -413,12 +500,12 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 		$this->add_save_widget('save', $save_widget_args);
 
 		$this->add_fields_widget('active', array(
-			'title'  => __('Is Active?', 'wp-ultimo'),
+			'title'  => __('Active', 'wp-ultimo'),
 			'fields' => array(
 				'active' => array(
 					'type'  => 'toggle',
-					'title' => __('Is Active?', 'wp-ultimo'),
-					'desc'  => __('Deactivate this product.', 'wp-ultimo'),
+					'title' => __('Active', 'wp-ultimo'),
+					'desc'  => __('Use this option to manually enable or disable this product for new sign-ups.', 'wp-ultimo'),
 					'value' => $this->get_object()->is_active(),
 				),
 			),
@@ -428,10 +515,12 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 			'title'  => __('Product Image', 'wp-ultimo'),
 			'fields' => array(
 				'featured_image_id' => array(
-					'type'  => 'image',
-					'title' => __('Set Product Image', 'wp-ultimo'),
-					'value' => $this->get_object()->get_featured_image_id(),
-					'img'   => $this->get_object()->get_featured_image(),
+					'type'    => 'image',
+					'stacked' => true,
+					'title'   => __('Product Image', 'wp-ultimo'),
+					'desc'    => __('This image is used on product list tables and other places.', 'wp-ultimo'),
+					'value'   => $this->get_object()->get_featured_image_id(),
+					'img'     => $this->get_object()->get_featured_image(),
 				),
 			),
 		));
@@ -480,7 +569,7 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 					'classes' => 'wu--mt-2',
 					'content' => function() use ($callable) {
 
-						call_user_func($callable['function'], $this->get_object());
+						call_user_func($callable['function'], new \WU_Plan($this->get_object()));
 
 					},
 				);
@@ -527,11 +616,11 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 					'slug'          => array(
 						'type'        => 'text',
 						'title'       => __('Product Slug', 'wp-ultimo'),
-						'placeholder' => __('Product Slug', 'wp-ultimo'),
+						'placeholder' => __('e.g. premium', 'wp-ultimo'),
+						'desc'        => __('This serves as a id to the product in a number of different contexts.', 'wp-ultimo'),
 						'value'       => $this->get_object()->get_slug(),
 						'tooltip'     => __('Lowercase alpha-numeric characters with dashes or underlines. No spaces allowed.', 'wp-ultimo'),
 						'html_attr'   => array(
-							'required'     => 'required',
 							'v-on:input'   => 'slug = $event.target.value.toLowerCase().replace(/[^a-z0-9-_]+/g, "")',
 							'v-bind:value' => 'slug',
 						),
@@ -541,6 +630,7 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 						'type'        => 'select',
 						'title'       => __('Product Type', 'wp-ultimo'),
 						'placeholder' => __('Product Type', 'wp-ultimo'),
+						'desc'        => __('Different product types have different options.', 'wp-ultimo'),
 						'value'       => $this->get_object()->get_type(),
 						'tooltip'     => '',
 						'options'     => Product_Type::to_array(),
@@ -548,9 +638,9 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 							'v-model' => 'product_type',
 						),
 					),
-					'customer_role' => array(
+					'modules[customer_user_role][limit]' => array(
 						'title'             => __('Customer Role', 'wp-ultimo'),
-						'tooltip'           => __('Select the role WP Ultimo should use when adding the user to their newly created site.', 'wp-ultimo'),
+						'desc'              => __('Select the role WP Ultimo should use when adding the user to their newly created site.', 'wp-ultimo'),
 						'type'              => 'select',
 						'value'             => $this->get_object()->get_customer_role(),
 						'default'           => 'administrator',
@@ -561,6 +651,53 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 							'v-show'  => 'product_type === "plan"',
 							'v-cloak' => 1,
 						),
+					),
+				),
+			),
+		);
+
+		$sections['ups-and-downs'] = array(
+			'title'  => __('Up & Downgrades', 'wp-ultimo'),
+			'desc'   => __('Settings related to upgrade and downgrade flows.', 'wp-ultimo'),
+			'icon'   => 'dashicons-wu-shop',
+			'v-show' => 'product_type === "plan"',
+			'state'  => array(),
+			'fields' => array(
+				'group'            => array(
+					'title'       => __('Plan Group', 'wp-ultimo'),
+					'desc'        => __('Add related plans to the same group to have them show up as upgrade/downgrade paths.', 'wp-ultimo'),
+					'placeholder' => __('Type and press enter to search and/or add.', 'wp-ultimo'),
+					'type'        => 'select',
+					'value'       => $this->get_object()->get_group(),
+					'options'     => array_merge(array('' => __('Select Group', 'wp-ultimo')), wu_get_product_groups()),
+					'html_attr'   => array(
+						'data-selectize-categories' => 999,
+						'data-max-items'            => 1,
+					),
+				),
+				'list_order'       => array(
+					'title'       => __('Product Order', 'wp-ultimo'),
+					'desc'        => __('Plans are shown in the order determined by this parameter, from the lowest to the highest.', 'wp-ultimo'),
+					'placeholder' => __('Type and press enter to search and/or add.', 'wp-ultimo'),
+					'type'        => 'number',
+					'value'       => $this->get_object()->get_list_order(),
+				),
+				'available_addons' => array(
+					'type'        => 'model',
+					'title'       => __('Offer Add-ons', 'wp-ultimo'),
+					'placeholder' => __('Search for a package or service', 'wp-ultimo'),
+					'desc'        => __('This products will be offered inside upgrade/downgrade forms as order bumps.', 'wp-ultimo'),
+					'html_attr'   => array(
+						'data-exclude'      => implode(',', array_keys(wu_get_plans_as_options())),
+						'data-model'        => 'product',
+						'data-value-field'  => 'id',
+						'data-label-field'  => 'name',
+						'data-search-field' => 'name',
+						'data-max-items'    => 99,
+						'data-selected'     => json_encode(wu_get_products(array(
+							'id__in'     => $this->get_object()->get_available_addons(),
+							'id__not_in' => array_keys(wu_get_plans_as_options()),
+						))),
 					),
 				),
 			),
@@ -586,14 +723,21 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 				),
 				'price_variations'        => array(
 					'type'              => 'group',
+					// translators: 1 is the price, 2 is the duration and 3 the duration unit
 					'desc'              => sprintf(__('A discounted price of %1$s will be used when memberships are created with the recurrency of %2$s %3$s(s) instead of the regular period.', 'wp-ultimo'), '{{ wu_format_money(price_variation.amount) }}', '{{ price_variation.duration }}', '{{ price_variation.duration_unit }}'),
 					'tooltip'           => '',
+					'wrapper_classes'   => 'wu-relative',
 					'wrapper_html_attr' => array(
 						'v-for'   => '(price_variation, index) in price_variations',
 						'v-show'  => 'enable_price_variations',
 						'v-cloak' => '1',
 					),
 					'fields'            => array(
+						'price_variations_remove'        => array(
+							'type'            => 'note',
+							'desc'            => sprintf('<a title="%s" class="wu-no-underline wu-inline-block wu-text-gray-600 wu-mt-2 wu-mr-2" href="#" @click.prevent="() => price_variations.splice(index, 1)"><span class="dashicons-wu-squared-cross"></span></a>', __('Remove', 'wp-ultimo')),
+							'wrapper_classes' => 'wu-absolute wu-top-0 wu-right-0',
+						),
 						'price_variations_duration'      => array(
 							'type'            => 'number',
 							'title'           => __('Duration', 'wp-ultimo'),
@@ -666,7 +810,7 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 				'taxable'      => array(
 					'type'      => 'toggle',
 					'title'     => __('Is Taxable?', 'wp-ultimo'),
-					'desc'      => __('Check this if this product is taxable.', 'wp-ultimo'),
+					'desc'      => __('Enable this if you plan to collect taxes for this product.', 'wp-ultimo'),
 					'value'     => $this->get_object()->is_taxable(),
 					'html_attr' => array(
 						'v-model' => 'taxable',
@@ -675,7 +819,7 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 				'tax_category' => array(
 					'type'              => 'select',
 					'title'             => __('Tax Category', 'wp-ultimo'),
-					'desc'              => __('Check this if this product is taxable.', 'wp-ultimo'),
+					'desc'              => __('Select the product tax category.', 'wp-ultimo'),
 					'value'             => $this->get_object()->get_tax_category(),
 					'options'           => 'wu_get_tax_categories_as_options',
 					'wrapper_html_attr' => array(
@@ -686,9 +830,85 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 			),
 		);
 
+		$sections['allowed_templates'] = array(
+			'title'  => __('Site Templates', 'wp-ultimo'),
+			'desc'   => __('Limit which site templates are available for this particular template.', 'wp-ultimo'),
+			'icon'   => 'dashicons-wu-grid1 wu-align-text-bottom',
+			'v-show' => "get_state_value('product_type', 'none') !== 'service'",
+			'state'  => array(
+				'allow_site_templates'         => $this->get_object()->get_limitations()->site_templates->is_enabled(),
+				'site_template_selection_mode' => $this->get_object()->get_limitations()->site_templates->get_mode(),
+				'pre_selected_template'        => $this->get_object()->get_limitations()->site_templates->get_pre_selected_site_template(),
+			),
+			'fields' => array(
+				'modules[site_templates][enabled]' => array(
+					'type'              => 'toggle',
+					'title'             => __('Allow Site Templates', 'wp-ultimo'),
+					'desc'              => __('Toggle this option on to allow this plan to use Site Templates. If this option is disabled, sign-ups on this plan will get a default WordPress site.', 'wp-ultimo'),
+					'wrapper_html_attr' => array(
+						'v-cloak' => '1',
+					),
+					'html_attr'         => array(
+						'v-model' => 'allow_site_templates',
+					),
+				),
+				'modules[site_templates][mode]'    => array(
+					'type'              => 'select',
+					'title'             => __('Site Template Selection Mode', 'wp-ultimo'),
+					'placeholder'       => __('Site Template Selection Mode', 'wp-ultimo'),
+					'desc'              => __('Select the type of limitation you want to apply.', 'wp-ultimo'),
+					'tooltip'           => __('"Default" will follow the settings of the checkout form: if you have a template selection field in there, all the templates selected will show up. If no field is present, then a default WordPress site will be created. <br><br>"Assign Site Template" forces new accounts with this plan to use a particular template site (this option removes the template selection field from the signup, if one exists). <br><br>Finally, "Choose Available Site Templates", overrides the templates selected on the checkout form with the templates selected here, while also giving you the chance of pre-select a template to be used as default.', 'wp-ultimo'),
+					'value'             => 'default',
+					'options'           => array(
+						'default'                    => __('Default', 'wp-ultimo'),
+						'assign_template'            => __('Assign Site Template', 'wp-ultimo'),
+						'choose_available_templates' => __('Choose Available Site Templates', 'wp-ultimo')
+					),
+					'html_attr'         => array(
+						'v-model' => 'site_template_selection_mode',
+					),
+					'wrapper_html_attr' => array(
+						'v-cloak' => '1',
+						'v-show'  => 'allow_site_templates',
+					),
+				),
+				'templates'                        => array(
+					'type'              => 'html',
+					'title'             => __('Site Templates', 'wp-ultimo'),
+					'desc'              => esc_attr(sprintf('{{ site_template_selection_mode === "assign_template" ? "%s" : "%s" }}', __('Select the Site Template to assign.', 'wp-ultimo'), __('Customize the access level of each Site Template below.', 'wp-ultimo'))),
+					'wrapper_html_attr' => array(
+						'v-cloak' => '1',
+						'v-show'  => "allow_site_templates && site_template_selection_mode !== 'default'",
+					),
+					'content'           => function() {
+						return $this->get_site_template_selection_list($this->get_object());
+					},
+				),
+			),
+		);
+
 		return apply_filters('wu_product_options_sections', $sections, $this->get_object());
 
 	} // end get_product_option_sections;
+
+	/**
+	 * Returns the HTML markup for the plugin selector list.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param \WP_Ultimo\Models\Product $product The product being edited.
+	 * @return string
+	 */
+	public function get_site_template_selection_list($product) {
+
+		$all_templates = wu_get_site_templates();
+
+		return wu_get_template_contents('limitations/site-template-selector', array(
+			'templates' => $all_templates,
+			'product'   => $product,
+		));
+
+	} // end get_site_template_selection_list;
 
 	/**
 	 * Returns the title of the page.
@@ -722,7 +942,23 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 	 */
 	public function action_links() {
 
-		return array();
+		$actions = array();
+
+		if ($this->get_object()->get_type() === 'plan' && $this->edit) {
+
+			$shareable_link = $this->get_object()->get_shareable_link();
+
+			$actions[] = array(
+				'url'     => '#',
+				'label'   => __('Click to copy Shareable Link', 'wp-ultimo'),
+				'icon'    => 'wu-attachment',
+				'classes' => 'wu-copy',
+				'attrs'   => 'data-clipboard-text="' . esc_attr($shareable_link) . '"',
+			);
+
+		} // end if;
+
+		return $actions;
 
 	} // end action_links;
 
@@ -760,7 +996,7 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 
 		$extra_args = array(
 			'object_type' => 'product',
-			'object_id'   => abs($this->get_object()->get_id()),
+			'object_id'   => absint($this->get_object()->get_id()),
 		);
 
 		return array_merge($args, $extra_args);
@@ -835,12 +1071,45 @@ class Product_Edit_Admin_Page extends Edit_Admin_Page {
 
 		} // end if;
 
+		if (!wu_request('legacy_options')) {
+
+			$_POST['legacy_options'] = false;
+
+		} // end if;
+
 		/*
 		 * Set the setup fee value to zero if the toggle is disabled.
 		 */
 		if (!wu_request('has_setup_fee')) {
 
 			$_POST['setup_fee'] = 0;
+
+		} // end if;
+
+		/*
+		 * Disabled Trial
+		 */
+		if (!wu_request('has_trial')) {
+
+			$_POST['trial_duration'] = 0;
+
+		} // end if;
+
+		/*
+		 * Set the setup fee value to zero if the toggle is disabled.
+		 */
+		if (!wu_request('price_variations')) {
+
+			$_POST['price_variations'] = array();
+
+		} // end if;
+
+		/*
+		 * Set the taxable value to zero if the toggle is disabled.
+		 */
+		if (!wu_request('taxable')) {
+
+			$_POST['taxable'] = 0;
 
 		} // end if;
 

@@ -79,6 +79,11 @@ class Hooks {
 			// Removes the flag
 			delete_network_option(null, 'wu_activation');
 
+			/*
+			 * Update the sunrise meta file.
+			 */
+			\WP_Ultimo\Sunrise::maybe_tap('activating');
+
 			/**
 			 * Let other parts of the plugin attach their routines for activation
 			 *
@@ -100,6 +105,11 @@ class Hooks {
 	public static function on_deactivation() {
 
 		wu_log_add('wp-ultimo-core', __('Deactivating WP Ultimo...', 'wp-ultimo'));
+
+		/*
+		 * Update the sunrise meta file.
+		 */
+		\WP_Ultimo\Sunrise::maybe_tap('deactivating');
 
 		/**
 		 * Let other parts of the plugin attach their routines for deactivation

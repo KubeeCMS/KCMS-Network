@@ -4,7 +4,7 @@
   const search_addon = new Vue({
     el: '#search-addons',
     data: {
-      search: '',
+      search: wu_addons.search,
     },
   });
 

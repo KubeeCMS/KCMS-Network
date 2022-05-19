@@ -130,9 +130,7 @@ class Checkout_Form_List_Table extends Base_List_Table {
 	 * @since 2.0.0
 	 * @return void
 	 */
-	public function process_bulk_action() {
-
-		parent::process_bulk_action();
+	public function process_single_action() {
 
 		$bulk_action = $this->current_action();
 
@@ -158,7 +156,7 @@ class Checkout_Form_List_Table extends Base_List_Table {
 
 			$new_checkout_form->set_slug(sanitize_title($new_name));
 
-			$new_checkout_form->get_date_created(current_time('mysql'));
+			$new_checkout_form->set_date_created(wu_get_current_time('mysql', true));
 
 			$result = $new_checkout_form->save();
 
@@ -181,7 +179,7 @@ class Checkout_Form_List_Table extends Base_List_Table {
 
 		} // end if;
 
-	} // end process_bulk_action;
+	} // end process_single_action;
 
 	/**
 	 * Returns the list of columns for this particular List Table.

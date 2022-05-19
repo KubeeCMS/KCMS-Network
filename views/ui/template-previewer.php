@@ -21,12 +21,18 @@ if (!defined('ABSPATH')) {
 
 } // end if;
 
+/**
+ * Allow developers to run code before the template previewer is loaded.
+ */
+do_action('wu_template_previewer_before');
+
 ?>
 <!DOCTYPE html>
-<html>
+<html <?php language_attributes(); ?>>
   <head>
 
   <meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta charset="<?php bloginfo('charset'); ?>">
 
   <?php wp_head(); ?>
 
@@ -130,7 +136,7 @@ if (!defined('ABSPATH')) {
           
         <ul class="links">
 
-            <?php if (isset($_GET['cs'])) : ?>
+            <?php if (wu_request('open')) : ?>
 
                 <li class="select-template">
 
@@ -142,7 +148,7 @@ if (!defined('ABSPATH')) {
 
                 <li class="select-template">
 
-                    <a id="action-select-link" href="<?php echo wu_get_registration_url('?template_id='.$selected_template->get_id()); ?>"><?php echo $button_text; ?> &rarr;</a>
+                    <a id="action-select-link" href="<?php echo wu_get_registration_url('?template_selection='.$selected_template->get_id()); ?>"><?php echo $button_text; ?> &rarr;</a>
 
                 </li>
 
@@ -160,7 +166,7 @@ if (!defined('ABSPATH')) {
 
       <div class="mobile-selector">
         
-		<?php if (isset($_GET['cs'])) : ?>
+		      <?php if (wu_request('open')) : ?>
             
               <a id="action-select2" href="#"><?php echo $button_text; ?> &rarr;</a>
 
@@ -176,15 +182,15 @@ if (!defined('ABSPATH')) {
 
     <?php if (!wu_request('customizer')) : ?>
 
-      <iframe id="iframe" src="<?php echo add_query_arg('preview', '1', get_home_url($selected_template->get_id())); ?>" width="100%" height="100%">
+      <iframe id="iframe" src="<?php echo set_url_scheme(add_query_arg('wu-preview', '1', get_home_url($selected_template->get_id()))); ?>" width="100%" height="100%"></iframe>
 
     <?php else : ?>
 
       <div class="wu-styling">
 
-        <div class="wu-w-full wu-text-center wu-relative">
+        <div class="wu-w-full wu-text-center wu-relative wu-flex wu-justify-center wu-items-center wu-h-screen">
 
-          <div class="wu-text-xl wu-rounded wu-font-bold wu-uppercase wu-inline-block wu-p-8 wu-opacity-50" style="margin-top: 30%; background-color: #000; color: #666;">
+          <div class="wu-text-xl wu-rounded wu-font-bold wu-uppercase wu-inline-block wu-p-8 wu-opacity-50" style="margin-top: 62px; background-color: #000; color: #666;">
 
 		        <?php _e('Site Template Preview will go here!', 'wp-ultimo'); ?>
 
@@ -195,6 +201,8 @@ if (!defined('ABSPATH')) {
       </div>
 
     <?php endif; ?>
+
+    <?php wp_footer(); ?>
 
   </body>
 

@@ -101,13 +101,13 @@ class Visits {
 
 		if (!$start_date) {
 
-			$start_date = current_time('mysql');
+			$start_date = wu_get_current_time('mysql', true);
 
 		} // end if;
 
 		if (!$end_date) {
 
-			$end_date = current_time('mysql');
+			$end_date = wu_get_current_time('mysql', true);
 
 		} // end if;
 
@@ -138,13 +138,13 @@ class Visits {
 
 		if (!$start_date) {
 
-			$start_date = current_time('mysql');
+			$start_date = wu_get_current_time('mysql', true);
 
 		} // end if;
 
 		if (!$end_date) {
 
-			$end_date = current_time('mysql');
+			$end_date = wu_get_current_time('mysql', true);
 
 		} // end if;
 
@@ -176,13 +176,13 @@ class Visits {
 
 		if (!$start_date) {
 
-			$start_date = current_time('mysql');
+			$start_date = wu_get_current_time('mysql', true);
 
 		} // end if;
 
 		if (!$end_date) {
 
-			$end_date = current_time('mysql');
+			$end_date = wu_get_current_time('mysql', true);
 
 		} // end if;
 

@@ -12,4 +12,5 @@ namespace WP_Ultimo\Dependencies\Carbon\Exceptions;
 
 interface Exception
 {
+    //
 }
